@@ -70,8 +70,8 @@ func main () {
         } else {
             log.Printf("Host %s: SNMP Interfaces:\n", hostName)
 
-            for _, iface := range interfaces {
-                log.Printf("\t%3d: %s\n", iface.IfIndex, iface.IfDescr)
+            for index, iface := range interfaces {
+                log.Printf("\t%3d: %+v\n", index, iface)
             }
         }
     }

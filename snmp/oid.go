@@ -41,8 +41,11 @@ func (self OID) Index() (oid OID, index int) {
     return
 }
 
-func (self OID) define(oid... int) OID {
-    return append(self, oid...)
+func (self OID) define(oid... int) (defineOid OID) {
+    defineOid = append(defineOid, self...)
+    defineOid = append(defineOid, oid...)
+
+    return
 }
 
 func (self OID) Match(oid OID) bool {
@@ -55,26 +58,6 @@ func (self OID) Match(oid OID) bool {
         }
     }
     return true
-}
-
-func (self OID) MatchInteger(oid OID, value interface{}) (int, bool) {
-    if !self.Match(oid) {
-        return 0, false
-    } else if intValue, ok := value.(int); ok {
-        return intValue, true
-    } else {
-        return 0, false
-    }
-}
-
-func (self OID) MatchString(oid OID, value interface{}) (string, bool) {
-    if !self.Match(oid) {
-        return "", false
-    } else if bytesValue, ok := value.([]byte); ok {
-        return (string)(bytesValue), true
-    } else {
-        return "", false
-    }
 }
 
 /* MIB */
