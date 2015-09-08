@@ -23,9 +23,11 @@ var (
     SNMP_interfaces_ifLastChange    = SNMP_interfaces_ifEntry.define(9)
 )
 
-type InterfaceIndex Integer
+type InterfaceIndex struct {
+    Index       Integer
+}
 
-type Interface struct {
+type InterfaceEntry struct {
     Index       Integer // SNMP_interfaces_ifIndex
     Descr       String  // SNMP_interfaces_ifDescr
     Type        Integer
@@ -37,60 +39,80 @@ type Interface struct {
     LastChange  TimeTicks
 }
 
-func (self *Interface) lookup (oid OID) Type {
-    if SNMP_interfaces_ifIndex.Match(oid) {
+type InterfaceTable map[InterfaceIndex]*InterfaceEntry
+
+func (self *InterfaceEntry) field (id int) Type {
+    switch id {
+    case 1:
         return &self.Index
-    } else if SNMP_interfaces_ifDescr.Match(oid) {
+    case 2:
         return &self.Descr
-    } else if SNMP_interfaces_ifType.Match(oid) {
+    case 3:
         return &self.Type
-    } else if SNMP_interfaces_ifMtu.Match(oid) {
+    case 4:
         return &self.Mtu
-    } else if SNMP_interfaces_ifSpeed.Match(oid) {
+    case 5:
         return &self.Speed
-    } else if SNMP_interfaces_ifPhysAddress.Match(oid) {
+    case 6:
         return &self.PhysAddress
-    } else if SNMP_interfaces_ifAdminStatus.Match(oid) {
+    case 7:
         return &self.AdminStatus
-    } else if SNMP_interfaces_ifOperStatus.Match(oid) {
+    case 8:
         return &self.OperStatus
-    } else if SNMP_interfaces_ifLastChange.Match(oid) {
+    case 9:
         return &self.LastChange
-    } else {
+    default:
         return nil
     }
 }
 
-func (self *Interface) set (oid OID, snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
-    if field := self.lookup(oid); field == nil {
-        return fmt.Errorf("OID not found")
-    } else if !field.match(snmpType) {
-        return fmt.Errorf("SNMP type mismatch")
-    } else {
-        log.Printf("snmp:Interface.set: %v %v\n", oid, field)
+func (self InterfaceTable) set (oid OID, snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+    selfMap := map[InterfaceIndex]*InterfaceEntry(self)
 
-        field.set(snmpValue)
+    var entryOid OID
 
-        return nil
+    if entryOid = SNMP_interfaces_ifEntry.Index(oid); entryOid == nil {
+        return fmt.Errorf("invalid")
     }
+
+    var fieldOid = entryOid[0]
+    var indexOid = entryOid[1]
+
+    // entry
+    var index InterfaceIndex
+
+    index.Index.set(indexOid)
+
+    entry, entryExists := selfMap[index]
+    if !entryExists {
+        entry = new(InterfaceEntry)
+        selfMap[index] = entry
+    }
+
+    // field
+    var field Type
+
+    if field = entry.field(fieldOid); field == nil {
+        return fmt.Errorf("unknown")
+    }
+
+    // value
+    if !field.match(snmpType) {
+        return fmt.Errorf("type mismatch")
+    }
+
+    field.set(snmpValue)
+
+    return nil
 }
 
-func (self *Client) Interfaces() (map[int]*Interface, error) {
-    interfaces := make(map[int]*Interface)
+func (self *Client) Interfaces() (InterfaceTable, error) {
+    interfaces := make(InterfaceTable)
 
     err := self.snmp.Walk(SNMP_interfaces_ifTable.String(), func (pdu gosnmp.SnmpPDU) error {
-        item := parseOID(pdu.Name)
+        oid := parseOID(pdu.Name)
 
-        oid, index := item.Index()
-
-
-        iface, ifaceExists := interfaces[index]
-        if !ifaceExists {
-            iface = new(Interface)
-            interfaces[index] = iface
-        }
-
-        if err := iface.set(oid, pdu.Type, pdu.Value); err != nil {
+        if err := interfaces.set(oid, pdu.Type, pdu.Value); err != nil {
             log.Printf("snmp:Client.Interfaces: %v %v: %v\n", oid, pdu.Type, err)
         }
 
