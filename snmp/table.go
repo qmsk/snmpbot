@@ -3,51 +3,100 @@ package snmp
 import (
     "fmt"
     "github.com/soniah/gosnmp"
-    "log"
     "reflect"
     "strings"
 )
 
-type tableField struct {
-    name    string
-    oid     OID
+type tableMeta struct {
+    indexType   reflect.Type
+    entryType   reflect.Type
+
+    fields      []OID
 }
 
-// Populate a map[IndexType]*struct{... Type `snmp:"oid"`} from SNMP
-func (self *Client) GetTable(table interface{}) error {
-    var fields []tableField
+// Use reflection on a table map to determine the necessary SNMP types and fields
+func reflectTable(tableType reflect.Type) (meta tableMeta, err error) {
+    meta.indexType = tableType.Key()
+    meta.entryType = tableType.Elem().Elem()
 
-    tableType := reflect.TypeOf(table).Elem()
-    indexType := tableType.Key()
-    entryType := tableType.Elem().Elem()
+    meta.fields = make([]OID, meta.entryType.NumField())
 
-    tableValue := reflect.ValueOf(table).Elem()
-
-    for i := 0; i < entryType.NumField(); i++ {
-        field := entryType.Field(i)
+    for i := 0; i < meta.entryType.NumField(); i++ {
+        field := meta.entryType.Field(i)
         snmpTag := field.Tag.Get("snmp")
 
         if snmpTag == "" {
-            panic(fmt.Errorf("Missing snmp tag for field: %s.%s", entryType.Name(), field.Name))
+            err = fmt.Errorf("Missing snmp tag for %v field %s", meta.entryType.Name(), field.Name)
+            return
         }
 
         oid := parseOID(snmpTag)
 
-        log.Printf("snmp.Client.GetTable: field %v:%v = %s %s\n", i, field.Name, oid, field.Type.Name())
+        // log.Printf("snmp.reflectTable: field %v:%v = %s %s\n", i, field.Name, oid, field.Type.Name())
 
-        fields = append(fields, tableField{
-            name:   field.Name,
-            oid:    oid,
-        })
+        meta.fields[i] = oid
     }
 
-    // snmp get
+    return
+}
+
+// Decode each OID to index the entry within the table map, and set the field to its snmp value
+func loadTable(meta tableMeta, tableValue reflect.Value, snmpRow []gosnmp.SnmpPDU) error {
+    if len(snmpRow) != len(meta.fields) {
+        panic("snmp table row fields mismatch")
+    }
+
+    // load row
+    for i, snmpVar := range snmpRow {
+        // index
+        oid := parseOID(snmpVar.Name)
+        fieldOid := meta.fields[i]
+
+        oidIndex := fieldOid.Index(oid)
+
+        if oidIndex == nil {
+            panic("snmp table row field mismatch")
+        }
+
+        // index
+        indexValue := reflect.New(meta.indexType).Elem()
+        index := indexValue.Addr().Interface().(IndexType)
+
+        if err := index.setIndex(oidIndex); err != nil {
+            return err
+        }
+
+        // entry
+        entryValue := tableValue.MapIndex(indexValue)
+
+        if !entryValue.IsValid() {
+            entryValue = reflect.New(meta.entryType)
+            tableValue.SetMapIndex(indexValue, entryValue)
+        }
+
+        // field
+        fieldValue := entryValue.Elem().Field(i)
+        field := fieldValue.Addr().Interface().(Type)
+
+        if err := field.set(snmpVar.Type, snmpVar.Value); err != nil {
+            return err
+        }
+
+        // log.Printf("snmp.Client.GetTable %v: %v[%v] = %v\n", meta.entryType.Name(), meta.entryType.Field(i).Name, index, field)
+    }
+
+    return nil
+}
+
+// Walk through a table with the given list of entry field OIDs
+// Call given handler with each returned row, returning any error.
+func (self *Client) getTable(oids []OID, handler func ([]gosnmp.SnmpPDU) error) error {
     var getRoot []string
     var getNext []string
 
-    for _, fieldTab := range fields {
-        getRoot = append(getRoot, fieldTab.oid.String())
-        getNext = append(getNext, fieldTab.oid.String())
+    for _, oid := range oids {
+        getRoot = append(getRoot, oid.String())
+        getNext = append(getNext, oid.String())
     }
 
     for row := 0; getNext != nil; row++ {
@@ -55,12 +104,11 @@ func (self *Client) GetTable(table interface{}) error {
         if err != nil {
             return err
         } else {
-            log.Printf("snmp.Client.GetTable: snmp.GetNext %v: variables=%v\n", getNext, len(response.Variables))
+            // log.Printf("snmp.Client.getTable: snmp.GetNext %v: variables=%v\n", getNext, len(response.Variables))
         }
 
         if len(response.Variables) != len(getNext) {
-            log.Printf("snmp.Client.GetTable: response row %v variable count mismatch: %v should be %v\n", row, len(response.Variables), len(getNext))
-            break
+            return fmt.Errorf("snmp variable count mismatch: %v should be %v\n", row, len(response.Variables), len(getNext))
         }
 
         // load getNext
@@ -75,44 +123,30 @@ func (self *Client) GetTable(table interface{}) error {
                 getNext[col] = snmpVar.Name
             }
         }
+
         if getNext == nil {
             break
-        }
-
-        // load row
-        for i, snmpVar := range response.Variables {
-            fieldTab := fields[i]
-
-            oid := parseOID(snmpVar.Name)
-            oidIndex := fieldTab.oid.Index(oid)
-
-            // index
-            indexValue := reflect.New(indexType).Elem()
-            index := indexValue.Addr().Interface().(IndexType)
-
-            if err := index.setIndex(oidIndex); err != nil {
+        } else {
+            if err := handler(response.Variables); err != nil {
                 return err
             }
-
-            // entry
-            entryValue := tableValue.MapIndex(indexValue)
-
-            if !entryValue.IsValid() {
-                entryValue = reflect.New(entryType)
-                tableValue.SetMapIndex(indexValue, entryValue)
-            }
-
-            // field
-            fieldValue := entryValue.Elem().Field(i)
-            field := fieldValue.Addr().Interface().(Type)
-
-            if err := field.set(snmpVar.Type, snmpVar.Value); err != nil {
-                return err
-            }
-
-            log.Printf("snmp.Client.GetTable: get %v.%v[%v] = %v\n", entryType.Name(), fieldTab.name, index, field)
         }
     }
 
     return nil
+}
+
+// Populate a map[IndexType]*struct{... Type `snmp:"oid"`} from SNMP
+func (self *Client) GetTable(table interface{}) error {
+    tableType := reflect.TypeOf(table).Elem()
+    tableValue := reflect.ValueOf(table).Elem()
+
+    tableMeta, err := reflectTable(tableType)
+    if err != nil {
+        return err
+    }
+
+    return self.getTable(tableMeta.fields, func(snmpRow []gosnmp.SnmpPDU) error {
+        return loadTable(tableMeta, tableValue, snmpRow)
+    })
 }
