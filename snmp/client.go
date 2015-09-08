@@ -3,6 +3,8 @@ package snmp
 import (
     "fmt"
     "github.com/soniah/gosnmp"
+    "log"
+    "os"
     "time"
 )
 
@@ -18,11 +20,13 @@ type Config struct {
 
 type Client struct {
     config  Config
+    log     *log.Logger
+
     snmp    *gosnmp.GoSNMP
 }
 
 func (self *Client) String() string {
-    return fmt.Sprintf("%s@%s", self.snmp.Community, self.snmp.Target)
+    return fmt.Sprintf("%s", self.snmp.Target)
 }
 
 func (self Config) Connect() (*Client, error) {
@@ -43,4 +47,8 @@ func (self Config) Connect() (*Client, error) {
     }
 
     return client, nil
+}
+
+func (self *Client) Log() {
+    self.log = log.New(os.Stderr, fmt.Sprintf("snmp.Client %v: ", self), 0)
 }
