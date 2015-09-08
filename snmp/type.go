@@ -1,6 +1,7 @@
 package snmp
 
 import (
+    "encoding/json"
     "fmt"
     "github.com/soniah/gosnmp"
     "time"
@@ -41,6 +42,10 @@ func (self Integer) String() string {
     return fmt.Sprintf("%v", int(self))
 }
 
+func (self Integer) MarshalJSON() ([]byte, error) {
+    return json.Marshal(int(self))
+}
+
 func (self *Integer) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
     switch snmpType {
     case gosnmp.Integer:
@@ -68,6 +73,10 @@ func (self String) String() string {
     return fmt.Sprintf("%s", string(self))
 }
 
+func (self String) MarshalJSON() ([]byte, error) {
+    return json.Marshal(string(self))
+}
+
 func (self *String) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
     switch snmpType {
     case gosnmp.OctetString:
@@ -86,6 +95,10 @@ type Binary []byte
 
 func (self Binary) String() string {
     return fmt.Sprintf("%x", []byte(self))
+}
+
+func (self Binary) MarshalJSON() ([]byte, error) {
+    return json.Marshal([]byte(self))
 }
 
 func (self *Binary) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
@@ -108,6 +121,10 @@ func (self Counter) String() string {
     return fmt.Sprintf("%v", uint(self))
 }
 
+func (self Counter) MarshalJSON() ([]byte, error) {
+    return json.Marshal(uint(self))
+}
+
 func (self *Counter) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
     switch snmpType {
     case gosnmp.Counter32:
@@ -128,6 +145,10 @@ func (self Gauge) String() string {
     return fmt.Sprintf("%v", uint(self))
 }
 
+func (self Gauge) MarshalJSON() ([]byte, error) {
+    return json.Marshal(uint(self))
+}
+
 func (self *Gauge) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
     switch snmpType {
     case gosnmp.Gauge32:
@@ -146,6 +167,10 @@ type TimeTicks time.Duration
 
 func (self TimeTicks) String() string {
     return fmt.Sprintf("%v", time.Duration(self))
+}
+
+func (self TimeTicks) MarshalJSON() ([]byte, error) {
+    return json.Marshal(time.Duration(self))
 }
 
 func (self *TimeTicks) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
@@ -177,6 +202,10 @@ func (self MacAddress) String() string {
         self[4],
         self[5],
     )
+}
+
+func (self MacAddress) MarshalJSON() ([]byte, error) {
+    return json.Marshal(self.String())
 }
 
 func (self *MacAddress) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
