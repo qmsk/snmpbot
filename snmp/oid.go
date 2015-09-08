@@ -12,7 +12,7 @@ func parseOID(str string) (oid OID) {
     parts := strings.Split(str, ".")
 
     for index, part := range parts {
-        if index == 0 {
+        if index == 0 && part == "" {
             continue
         }
 
