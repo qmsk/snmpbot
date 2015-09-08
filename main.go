@@ -74,5 +74,15 @@ func main () {
                 log.Printf("\t%3d: %+v\n", index, iface)
             }
         }
+
+        if table, err := hostClient.Bridge_FDB(); err != nil {
+            log.Printf("Host %s: SNMP Bridge FDB: %s\n", hostName, err)
+        } else {
+            log.Printf("Host %s: SNMP Bridge FDB:\n", hostName)
+
+            for index, entry := range table {
+                log.Printf("\t%v: %+v\n", index, entry)
+            }
+        }
     }
 }
