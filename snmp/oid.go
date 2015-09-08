@@ -32,22 +32,15 @@ func (self OID) String() (str string) {
     return
 }
 
-func (self OID) Index() (oid OID, index int) {
-    split := len(self) - 1
-
-    oid = self[0:split]
-    index = self[split]
-
-    return
-}
-
-func (self OID) define(oid... int) (defineOid OID) {
+// Extend this OID with the given ids, returning the new, more-specific, OID.
+func (self OID) define(ids... int) (defineOid OID) {
     defineOid = append(defineOid, self...)
-    defineOid = append(defineOid, oid...)
+    defineOid = append(defineOid, ids...)
 
     return
 }
 
+// Compare two OIDs for equality
 func (self OID) Match(oid OID) bool {
     if len(self) != len(oid) {
         return false
@@ -58,6 +51,20 @@ func (self OID) Match(oid OID) bool {
         }
     }
     return true
+}
+
+// Test if the given OID is a more-specific of this OID, returning the extended part if so.
+// Returns nil if the OIDs do not match
+func (self OID) Index(oid OID) (subOid OID) {
+    if len(oid) <= len(self) {
+        return nil
+    }
+    for i := range self {
+        if self[i] != oid[i] {
+            return nil
+        }
+    }
+    return oid[len(self):]
 }
 
 /* MIB */
