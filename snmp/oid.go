@@ -71,12 +71,3 @@ func (self OID) Index(oid OID) (subOid OID) {
 type MIB struct {
     OID
 }
-
-/* Tables */
-func (self OID) defineTable(oid int) Table {
-    return Table{OID: self.define(oid)}
-}
-
-type Table struct {
-    OID
-}
