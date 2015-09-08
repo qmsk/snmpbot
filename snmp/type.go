@@ -22,9 +22,16 @@ type TypeError struct {
     Type            Type
     SnmpType        gosnmp.Asn1BER
 }
-
 func (self TypeError) Error() string {
-    return fmt.Sprintf("Wrong SNMP type for %T: %v", self.Type, self.SnmpType)
+    return fmt.Sprintf("Invalid SNMP type for %T: %v", self.Type, self.SnmpType)
+}
+
+type ValueError struct {
+    Type            Type
+    SnmpValue       interface{}
+}
+func (self ValueError) Error() string {
+    return fmt.Sprintf("Invalid SNMP value for %T: %v", self.Type, self.SnmpValue)
 }
 
 /* Integer */
@@ -153,6 +160,52 @@ func (self *TimeTicks) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error
 
     default:
         return TypeError{self, snmpType}
+    }
+
+    return nil
+}
+
+/* MacAddress */
+type MacAddress [6]byte
+
+func (self MacAddress) String() string {
+    return fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
+        self[0],
+        self[1],
+        self[2],
+        self[3],
+        self[4],
+        self[5],
+    )
+}
+
+func (self *MacAddress) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+    switch snmpType {
+    case gosnmp.OctetString:
+        value := snmpValue.([]byte)
+
+        if len(value) != 6 {
+            return ValueError{self, snmpValue}
+        }
+
+        for i := 0; i < 6; i++ {
+            self[i] = byte(value[i])
+        }
+
+    default:
+        return TypeError{self, snmpType}
+    }
+
+    return nil
+}
+
+func (self *MacAddress) setIndex(oid OID) error {
+    if len(oid) != 6 {
+        return fmt.Errorf("Invalid sub-OID for %T index: %v", self, oid)
+    }
+
+    for i := 0; i < 6; i++ {
+        self[i] = byte(oid[i])
     }
 
     return nil
