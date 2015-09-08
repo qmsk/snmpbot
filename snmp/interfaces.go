@@ -66,6 +66,14 @@ func (self *InterfaceEntry) field (id int) Type {
     }
 }
 
+func (self *InterfaceIndex) setIndex (oid OID) error {
+    if err := self.Index.setIndex(oid); err != nil {
+        return err
+    }
+
+    return nil
+}
+
 func (self InterfaceTable) set (oid OID, snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
     selfMap := map[InterfaceIndex]*InterfaceEntry(self)
 
@@ -75,13 +83,15 @@ func (self InterfaceTable) set (oid OID, snmpType gosnmp.Asn1BER, snmpValue inte
         return fmt.Errorf("invalid")
     }
 
-    var fieldOid = entryOid[0]
-    var indexOid = entryOid[1]
+    var fieldId int = entryOid[0]
+    var indexOid OID = entryOid[1:]
 
     // entry
     var index InterfaceIndex
 
-    index.Index.set(indexOid)
+    if err := index.setIndex(indexOid); err != nil {
+        return err
+    }
 
     entry, entryExists := selfMap[index]
     if !entryExists {
@@ -92,16 +102,14 @@ func (self InterfaceTable) set (oid OID, snmpType gosnmp.Asn1BER, snmpValue inte
     // field
     var field Type
 
-    if field = entry.field(fieldOid); field == nil {
+    if field = entry.field(fieldId); field == nil {
         return fmt.Errorf("unknown")
     }
 
     // value
-    if !field.match(snmpType) {
-        return fmt.Errorf("type mismatch")
+    if err := field.set(snmpType, snmpValue); err != nil {
+        return err
     }
-
-    field.set(snmpValue)
 
     return nil
 }

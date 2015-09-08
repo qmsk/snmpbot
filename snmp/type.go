@@ -8,8 +8,23 @@ import (
 
 /* Types */
 type Type interface {
-    match(snmpType gosnmp.Asn1BER) bool
-    set(snmpValue interface{})
+    // Set value from an SNMP object retrieved as an SNMP VarBind
+    set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error
+}
+
+type IndexType interface {
+    // Set value from a table-entry OID sub-identifier index
+    // See RFC1442#7.7 SNMPv2 SMI, Mapping of the INDEX clause
+    setIndex(oid OID) error
+}
+
+type TypeError struct {
+    Type            Type
+    SnmpType        gosnmp.Asn1BER
+}
+
+func (self TypeError) Error() string {
+    return fmt.Sprintf("Wrong SNMP type for %T: %v", self.Type, self.SnmpType)
 }
 
 /* Integer */
@@ -19,14 +34,24 @@ func (self Integer) String() string {
     return fmt.Sprintf("%v", int(self))
 }
 
-func (self Integer) match(snmpType gosnmp.Asn1BER) bool {
-    return snmpType == gosnmp.Integer
+func (self *Integer) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+    switch snmpType {
+    case gosnmp.Integer:
+        value := snmpValue.(int)
+
+        *self = Integer(value)
+
+    default:
+        return TypeError{self, snmpType}
+    }
+
+    return nil
 }
 
-func (self *Integer) set(snmpValue interface{}) {
-    value := snmpValue.(int)
+func (self *Integer) setIndex(oid OID) error {
+    *self = Integer(oid[0])
 
-    *self = Integer(value)
+    return nil
 }
 
 /* String */
@@ -36,14 +61,17 @@ func (self String) String() string {
     return fmt.Sprintf("%s", string(self))
 }
 
-func (self String) match(snmpType gosnmp.Asn1BER) bool {
-    return snmpType == gosnmp.OctetString
-}
+func (self *String) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+    switch snmpType {
+    case gosnmp.OctetString:
+        value := snmpValue.([]byte)
 
-func (self *String) set(snmpValue interface{}) {
-    value := snmpValue.([]byte)
+        *self = String(value)
+    default:
+        return TypeError{self, snmpType}
+    }
 
-    *self = String(value)
+    return nil
 }
 
 /* Binary */
@@ -53,14 +81,17 @@ func (self Binary) String() string {
     return fmt.Sprintf("%x", []byte(self))
 }
 
-func (self Binary) match(snmpType gosnmp.Asn1BER) bool {
-    return snmpType == gosnmp.OctetString
-}
+func (self *Binary) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+    switch snmpType {
+    case gosnmp.OctetString:
+        value := snmpValue.([]byte)
 
-func (self *Binary) set(snmpValue interface{}) {
-    value := snmpValue.([]byte)
+        *self = Binary(value)
+    default:
+        return TypeError{self, snmpType}
+    }
 
-    *self = Binary(value)
+    return nil
 }
 
 /* Counter */
@@ -70,14 +101,17 @@ func (self Counter) String() string {
     return fmt.Sprintf("%v", uint(self))
 }
 
-func (self Counter) match(snmpType gosnmp.Asn1BER) bool {
-    return snmpType == gosnmp.Counter32
-}
+func (self *Counter) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+    switch snmpType {
+    case gosnmp.Counter32:
+        value := snmpValue.(uint)
 
-func (self *Counter) set(snmpValue interface{}) {
-    value := snmpValue.(uint)
+        *self = Counter(value)
+    default:
+        return TypeError{self, snmpType}
+    }
 
-    *self = Counter(value)
+    return nil
 }
 
 /* Gauge */
@@ -87,14 +121,17 @@ func (self Gauge) String() string {
     return fmt.Sprintf("%v", uint(self))
 }
 
-func (self Gauge) match(snmpType gosnmp.Asn1BER) bool {
-    return snmpType == gosnmp.Gauge32
-}
+func (self *Gauge) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+    switch snmpType {
+    case gosnmp.Gauge32:
+        value := snmpValue.(uint)
 
-func (self *Gauge) set(snmpValue interface{}) {
-    value := snmpValue.(uint)
+        *self = Gauge(value)
+    default:
+        return TypeError{self, snmpType}
+    }
 
-    *self = Gauge(value)
+    return nil
 }
 
 /* TimeTicks */
@@ -104,15 +141,19 @@ func (self TimeTicks) String() string {
     return fmt.Sprintf("%v", time.Duration(self))
 }
 
-func (self TimeTicks) match(snmpType gosnmp.Asn1BER) bool {
-    return snmpType == gosnmp.TimeTicks
-}
+func (self *TimeTicks) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+    switch snmpType {
+    case gosnmp.TimeTicks:
+        value := snmpValue.(int)
 
-func (self *TimeTicks) set(snmpValue interface{}) {
-    value := snmpValue.(int)
+        // convert from 100ths of a second
+        duration := time.Duration(value * 10) * time.Millisecond
 
-    // convert from 100ths of a second
-    duration := time.Duration(value * 10) * time.Millisecond
+        *self = TimeTicks(duration)
 
-    *self = TimeTicks(duration)
+    default:
+        return TypeError{self, snmpType}
+    }
+
+    return nil
 }
