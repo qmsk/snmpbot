@@ -8,14 +8,17 @@ import (
 )
 
 var (
+    snmpLog         bool
     snmpCommunity   string
     snmpRoot        string
 )
 
 func init() {
+    flag.BoolVar(&snmpLog, "snmp-log", false,
+        "Log SNMP requests")
     flag.StringVar(&snmpCommunity, "snmp-community", "public",
         "SNMPv2 Community")
-    flag.StringVar(&snmpRoot, "snmp-root", "",
+    flag.StringVar(&snmpRoot, "snmp-root", "1.3.6",
         "SNMP root OID")
 }
 
@@ -37,6 +40,10 @@ func main() {
             log.Fatalf("Connect %s: %s\n", snmpConfig, err)
         } else {
             log.Printf("%s: Config %v: Client %v\n", host, snmpConfig, snmpClient)
+
+            if snmpLog {
+                snmpClient.Log()
+            }
         }
 
         // resolve root
@@ -48,8 +55,21 @@ func main() {
             walkOid = snmp.OID{}
         }
 
-        err = snmpClient.Walk(walkOid, func(oid snmp.OID, value interface{}) {
-            fmt.Printf("%v: %v: %#v\n", host, snmp.LookupString(oid), value)
+        err = snmpClient.Walk(walkOid, func(oid snmp.OID, snmpValue interface{}) {
+            name := snmp.LookupString(oid)
+            value := snmpValue
+
+            _, object, _ := snmp.Lookup(oid)
+
+            if object != nil {
+                if syntaxValue, err := object.ParseValue(value); err != nil {
+                    log.Printf("%s: Invalid %s value: %s\n", host, name, err)
+                } else {
+                    value = syntaxValue
+                }
+            }
+
+            fmt.Printf("%v: %v: %#v\n", host, name, value)
         })
         if err != nil {
             log.Fatalf("%s Walk: %s\n", snmpClient, err)
