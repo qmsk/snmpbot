@@ -24,16 +24,37 @@ var testParseOID = []struct{
     oid     OID
 }{
     {"",        nil},
-    {"1",       OID{1}},
+    {".",       nil},
+    {".",       OID{}},
     {".1",      OID{1}},
+    {".1.3",    OID{1,3}},
 }
 
 func TestParseOID(t *testing.T) {
     for _, test := range testParseOID {
-        oid := parseOID(test.str)
+        oid := ParseOID(test.str)
 
         if err := testOID(test.oid, oid); err != nil {
-            t.Errorf("fail parseOID(%#v): %s", test.str, err)
+            t.Errorf("fail ParseOID(%#v): %s", test.str, err)
+        }
+    }
+}
+
+var testOIDString = []struct{
+    oid     OID
+    str     string
+}{
+    {nil,       "."},
+    {OID{1},    ".1"},
+    {OID{1,3},  ".1.3"},
+}
+
+func TestOIDString(t *testing.T) {
+    for _, test := range testOIDString {
+        str := test.oid.String()
+
+        if str != test.str {
+            t.Errorf("fail %#v.String(): %s", test.oid, str)
         }
     }
 }
@@ -54,6 +75,5 @@ func TestOIDIndex(t *testing.T) {
         if err := testOID(test.index, index); err != nil {
             t.Errorf("fail %#v.Index(%#v): %s", test.oid, test.oid2, err)
         }
-
     }
 }

@@ -30,7 +30,7 @@ func reflectTable(tableType reflect.Type) (meta tableMeta, err error) {
             return
         }
 
-        oid := parseOID(snmpTag)
+        oid := ParseOID(snmpTag)
 
         // log.Printf("snmp.reflectTable: field %v:%v = %s %s\n", i, field.Name, oid, field.Type.Name())
 
@@ -49,7 +49,7 @@ func loadTable(meta tableMeta, tableValue reflect.Value, snmpRow []gosnmp.SnmpPD
     // load row
     for i, snmpVar := range snmpRow {
         // index
-        oid := parseOID(snmpVar.Name)
+        oid := ParseOID(snmpVar.Name)
         fieldOid := meta.fields[i]
 
         oidIndex := fieldOid.Index(oid)

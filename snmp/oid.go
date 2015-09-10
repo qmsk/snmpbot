@@ -8,14 +8,18 @@ import (
 
 type OID []int
 
-func parseOID(str string) (oid OID) {
+func ParseOID(str string) (oid OID) {
+    if len(str) > 0 && str[0] == '.' {
+        str = str[1:]
+    }
+
+    if str == "" {
+        return OID{}
+    }
+
     parts := strings.Split(str, ".")
 
-    for index, part := range parts {
-        if index == 0 && part == "" {
-            continue
-        }
-
+    for _, part := range parts {
         if id, err := strconv.Atoi(part); err != nil {
             panic(err)
         } else {
@@ -26,10 +30,14 @@ func parseOID(str string) (oid OID) {
 }
 
 func (self OID) String() (str string) {
-    for _, id := range self {
-        str = str + fmt.Sprintf(".%d", id)
+    if self == nil {
+        return "."
     }
-    return str[1:]
+
+    for _, id := range self {
+        str += fmt.Sprintf(".%d", id)
+    }
+    return str
 }
 
 // Extend this OID with the given ids, returning the new, more-specific, OID.
