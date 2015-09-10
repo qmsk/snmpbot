@@ -17,6 +17,9 @@ type IndexType interface {
     // Set value from a table-entry OID sub-identifier index
     // See RFC1442#7.7 SNMPv2 SMI, Mapping of the INDEX clause
     setIndex(oid OID) error
+
+    // String representation
+    String() string
 }
 
 type TypeError struct {
