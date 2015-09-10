@@ -77,8 +77,12 @@ func (self *MIB) Lookup(oid OID) (*Object, OID) {
     return nil, nil
 }
 
-func (self *MIB) registerObject(name string, ids... int) *Object {
-    object := &Object{OID: self.define(ids...), Name: name}
+func (self *MIB) registerObject(name string, syntax Syntax, ids... int) *Object {
+    object := &Object{
+        OID:    self.define(ids...),
+        Name:   name,
+        Syntax: syntax,
+    }
 
     self.objects = append(self.objects, object)
 
@@ -98,10 +102,20 @@ type Object struct {
     OID
 
     Name        string
+    Syntax      Syntax
 }
 
 func (self Object) String() string {
     return self.Name
+}
+
+// Parse a raw SNMP value per its Syntax
+func (self Object) ParseValue(snmpValue interface{}) (interface{}, error) {
+    if self.Syntax == nil {
+        return snmpValue, nil
+    } else {
+        return self.Syntax.parseValue(snmpValue)
+    }
 }
 
 // XXX: just use Object with additional fields instead?

@@ -5,6 +5,7 @@ import (
     "fmt"
     "github.com/soniah/gosnmp"
     "time"
+    wapsnmp "github.com/cdevr/WapSNMP"
 )
 
 /* Types */
@@ -22,6 +23,12 @@ type Index interface {
     String() string
 }
 
+type Syntax interface {
+    // Parse a wapsnmp.BER value into a higher-level representation per the object syntax
+    parseValue(snmpValue interface{}) (interface{}, error)
+}
+
+/* Errors */
 type TypeError struct {
     Value           Value
     SnmpType        gosnmp.Asn1BER
@@ -36,6 +43,14 @@ type ValueError struct {
 }
 func (self ValueError) Error() string {
     return fmt.Sprintf("Invalid SNMP value for %T: %v", self.Value, self.SnmpValue)
+}
+
+type SyntaxError struct {
+    Syntax          Syntax
+    SnmpValue       interface{}
+}
+func (self SyntaxError) Error() string {
+    return fmt.Sprintf("Invalid value for Syntax %T: %#v", self.Syntax, self.SnmpValue)
 }
 
 /* Integer */
@@ -69,6 +84,17 @@ func (self *Integer) setIndex(oid OID) error {
     return nil
 }
 
+func (self Integer) parseValue(snmpValue interface{}) (interface{}, error) {
+    switch value := snmpValue.(type) {
+    case int64:
+        return Integer(value), nil
+    default:
+        return nil, SyntaxError{self, snmpValue}
+    }
+}
+
+var IntegerSyntax Integer
+
 /* String */
 type String string
 
@@ -93,6 +119,17 @@ func (self *String) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) err
     return nil
 }
 
+func (self String) parseValue(snmpValue interface{}) (interface{}, error) {
+    switch value := snmpValue.(type) {
+    case string:
+        return String(value), nil
+    default:
+        return nil, SyntaxError{self, snmpValue}
+    }
+}
+
+var StringSyntax String
+
 /* Binary */
 type Binary []byte
 
@@ -116,6 +153,18 @@ func (self *Binary) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) err
 
     return nil
 }
+
+/* ObjectID */
+func (self OID) parseValue(snmpValue interface{}) (interface{}, error) {
+    switch value := snmpValue.(type) {
+    case wapsnmp.Oid:
+        return OID(value), nil
+    default:
+        return nil, SyntaxError{self, snmpValue}
+    }
+}
+
+var OIDSyntax OID
 
 /* Counter */
 type Counter uint
@@ -192,6 +241,17 @@ func (self *TimeTicks) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) 
 
     return nil
 }
+
+func (self TimeTicks) parseValue(snmpValue interface{}) (interface{}, error) {
+    switch value := snmpValue.(type) {
+    case time.Duration:
+        return TimeTicks(value), nil
+    default:
+        return nil, SyntaxError{self, snmpValue}
+    }
+}
+
+var TimeTicksSyntax TimeTicks
 
 /* MacAddress */
 type MacAddress [6]byte
