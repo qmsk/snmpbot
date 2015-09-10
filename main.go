@@ -8,6 +8,7 @@ import (
     "log"
     "os"
     "github.com/qmsk/snmpbot/snmp"
+    "sync"
 )
 
 const (
@@ -15,7 +16,8 @@ const (
 )
 
 type options struct {
-    HttpListen      string `long:"http-listen" description:"HTTP listen address"`
+    HttpListen      string  `long:"http-listen" description:"HTTP listen address"`
+    SnmpLog         bool    `long:"snmp-log" description:"Log SNMP requests"`
 
     Args    struct {
         HostsJson   flags.Filename `short:"H" long:"hosts-json" description:"Path to hosts .json"`
@@ -23,11 +25,17 @@ type options struct {
 }
 
 /* Set of active SNMP hosts */
-type Host struct {
-    snmpClient  *snmp.Client
+type Table struct {
+    Name        string
 
-    Interfaces  snmp.InterfaceTable
-    BridgeFdb   snmp.Bridge_FdbTable
+    table       interface{} // snmp.table compatible map
+}
+
+type Host struct {
+    Name            string
+    snmpClient      *snmp.Client
+
+    Tables          map[string]*Table
 }
 
 type State struct {
@@ -36,7 +44,7 @@ type State struct {
     httpServer  *http.Server
 }
 
-func (self *State) loadHostsJson (stream io.Reader) error {
+func (self *State) loadHostsJson (options options, stream io.Reader) error {
     decoder := json.NewDecoder(stream)
     configs := make(map[string]snmp.Config)
 
@@ -47,51 +55,118 @@ func (self *State) loadHostsJson (stream io.Reader) error {
     // host Clients
     self.hosts = make(map[string]*Host)
 
-    for name, config := range configs {
-        if client, err := config.Connect(); err != nil {
-            log.Printf("Client %s: Connect %s: %s\n", name, config, err)
+    for name, snmpConfig := range configs {
+        if snmpClient, err := snmpConfig.Connect(); err != nil {
+            log.Printf("Client %s: Connect %s: %s\n", name, snmpConfig, err)
         } else {
-            log.Printf("Client %s: Connect %s\n", name, config)
+            log.Printf("Client %s: Connect %s\n", name, snmpConfig)
 
-            self.hosts[name] = &Host{
-                snmpClient: client,
-
-                Interfaces: make(snmp.InterfaceTable),
-                BridgeFdb: make(snmp.Bridge_FdbTable),
+            if options.SnmpLog {
+                snmpClient.Log()
             }
+
+            host := &Host{
+                Name:       name,
+                snmpClient: snmpClient,
+
+                Tables:     make(map[string]*Table),
+            }
+
+            host.registerTable(&Table{"interfaces", make(snmp.InterfaceTable)})
+            host.registerTable(&Table{"bridge-fdb", make(snmp.Bridge_FdbTable)})
+
+            self.hosts[name] = host
         }
     }
 
     return nil
 }
 
-// http entry point
-type hostEntry struct{
-    Interfaces  []*snmp.InterfaceEntry
-    BridgeFdb   []*snmp.Bridge_FdbEntry
+func (self *Host) registerTable (table *Table) {
+    self.Tables[table.Name] = table
 }
 
+/* Polling collections of items */
+
+// multiple concurrent polls stream items, which are collected into a single map
+type Item struct {
+    Host        string
+    Table       string
+    Index       string
+    Entry       interface{} // struct
+}
+
+// track state for multiple ongoing polls
+type Poll struct {
+    items       chan Item
+    waitGroup   sync.WaitGroup
+}
+
+func newPoller() *Poll {
+    return &Poll{
+        items:        make(chan Item, 10),
+    }
+}
+
+// start polling a host-table in the background
+func (self *Poll) pollHostTable(host *Host, table *Table) {
+    // XXX: this is the routine that updates/accesses the table map;
+    //      should be sync'd with only one concurrent goroutine per Table()
+    go func() {
+        self.waitGroup.Add(1)
+        defer self.waitGroup.Done()
+
+        if err := host.snmpClient.GetTable(table.table); err != nil {
+            return
+        }
+
+        snmp.WalkTable(table.table, func(index string, entry interface{}) {
+            self.items <- Item{host.Name, table.Name, index, entry}
+        })
+    }()
+}
+
+// collect all items from ongoing polls into a map, returning once all polls are complete
+func (self *Poll) collect() interface{} {
+    results := make(map[string]map[string]map[string]interface{})
+
+    // close the items chan once all polls are complete
+    go func() {
+        self.waitGroup.Wait()
+        close(self.items)
+    }()
+
+    // collect all items from running polls
+    for item := range self.items {
+        if results[item.Host] == nil {
+            results[item.Host] = make(map[string]map[string]interface{})
+        }
+
+        if results[item.Host][item.Table] == nil {
+            results[item.Host][item.Table] = make(map[string]interface{})
+        }
+
+        results[item.Host][item.Table][item.Index] = item.Entry
+    }
+
+    return results
+}
+
+// HTTP entry point
 func (self *State) handleHttp (response http.ResponseWriter, request *http.Request) {
     response.Header().Set("Content-Type", "text/json")
 
-    hosts := make(map[string]hostEntry)
+    // poll all available hosts and tables
+    poll := newPoller()
 
-    for hostName, host := range self.hosts {
-        var hostEntry hostEntry
-
-        // update
-        host.snmpClient.GetTable(&host.Interfaces)
-        host.snmpClient.GetTable(&host.BridgeFdb)
-
-        for _, entry := range host.Interfaces {
-            hostEntry.Interfaces = append(hostEntry.Interfaces, entry)
+    for _, host := range self.hosts {
+        for _, table := range host.Tables {
+            poll.pollHostTable(host, table)
         }
-        for _, entry := range host.BridgeFdb {
-            hostEntry.BridgeFdb = append(hostEntry.BridgeFdb, entry)
-        }
-
-        hosts[hostName] = hostEntry
     }
+
+    // collect and return results
+    hosts := poll.collect()
 
     if err := json.NewEncoder(response).Encode(hosts); err != nil {
         log.Printf("State.handleHttp: json.Encode: %s\n", err)
@@ -115,7 +190,7 @@ func main () {
     if file, err := os.Open((string)(options.Args.HostsJson)); err != nil {
         log.Printf("Open --hosts-json: %s\n", err)
         os.Exit(1)
-    } else if err := state.loadHostsJson(file); err != nil {
+    } else if err := state.loadHostsJson(options, file); err != nil {
         log.Printf("Load --hosts-json=%s: %s\n", options.Args.HostsJson, err)
         os.Exit(2)
     } else {
