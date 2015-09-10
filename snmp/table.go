@@ -138,8 +138,8 @@ func (self *Client) getTable(oids []OID, handler func ([]gosnmp.SnmpPDU) error) 
 
 // Populate a map[IndexType]*struct{... Type `snmp:"oid"`} from SNMP
 func (self *Client) GetTable(table interface{}) error {
-    tableType := reflect.TypeOf(table).Elem()
-    tableValue := reflect.ValueOf(table).Elem()
+    tableType := reflect.TypeOf(table)
+    tableValue := reflect.ValueOf(table)
 
     tableMeta, err := reflectTable(tableType)
     if err != nil {
