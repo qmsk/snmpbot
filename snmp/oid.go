@@ -40,12 +40,17 @@ func (self OID) String() (str string) {
     return str
 }
 
-// Extend this OID with the given ids, returning the new, more-specific, OID.
-func (self OID) define(ids... int) (defineOid OID) {
-    defineOid = append(defineOid, self...)
-    defineOid = append(defineOid, ids...)
+func (self OID) Copy() OID {
+    var oid OID
 
-    return
+    oid = append(oid, self...)
+
+    return oid
+}
+
+// Extend this OID with the given ids, returning the new, more-specific, OID.
+func (self OID) define(ids... int) OID {
+    return append(self.Copy(), ids...)
 }
 
 // Compare two OIDs for equality
