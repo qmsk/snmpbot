@@ -26,9 +26,11 @@ type options struct {
 
 /* Set of active SNMP hosts */
 type Table struct {
+    sync.Mutex
+
     Name        string
 
-    table       interface{} // snmp.table compatible map
+    Map         interface{} // snmp.table compatible map
 }
 
 type Host struct {
@@ -72,8 +74,8 @@ func (self *State) loadHostsJson (options options, stream io.Reader) error {
                 Tables:     make(map[string]*Table),
             }
 
-            host.registerTable(&Table{"interfaces", make(snmp.InterfaceTable)})
-            host.registerTable(&Table{"bridge-fdb", make(snmp.Bridge_FdbTable)})
+            host.registerTable("interfaces", make(snmp.InterfaceTable))
+            host.registerTable("bridge-fdb", make(snmp.Bridge_FdbTable))
 
             self.hosts[name] = host
         }
@@ -82,8 +84,8 @@ func (self *State) loadHostsJson (options options, stream io.Reader) error {
     return nil
 }
 
-func (self *Host) registerTable (table *Table) {
-    self.Tables[table.Name] = table
+func (self *Host) registerTable (name string, tableMap interface{}) {
+    self.Tables[name] = &Table{Name: name, Map: tableMap}
 }
 
 /* Polling collections of items */
@@ -116,11 +118,15 @@ func (self *Poll) pollHostTable(host *Host, table *Table) {
         self.waitGroup.Add(1)
         defer self.waitGroup.Done()
 
-        if err := host.snmpClient.GetTable(table.table); err != nil {
+        // we must own the table-map while updating/walking it
+        table.Lock()
+        defer table.Unlock()
+
+        if err := host.snmpClient.GetTable(table.Map); err != nil {
             return
         }
 
-        snmp.WalkTable(table.table, func(index string, entry interface{}) {
+        snmp.WalkTable(table.Map, func(index string, entry interface{}) {
             self.items <- Item{host.Name, table.Name, index, entry}
         })
     }()
