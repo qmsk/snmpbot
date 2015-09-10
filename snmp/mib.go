@@ -18,6 +18,10 @@ func registerMIB(name string, ids... int) *MIB {
 }
 
 // Lookup a full OID against registered MIBs and their Objects.
+// Returns MIB, Object, OID{...} if the given oid indexes an object
+// Returns MIB, Object, nil if the given oid matches an object exactly
+// Returns MIB, nil, OID{...} if the given oid matches to a MIB, but is not a registered object
+// Returns nil, nil, nil if the given OID is unknown
 func Lookup(oid OID) (*MIB, *Object, OID) {
     for _, mib := range mibs {
         if mibIndex := mib.Index(oid); mibIndex != nil {
@@ -32,13 +36,16 @@ func Lookup(oid OID) (*MIB, *Object, OID) {
     return nil, nil, nil
 }
 
+// Resolve an OID to a human-readable string
 func LookupString(oid OID) string {
     mib, object, index := Lookup(oid)
 
-    if object != nil {
-        return fmt.Sprintf("%s::%s.%s", mib, object, index)
+    if object != nil && index != nil {
+        return fmt.Sprintf("%s::%s%s", mib, object, index)
+    } else if object != nil {
+        return fmt.Sprintf("%s::%s", mib, object)
     } else if mib != nil {
-        return fmt.Sprintf("%s::%s", mib, index)
+        return fmt.Sprintf("%s%s", mib, index)
     } else {
         return fmt.Sprintf("%s", oid)
     }
@@ -60,7 +67,9 @@ func (self MIB) String() string {
 // Lookup a full OID within this MIB
 func (self *MIB) Lookup(oid OID) (*Object, OID) {
     for _, object := range self.objects {
-        if objectIndex := object.Index(oid); objectIndex != nil {
+        if object.Equals(oid) {
+            return object, nil
+        } else if objectIndex := object.Index(oid); objectIndex != nil {
             return object, objectIndex
         }
     }
