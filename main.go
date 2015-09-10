@@ -18,10 +18,19 @@ const (
 type options struct {
     HttpListen      string  `long:"http-listen" description:"HTTP listen address"`
     SnmpLog         bool    `long:"snmp-log" description:"Log SNMP requests"`
+    SnmpTrapListen  string  `long:"snmp-trap-listen" description:"SNMP trap listen address"`
 
     Args    struct {
         HostsJson   flags.Filename `short:"H" long:"hosts-json" description:"Path to hosts .json"`
     } `positional-args:"yes" required:"yes"`
+}
+
+/* Top-level state */
+type State struct {
+    hosts       map[string]*Host
+
+    httpServer  *http.Server
+    trapListen  *snmp.TrapListen
 }
 
 /* Set of active SNMP hosts */
@@ -38,12 +47,6 @@ type Host struct {
     snmpClient      *snmp.Client
 
     Tables          map[string]*Table
-}
-
-type State struct {
-    hosts       map[string]*Host
-
-    httpServer  *http.Server
 }
 
 func (self *State) loadHostsJson (options options, stream io.Reader) error {
@@ -86,6 +89,12 @@ func (self *State) loadHostsJson (options options, stream io.Reader) error {
 
 func (self *Host) registerTable (name string, tableMap interface{}) {
     self.Tables[name] = &Table{Name: name, Map: tableMap}
+}
+
+func (self *State) listenTraps() {
+    for trap := range self.trapListen.Listen() {
+        log.Printf("listenTraps: %+v\n", trap)
+    }
 }
 
 /* Polling collections of items */
@@ -192,7 +201,7 @@ func main () {
         log.Printf("Options: %+v %+v\n", options, args)
     }
 
-    // hosts from json
+    // snmp hosts from json
     if file, err := os.Open((string)(options.Args.HostsJson)); err != nil {
         log.Printf("Open --hosts-json: %s\n", err)
         os.Exit(1)
@@ -203,6 +212,20 @@ func main () {
         log.Printf("Hosts: %+v\n", state.hosts)
     }
 
+    // snmp listen
+    if options.SnmpTrapListen == "" {
+
+    } else if trapListen, err := snmp.NewTrapListen(options.SnmpTrapListen); err != nil {
+        log.Printf("Open --snmp-trap listen=%s: %s\n", options.SnmpTrapListen, err)
+        os.Exit(2)
+    } else {
+        log.Printf("SMP TrapListen: %s\n", trapListen)
+
+        state.trapListen = trapListen
+
+        go state.listenTraps()
+    }
+
     // http server
     state.httpServer = &http.Server{
         Addr:   options.HttpListen,
@@ -210,6 +233,7 @@ func main () {
 
     http.HandleFunc("/", state.handleHttp)
 
+    // XXX: go http
     if err := state.httpServer.ListenAndServe(); err != nil {
         log.Printf("Start --http-listen=%s: %s\n", options.HttpListen, err)
         os.Exit(1)
