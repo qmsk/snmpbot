@@ -150,3 +150,15 @@ func (self *Client) GetTable(table interface{}) error {
         return loadTable(tableMeta, tableValue, snmpRow)
     })
 }
+
+// Walk a table as supported by GetTable(); Calls the given handler func with each index and the entry struct
+func WalkTable(table interface{}, handler func (string, interface{})) {
+    tableValue := reflect.ValueOf(table)
+
+    for _, mapKey := range tableValue.MapKeys() {
+        index := fmt.Sprintf("%v", mapKey.Interface())
+        entry := tableValue.MapIndex(mapKey).Interface()
+
+        handler(index, entry)
+    }
+}
