@@ -2,11 +2,25 @@ package snmp
 
 import (
     "fmt"
+    "net"
+    "time"
     wapsnmp "github.com/cdevr/WapSNMP"
 )
 
 const (
     UDP_SIZE   = 16 * 1024
+)
+
+type GenericTrap int
+
+const (
+    TrapColdStart   GenericTrap = 0
+    TrapWarmStart   GenericTrap = 1
+    TrapLinkDown    GenericTrap = 2
+    TrapLinkUp      GenericTrap = 3
+    TrapAuthenticationFailure   GenericTrap = 4
+    TrapEgpNeighborLoss         GenericTrap = 5
+    TrapEnterpriseSpecific      GenericTrap = 6
 )
 
 type Packet struct {
@@ -20,6 +34,16 @@ type PDU struct {
     ErrorStatus int
     ErrorIndex  int
     VarBinds    []VarBind
+}
+
+// SNMPv1 Trap-PDU
+type TrapPDU struct {
+    Enterprise      wapsnmp.Oid
+    AgentAddr       net.IP
+    GenericTrap     GenericTrap
+    SpecificTrap    int
+    TimeStamp       time.Duration
+    VarBinds        []VarBind
 }
 
 type VarBind struct {
@@ -140,4 +164,54 @@ func parseVarBind(seq []interface{}) (varBind VarBind, err error) {
     varBind.Value = seq[2]
 
     return
+}
+
+func parseTrapPDU(seq []interface{}) (pdu TrapPDU, err error) {
+    if len(seq) != 7 {
+        return pdu, fmt.Errorf("invalid 6-sequence")
+    } else if seqType, ok := seq[0].(wapsnmp.BERType); !ok {
+        return pdu, fmt.Errorf("invalid PDU type: %#v", seq[0])
+    } else {
+        _ = seqType
+    }
+
+    if seqEnterpriseOid, ok := seq[1].(wapsnmp.Oid); !ok {
+        return pdu, fmt.Errorf("invalid enterprise oid: %#v", seq[1])
+    } else {
+        pdu.Enterprise = seqEnterpriseOid
+    }
+
+    if seqAgentAddr, ok := seq[2].(net.IP); !ok {
+        return pdu, fmt.Errorf("invalid agent-address: %#v", seq[2])
+    } else {
+        pdu.AgentAddr = seqAgentAddr
+    }
+
+    if seqGenericTrap, ok := seq[3].(int64); !ok {
+        return pdu, fmt.Errorf("invalid generic-trap: %#v", seq[3])
+    } else {
+        pdu.GenericTrap = GenericTrap(seqGenericTrap)
+    }
+
+    if seqSpecificTrap, ok := seq[4].(int64); !ok {
+        return pdu, fmt.Errorf("invalid specific-trap: %#v", seq[4])
+    } else {
+        pdu.SpecificTrap = int(seqSpecificTrap)
+    }
+
+    if seqTimeStamp, ok := seq[5].(time.Duration); !ok {
+        return pdu, fmt.Errorf("invalid time-stamp: %#v", seq[5])
+    } else {
+        pdu.TimeStamp = seqTimeStamp
+    }
+
+    if seqVarBinds, ok := seq[6].([]interface{}); !ok {
+        return pdu, fmt.Errorf("invalid variable-bindings: %#v", seq[6])
+    } else if pduVarBinds, err := parseVarBinds(seqVarBinds); err != nil {
+        return pdu, fmt.Errorf("invalid variable-bindings: %s", err)
+    } else {
+        pdu.VarBinds = pduVarBinds
+    }
+
+    return pdu, nil
 }

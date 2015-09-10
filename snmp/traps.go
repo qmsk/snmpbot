@@ -41,6 +41,34 @@ func parseTrapV2(pdu PDU) (trap Trap, err error) {
     return trap, nil
 }
 
+// Parse SNMPv1 Trap-PDU
+// per RFC1908#3.1.2
+func parseTrapV1(trapPdu TrapPDU) (trap Trap, err error) {
+    trap.SysUpTime = trapPdu.TimeStamp
+
+    switch trapPdu.GenericTrap {
+    case TrapColdStart:
+        trap.SnmpTrapOID = SNMPv2_coldStart
+    case TrapWarmStart:
+        trap.SnmpTrapOID = SNMPv2_warmStart
+    case TrapLinkDown:
+        trap.SnmpTrapOID = If_linkDown
+    case TrapLinkUp:
+        trap.SnmpTrapOID = If_linkUp
+    case TrapAuthenticationFailure:
+        trap.SnmpTrapOID = SNMPv2_authenticationFailure
+        // TrapEgpNeighborLoss
+    case TrapEnterpriseSpecific:
+        trap.SnmpTrapOID = OID(trapPdu.Enterprise).define(0, trapPdu.SpecificTrap)
+    default:
+        trap.SnmpTrapOID = SNMPv2MIB.define(1, 5, int(trapPdu.GenericTrap) + 1) // XXX: oh my :)
+    }
+
+    trap.Objects = trapPdu.VarBinds
+
+    return trap, nil
+}
+
 // Listen and dispatch traps
 type TrapListen struct {
     udpConn    *net.UDPConn
@@ -94,6 +122,17 @@ func (self *TrapListen) listen() {
             self.log.Printf("listen parsePacket: %s\n", err)
         } else {
             switch packet.PduType {
+            case wapsnmp.AsnTrapV1:
+                if pdu, err := parseTrapPDU(packetPdu); err != nil {
+                    self.log.Printf("listen parseTrapPDU: invalid TrapV1 pdu: %s\n", err)
+                } else if trap, err := parseTrapV1(pdu); err != nil {
+                    self.log.Printf("listen parseTrapV2: invalid TrapV2 trap: %s\n", err)
+                } else {
+                    self.log.Printf("listen: %s %+v %+v: %+v\n", addr, packet, pdu, trap)
+
+                    self.listenTrap(trap)
+                }
+
             case wapsnmp.AsnTrapV2:
                 if pdu, err := parsePDU(packetPdu); err != nil {
                     self.log.Printf("listen parsePDU: invalid TrapV2 pdu: %s\n", err)
