@@ -75,12 +75,13 @@ type TrapListen struct {
     udpSize     uint
 
     log         *log.Logger
-    listeners    map[chan Trap]bool
+    listener    chan Trap
 }
 
 func NewTrapListen(addr string) (*TrapListen, error) {
     trapListen := &TrapListen{
         udpSize:    UDP_SIZE,
+        listener:   make(chan Trap),
     }
 
     if udpAddr, err := net.ResolveUDPAddr("udp", addr); err != nil {
@@ -92,6 +93,9 @@ func NewTrapListen(addr string) (*TrapListen, error) {
     }
 
     trapListen.log = log.New(os.Stderr, fmt.Sprintf("snmp.TrapListen %s: ", trapListen), 0)
+
+    // start listening
+    go trapListen.listen()
 
     return trapListen, nil
 }
@@ -114,6 +118,7 @@ func (self *TrapListen) read() (*net.UDPAddr, []byte, error) {
     return addr, buf[:size], nil
 }
 
+// goroutine to read packets, decode and dispatch them
 func (self *TrapListen) listen() {
     for {
         if addr, buf, err := self.read(); err != nil {
@@ -151,23 +156,13 @@ func (self *TrapListen) listen() {
     }
 }
 
+// Report a trap
 func (self *TrapListen) listenTrap(trap Trap) {
-    for ch := range self.listeners {
-        // XXX: closed channels?
-        ch <- trap
-    }
+    self.listener <- trap
 }
 
+// Recv Traps on the returned channel.
+// If multiple goroutines subscribe, Traps will be round-robin'd.
 func (self *TrapListen) Listen() chan Trap {
-    out := make(chan Trap)
-
-    if self.listeners == nil {
-        self.listeners = make(map[chan Trap]bool)
-
-        go self.listen()
-    }
-
-    self.listeners[out] = true
-
-    return out
+    return self.listener
 }
