@@ -60,7 +60,7 @@ func loadTable(meta tableMeta, tableValue reflect.Value, snmpRow []gosnmp.SnmpPD
 
         // index
         indexValue := reflect.New(meta.indexType).Elem()
-        index := indexValue.Addr().Interface().(IndexType)
+        index := indexValue.Addr().Interface().(Index)
 
         if err := index.setIndex(oidIndex); err != nil {
             return err
@@ -76,9 +76,9 @@ func loadTable(meta tableMeta, tableValue reflect.Value, snmpRow []gosnmp.SnmpPD
 
         // field
         fieldValue := entryValue.Elem().Field(i)
-        field := fieldValue.Addr().Interface().(Type)
+        field := fieldValue.Addr().Interface().(Value)
 
-        if err := field.set(snmpVar.Type, snmpVar.Value); err != nil {
+        if err := field.setValue(snmpVar.Type, snmpVar.Value); err != nil {
             return err
         }
 

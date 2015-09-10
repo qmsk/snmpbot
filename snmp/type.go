@@ -8,12 +8,12 @@ import (
 )
 
 /* Types */
-type Type interface {
+type Value interface {
     // Set value from an SNMP object retrieved as an SNMP VarBind
-    set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error
+    setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error
 }
 
-type IndexType interface {
+type Index interface {
     // Set value from a table-entry OID sub-identifier index
     // See RFC1442#7.7 SNMPv2 SMI, Mapping of the INDEX clause
     setIndex(oid OID) error
@@ -23,19 +23,19 @@ type IndexType interface {
 }
 
 type TypeError struct {
-    Type            Type
+    Value           Value
     SnmpType        gosnmp.Asn1BER
 }
 func (self TypeError) Error() string {
-    return fmt.Sprintf("Invalid SNMP type for %T: %v", self.Type, self.SnmpType)
+    return fmt.Sprintf("Invalid SNMP type for %T: %v", self.Value, self.SnmpType)
 }
 
 type ValueError struct {
-    Type            Type
+    Value           Value
     SnmpValue       interface{}
 }
 func (self ValueError) Error() string {
-    return fmt.Sprintf("Invalid SNMP value for %T: %v", self.Type, self.SnmpValue)
+    return fmt.Sprintf("Invalid SNMP value for %T: %v", self.Value, self.SnmpValue)
 }
 
 /* Integer */
@@ -49,7 +49,7 @@ func (self Integer) MarshalJSON() ([]byte, error) {
     return json.Marshal(int(self))
 }
 
-func (self *Integer) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+func (self *Integer) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
     switch snmpType {
     case gosnmp.Integer:
         value := snmpValue.(int)
@@ -80,7 +80,7 @@ func (self String) MarshalJSON() ([]byte, error) {
     return json.Marshal(string(self))
 }
 
-func (self *String) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+func (self *String) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
     switch snmpType {
     case gosnmp.OctetString:
         value := snmpValue.([]byte)
@@ -104,7 +104,7 @@ func (self Binary) MarshalJSON() ([]byte, error) {
     return json.Marshal([]byte(self))
 }
 
-func (self *Binary) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+func (self *Binary) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
     switch snmpType {
     case gosnmp.OctetString:
         value := snmpValue.([]byte)
@@ -128,7 +128,7 @@ func (self Counter) MarshalJSON() ([]byte, error) {
     return json.Marshal(uint(self))
 }
 
-func (self *Counter) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+func (self *Counter) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
     switch snmpType {
     case gosnmp.Counter32:
         value := snmpValue.(uint)
@@ -152,7 +152,7 @@ func (self Gauge) MarshalJSON() ([]byte, error) {
     return json.Marshal(uint(self))
 }
 
-func (self *Gauge) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+func (self *Gauge) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
     switch snmpType {
     case gosnmp.Gauge32:
         value := snmpValue.(uint)
@@ -176,7 +176,7 @@ func (self TimeTicks) MarshalJSON() ([]byte, error) {
     return json.Marshal(time.Duration(self))
 }
 
-func (self *TimeTicks) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+func (self *TimeTicks) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
     switch snmpType {
     case gosnmp.TimeTicks:
         value := snmpValue.(int)
@@ -211,7 +211,7 @@ func (self MacAddress) MarshalJSON() ([]byte, error) {
     return json.Marshal(self.String())
 }
 
-func (self *MacAddress) set(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
+func (self *MacAddress) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
     switch snmpType {
     case gosnmp.OctetString:
         value := snmpValue.([]byte)
