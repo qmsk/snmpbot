@@ -11,7 +11,7 @@ import (
 
 type Trap struct {
     SysUpTime   time.Duration
-    SnmpTrapOID wapsnmp.Oid
+    SnmpTrapOID OID
     Objects     []VarBind
 }
 
@@ -33,7 +33,7 @@ func parseTrapV2(pdu PDU) (trap Trap, err error) {
     } else if snmpTrapOID, ok := varSnmpTrapOID.Value.(wapsnmp.Oid); !ok {
         return trap, fmt.Errorf("invalid snmpTrapOID")
     } else {
-        trap.SnmpTrapOID = snmpTrapOID
+        trap.SnmpTrapOID = OID(snmpTrapOID)
     }
 
     trap.Objects = pdu.VarBinds[2:]
