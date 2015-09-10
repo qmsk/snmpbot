@@ -3,6 +3,7 @@ package snmp
 import (
     "fmt"
     "github.com/soniah/gosnmp"
+    "io/ioutil"
     "log"
     "net"
     "os"
@@ -63,6 +64,8 @@ func (self RequestError) Error() string {
 
 func Connect(config Config) (*Client, error) {
     client := &Client{
+        log:        log.New(ioutil.Discard, "", 0),
+
         gosnmp:   &gosnmp.GoSNMP{
             Target:     config.Host,
             Port:       161,
