@@ -51,15 +51,15 @@ func parseTrapV1(trapPdu TrapPDU) (trap Trap, err error) {
 
     switch trapPdu.GenericTrap {
     case TrapColdStart:
-        trap.SnmpTrapOID = SNMPv2_coldStart
+        trap.SnmpTrapOID = SNMPv2_coldStart.OID
     case TrapWarmStart:
-        trap.SnmpTrapOID = SNMPv2_warmStart
+        trap.SnmpTrapOID = SNMPv2_warmStart.OID
     case TrapLinkDown:
         trap.SnmpTrapOID = If_linkDown
     case TrapLinkUp:
         trap.SnmpTrapOID = If_linkUp
     case TrapAuthenticationFailure:
-        trap.SnmpTrapOID = SNMPv2_authenticationFailure
+        trap.SnmpTrapOID = SNMPv2_authenticationFailure.OID
         // TrapEgpNeighborLoss
     case TrapEnterpriseSpecific:
         trap.SnmpTrapOID = OID(trapPdu.Enterprise).define(0, trapPdu.SpecificTrap)

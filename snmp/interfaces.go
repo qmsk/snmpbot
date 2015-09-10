@@ -3,8 +3,8 @@ package snmp
 // SNMP IF-MIB implementation
 
 var (
-    IfMIB       = MIB{OID{1,3,6,1,2,1,31}}
-    Interfaces  = MIB{OID{1,3,6,1,2,1,2}}
+    IfMIB       = registerMIB("IF-MIB",     1,3,6,1,2,1,31)
+    Interfaces  = registerMIB("interfaces", 1,3,6,1,2,1,2)
 
     If_linkDown = SNMPv2MIB.define(1, 5, 3)
     If_linkUp   = SNMPv2MIB.define(1, 5, 4)

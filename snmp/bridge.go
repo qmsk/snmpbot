@@ -3,7 +3,7 @@ package snmp
 // SNMP BRIDGE-MIB implementation
 
 var (
-    BridgeMIB       = MIB{OID{1,3,6,1,2,1,17}}
+    BridgeMIB       = registerMIB("BRIDGE-MIB", 1,3,6,1,2,1,17)
 )
 
 type Bridge_FdbIndex struct {
