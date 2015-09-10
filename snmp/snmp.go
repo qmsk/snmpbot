@@ -51,7 +51,14 @@ type VarBind struct {
     Value       interface{}
 }
 
-func parsePacket(buf []byte) (packet Packet, pduSeq []interface{}, err error) {
+func packSeq(items... interface{}) []interface{} {
+    seq := []interface{}{wapsnmp.Sequence}
+    seq = append(seq, items...)
+
+    return seq
+}
+
+func decodePacket(buf []byte) (packet Packet, pduSeq []interface{}, err error) {
     // decode
     seq, err := wapsnmp.DecodeSequence(buf)
     if err != nil {
@@ -90,7 +97,17 @@ func parsePacket(buf []byte) (packet Packet, pduSeq []interface{}, err error) {
     }
 }
 
-func parsePDU(seq []interface{}) (pdu PDU, err error) {
+func encodePacket(packet Packet, pduSeq []interface{}) ([]byte, error) {
+    seq := packSeq(
+        int(packet.Version),
+        packet.Community,
+        pduSeq,
+    )
+
+    return wapsnmp.EncodeSequence(seq)
+}
+
+func unpackPDU(seq []interface{}) (pdu PDU, err error) {
     if len(seq) != 5 {
         err = fmt.Errorf("invalid 4-sequence")
     } else if seqType, ok := seq[0].(wapsnmp.BERType); !ok {
@@ -120,7 +137,7 @@ func parsePDU(seq []interface{}) (pdu PDU, err error) {
 
     if seqVarBinds, ok := seq[4].([]interface{}); !ok {
         return pdu, fmt.Errorf("invalid variable-bindings: %#v", seq[4])
-    } else if pduVarBinds, err := parseVarBinds(seqVarBinds); err != nil {
+    } else if pduVarBinds, err := unpackVarBinds(seqVarBinds); err != nil {
         return pdu, fmt.Errorf("invalid variable-bindings: %s", err)
     } else {
         pdu.VarBinds = pduVarBinds
@@ -129,7 +146,16 @@ func parsePDU(seq []interface{}) (pdu PDU, err error) {
     return
 }
 
-func parseVarBinds(seq []interface{}) (vars []VarBind, err error) {
+func packPDU(pduType wapsnmp.BERType, pdu PDU) []interface{} {
+    return []interface{}{pduType,
+        pdu.RequestID,
+        pdu.ErrorStatus,
+        pdu.ErrorIndex,
+        packVarBinds(pdu.VarBinds),
+    }
+}
+
+func unpackVarBinds(seq []interface{}) (vars []VarBind, err error) {
     if len(seq) < 1 || seq[0] != wapsnmp.Sequence {
         err = fmt.Errorf("invalid sequence")
         return
@@ -138,7 +164,7 @@ func parseVarBinds(seq []interface{}) (vars []VarBind, err error) {
     for _, seqItem := range seq[1:] {
         if varSeq, ok := seqItem.([]interface{}); !ok {
             return vars, fmt.Errorf("invalid varbind sequence: %#v", seqItem)
-        } else if varBind, err := parseVarBind(varSeq); err != nil {
+        } else if varBind, err := unpackVarBind(varSeq); err != nil {
             return vars, err
         } else {
             vars = append(vars, varBind)
@@ -148,7 +174,17 @@ func parseVarBinds(seq []interface{}) (vars []VarBind, err error) {
     return
 }
 
-func parseVarBind(seq []interface{}) (varBind VarBind, err error) {
+func packVarBinds(vars []VarBind) (seq []interface{}) {
+    seq = packSeq()
+
+    for _, varBind := range vars {
+        seq = append(seq, packVarBind(varBind))
+    }
+
+    return seq
+}
+
+func unpackVarBind(seq []interface{}) (varBind VarBind, err error) {
     if len(seq) != 3 || seq[0] != wapsnmp.Sequence {
         err = fmt.Errorf("invalid 2-sequence")
         return
@@ -166,7 +202,11 @@ func parseVarBind(seq []interface{}) (varBind VarBind, err error) {
     return
 }
 
-func parseTrapPDU(seq []interface{}) (pdu TrapPDU, err error) {
+func packVarBind(varBind VarBind) (seq []interface{}) {
+    return packSeq(varBind.Name, varBind.Value)
+}
+
+func unpackTrapPDU(seq []interface{}) (pdu TrapPDU, err error) {
     if len(seq) != 7 {
         return pdu, fmt.Errorf("invalid 6-sequence")
     } else if seqType, ok := seq[0].(wapsnmp.BERType); !ok {
@@ -207,7 +247,7 @@ func parseTrapPDU(seq []interface{}) (pdu TrapPDU, err error) {
 
     if seqVarBinds, ok := seq[6].([]interface{}); !ok {
         return pdu, fmt.Errorf("invalid variable-bindings: %#v", seq[6])
-    } else if pduVarBinds, err := parseVarBinds(seqVarBinds); err != nil {
+    } else if pduVarBinds, err := unpackVarBinds(seqVarBinds); err != nil {
         return pdu, fmt.Errorf("invalid variable-bindings: %s", err)
     } else {
         pdu.VarBinds = pduVarBinds

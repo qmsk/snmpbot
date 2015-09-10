@@ -120,7 +120,7 @@ func (self *TrapListen) recv() (addr *net.UDPAddr, packet Packet, packetPdu []in
     }
 
     // parse
-    if packet, packetPdu, err := parsePacket(buf[:size]); err != nil {
+    if packet, packetPdu, err := decodePacket(buf[:size]); err != nil {
         return nil, packet, nil, err
     } else {
         return addr, packet, packetPdu, nil
@@ -135,7 +135,7 @@ func (self *TrapListen) listen() {
         } else {
             switch packet.PduType {
             case wapsnmp.AsnTrapV1:
-                if pdu, err := parseTrapPDU(packetPdu); err != nil {
+                if pdu, err := unpackTrapPDU(packetPdu); err != nil {
                     self.log.Printf("listen parseTrapPDU: invalid TrapV1 pdu: %s\n", err)
                 } else if trap, err := parseTrapV1(pdu); err != nil {
                     self.log.Printf("listen parseTrapV2: invalid TrapV2 trap: %s\n", err)
@@ -148,7 +148,7 @@ func (self *TrapListen) listen() {
                 }
 
             case wapsnmp.AsnTrapV2:
-                if pdu, err := parsePDU(packetPdu); err != nil {
+                if pdu, err := unpackPDU(packetPdu); err != nil {
                     self.log.Printf("listen parsePDU: invalid TrapV2 pdu: %s\n", err)
                 } else if trap, err := parseTrapV2(pdu); err != nil {
                     self.log.Printf("listen parseTrapV2: invalid TrapV2 trap: %s\n", err)
