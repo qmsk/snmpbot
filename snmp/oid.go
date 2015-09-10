@@ -29,7 +29,7 @@ func (self OID) String() (str string) {
     for _, id := range self {
         str = str + fmt.Sprintf(".%d", id)
     }
-    return
+    return str[1:]
 }
 
 // Extend this OID with the given ids, returning the new, more-specific, OID.
@@ -41,7 +41,7 @@ func (self OID) define(ids... int) (defineOid OID) {
 }
 
 // Compare two OIDs for equality
-func (self OID) Match(oid OID) bool {
+func (self OID) Equals(oid OID) bool {
     if len(self) != len(oid) {
         return false
     }
