@@ -2,7 +2,6 @@ package snmp
 
 import (
     "fmt"
-    "log"
 )
 
 var (
@@ -63,8 +62,6 @@ func (self *MIB) Lookup(oid OID) (*Object, OID) {
     for _, object := range self.objects {
         if objectIndex := object.Index(oid); objectIndex != nil {
             return object, objectIndex
-        } else {
-            log.Printf("MIB.Lookup %s: %s != %s\n", self, oid, object.OID)
         }
     }
 
