@@ -148,9 +148,9 @@ func unpackPDU(seq []interface{}) (pdu PDU, err error) {
 
 func packPDU(pduType wapsnmp.BERType, pdu PDU) []interface{} {
     return []interface{}{pduType,
-        pdu.RequestID,
-        pdu.ErrorStatus,
-        pdu.ErrorIndex,
+        int(pdu.RequestID),
+        int(pdu.ErrorStatus),
+        int(pdu.ErrorIndex),
         packVarBinds(pdu.VarBinds),
     }
 }
