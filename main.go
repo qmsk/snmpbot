@@ -93,7 +93,7 @@ func (self *Host) registerTable (name string, tableMap interface{}) {
 
 func (self *State) listenTraps() {
     for trap := range self.trapListen.Listen() {
-        log.Printf("listenTraps: %+v\n", trap)
+        log.Printf("listenTraps: %s@%s: %s: %s\n", trap.Agent, trap.SysUpTime, snmp.LookupString(trap.SnmpTrapOID), trap.Objects)
     }
 }
 
