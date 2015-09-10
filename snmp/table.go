@@ -102,7 +102,7 @@ func (self *Client) getTable(oids []OID, handler func ([]gosnmp.SnmpPDU) error) 
     for row := 0; getNext != nil; row++ {
         if self.log != nil { self.log.Printf("snmp.GetNext %v...\n", getNext) }
 
-        response, err := self.snmp.GetNext(getNext)
+        response, err := self.gosnmp.GetNext(getNext)
         if err != nil {
             return err
         }

@@ -22,17 +22,17 @@ type Client struct {
     config  Config
     log     *log.Logger
 
-    snmp    *gosnmp.GoSNMP
+    gosnmp  *gosnmp.GoSNMP
 }
 
-func (self *Client) String() string {
-    return fmt.Sprintf("%s", self.snmp.Target)
+func (self Client) String() string {
+    return fmt.Sprintf("%s", self.gosnmp.Target)
 }
 
 func (self Config) Connect() (*Client, error) {
     client := &Client{
         config: self,
-        snmp:   &gosnmp.GoSNMP{
+        gosnmp:   &gosnmp.GoSNMP{
             Target:     self.Host,
             Port:       161,
             Version:    gosnmp.Version2c,
@@ -42,7 +42,7 @@ func (self Config) Connect() (*Client, error) {
         },
     }
 
-    if err := client.snmp.Connect(); err != nil {
+    if err := client.gosnmp.Connect(); err != nil {
         return nil, err
     }
 
