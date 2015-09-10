@@ -14,6 +14,10 @@ func (self *Bridge_FdbIndex) setIndex (oid OID) error {
     return self.Address.setIndex(oid)
 }
 
+func (self Bridge_FdbIndex) String() string {
+    return self.Address.String()
+}
+
 type Bridge_FdbEntry struct {
     Address     MacAddress  `snmp:"1.3.6.1.2.1.17.4.3.1.1"`
     Port        Integer     `snmp:"1.3.6.1.2.1.17.4.3.1.2"`
@@ -21,11 +25,3 @@ type Bridge_FdbEntry struct {
 }
 
 type Bridge_FdbTable map[Bridge_FdbIndex]*Bridge_FdbEntry
-
-func (self *Client) Bridge_FDB() (table Bridge_FdbTable, err error) {
-    table = make(Bridge_FdbTable)
-
-    err = self.GetTable(&table)
-
-    return
-}

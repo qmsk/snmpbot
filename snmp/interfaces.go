@@ -14,6 +14,10 @@ func (self *InterfaceIndex) setIndex (oid OID) error {
     return self.Index.setIndex(oid)
 }
 
+func (self InterfaceIndex) String() string {
+    return self.Index.String()
+}
+
 type InterfaceEntry struct {
     Index       Integer     `snmp:"1.3.6.1.2.1.2.2.1.1"`
     Descr       String      `snmp:"1.3.6.1.2.1.2.2.1.2"`
@@ -27,11 +31,3 @@ type InterfaceEntry struct {
 }
 
 type InterfaceTable map[InterfaceIndex]*InterfaceEntry
-
-func (self *Client) Interfaces() (table InterfaceTable, err error) {
-    table = make(InterfaceTable)
-
-    err = self.GetTable(&table)
-
-    return
-}
