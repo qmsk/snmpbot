@@ -10,8 +10,11 @@ import (
 )
 
 type Trap struct {
+    Agent       net.IP
+
     SysUpTime   time.Duration
     SnmpTrapOID OID
+
     Objects     []VarBind
 }
 
@@ -104,27 +107,30 @@ func (self TrapListen) String() string {
     return fmt.Sprintf("%v", self.udpConn.LocalAddr())
 }
 
-func (self *TrapListen) read() (*net.UDPAddr, []byte, error) {
+func (self *TrapListen) recv() (addr *net.UDPAddr, packet Packet, packetPdu []interface{}, err error) {
     // recv
     buf := make([]byte, self.udpSize)
 
     size, addr, err := self.udpConn.ReadFromUDP(buf)
     if err != nil {
-        return nil, nil, err
+        return nil, packet, nil, err
     } else if size == 0 {
-        return nil, nil, nil
+        return nil, packet, nil, nil
     }
 
-    return addr, buf[:size], nil
+    // parse
+    if packet, packetPdu, err := parsePacket(buf[:size]); err != nil {
+        return nil, packet, nil, err
+    } else {
+        return addr, packet, packetPdu, nil
+    }
 }
 
 // goroutine to read packets, decode and dispatch them
 func (self *TrapListen) listen() {
     for {
-        if addr, buf, err := self.read(); err != nil {
-            self.log.Printf("listen read: %s\n", err)
-        } else if packet, packetPdu, err := parsePacket(buf); err != nil {
-            self.log.Printf("listen parsePacket: %s\n", err)
+        if recvAddr, packet, packetPdu, err := self.recv(); err != nil {
+            self.log.Printf("listen recv: %s\n", err)
         } else {
             switch packet.PduType {
             case wapsnmp.AsnTrapV1:
@@ -133,9 +139,9 @@ func (self *TrapListen) listen() {
                 } else if trap, err := parseTrapV1(pdu); err != nil {
                     self.log.Printf("listen parseTrapV2: invalid TrapV2 trap: %s\n", err)
                 } else {
-                    self.log.Printf("listen: %s %+v %+v: %+v\n", addr, packet, pdu, trap)
+                    self.log.Printf("listen trapV1: %s %+v %+v: %+v\n", recvAddr, packet, pdu, trap)
 
-                    self.listenTrap(trap)
+                    self.listenTrap(trap, recvAddr.IP)
                 }
 
             case wapsnmp.AsnTrapV2:
@@ -144,9 +150,9 @@ func (self *TrapListen) listen() {
                 } else if trap, err := parseTrapV2(pdu); err != nil {
                     self.log.Printf("listen parseTrapV2: invalid TrapV2 trap: %s\n", err)
                 } else {
-                    self.log.Printf("listen: %s %+v %+v: %+v\n", addr, packet, pdu, trap)
+                    self.log.Printf("listen trapV2: %s %+v %+v: %+v\n", recvAddr, packet, pdu, trap)
 
-                    self.listenTrap(trap)
+                    self.listenTrap(trap, recvAddr.IP)
                 }
 
             default:
@@ -157,7 +163,9 @@ func (self *TrapListen) listen() {
 }
 
 // Report a trap
-func (self *TrapListen) listenTrap(trap Trap) {
+func (self *TrapListen) listenTrap(trap Trap, agent net.IP) {
+    trap.Agent = agent
+
     self.listener <- trap
 }
 
