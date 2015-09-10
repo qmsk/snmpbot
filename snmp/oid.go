@@ -54,20 +54,22 @@ func (self OID) Match(oid OID) bool {
 }
 
 // Test if the given OID is a more-specific of this OID, returning the extended part if so.
+// Returns {0} if the OIDs are an exact match
 // Returns nil if the OIDs do not match
-func (self OID) Index(oid OID) (subOid OID) {
-    if len(oid) <= len(self) {
+func (self OID) Index(oid OID) (index OID) {
+    if len(oid) < len(self) {
         return nil
     }
+
     for i := range self {
         if self[i] != oid[i] {
             return nil
         }
     }
-    return oid[len(self):]
-}
 
-/* MIB */
-type MIB struct {
-    OID
+    if len(oid) == len(self) {
+        return OID{0}
+    } else {
+        return oid[len(self):]
+    }
 }
