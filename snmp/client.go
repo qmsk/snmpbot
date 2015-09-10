@@ -45,3 +45,14 @@ func Connect(config Config) (*Client, error) {
 func (self *Client) Log() {
     self.log = log.New(os.Stderr, fmt.Sprintf("snmp.Client %v: ", self), 0)
 }
+
+func (self *Client) Walk(oid OID, handler func (oid OID, value interface{})) error {
+    return self.gosnmp.Walk(oid.String(), func(snmpVar gosnmp.SnmpPDU) error {
+        oid := ParseOID(snmpVar.Name)
+        snmpValue := snmpVar.Value
+
+        handler(oid, snmpValue)
+
+        return nil
+    })
+}
