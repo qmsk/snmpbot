@@ -55,16 +55,17 @@ func parseTrapV1(trapPdu TrapPDU) (trap Trap, err error) {
     case TrapWarmStart:
         trap.SnmpTrapOID = SNMPv2_warmStart.OID
     case TrapLinkDown:
-        trap.SnmpTrapOID = If_linkDown
+        trap.SnmpTrapOID = If_linkDown.OID
     case TrapLinkUp:
-        trap.SnmpTrapOID = If_linkUp
+        trap.SnmpTrapOID = If_linkUp.OID
     case TrapAuthenticationFailure:
         trap.SnmpTrapOID = SNMPv2_authenticationFailure.OID
-        // TrapEgpNeighborLoss
+    case TrapEgpNeighborLoss:
+        trap.SnmpTrapOID = SNMPv2MIB.define(1, 5, 6)
     case TrapEnterpriseSpecific:
         trap.SnmpTrapOID = OID(trapPdu.Enterprise).define(0, trapPdu.SpecificTrap)
     default:
-        trap.SnmpTrapOID = SNMPv2MIB.define(1, 5, int(trapPdu.GenericTrap) + 1) // XXX: oh my :)
+        return trap, fmt.Errorf("invalid generic-trap: %v", trapPdu.GenericTrap)
     }
 
     trap.Objects = trapPdu.VarBinds

@@ -6,8 +6,8 @@ var (
     IfMIB       = registerMIB("IF-MIB",     1,3,6,1,2,1,31)
     Interfaces  = registerMIB("interfaces", 1,3,6,1,2,1,2)
 
-    If_linkDown = SNMPv2MIB.define(1, 5, 3)
-    If_linkUp   = SNMPv2MIB.define(1, 5, 4)
+    If_linkDown = SNMPv2MIB.registerNotificationType("linkDown", 1, 5, 3)
+    If_linkUp   = SNMPv2MIB.registerNotificationType("linkUp", 1, 5, 4)
 )
 
 type InterfaceIndex struct {
