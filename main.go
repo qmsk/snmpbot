@@ -61,7 +61,7 @@ func (self *State) loadHostsJson (options options, stream io.Reader) error {
     self.hosts = make(map[string]*Host)
 
     for name, snmpConfig := range configs {
-        if snmpClient, err := snmpConfig.Connect(); err != nil {
+        if snmpClient, err := snmp.Connect(snmpConfig); err != nil {
             log.Printf("Client %s: Connect %s: %s\n", name, snmpConfig, err)
         } else {
             log.Printf("Client %s: Connect %s\n", name, snmpConfig)

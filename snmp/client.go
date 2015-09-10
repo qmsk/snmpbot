@@ -13,13 +13,7 @@ const (
     RETRIES     = 3
 )
 
-type Config struct {
-    Host        string  `json:host`
-    Community   string  `json:community`
-}
-
 type Client struct {
-    config  Config
     log     *log.Logger
 
     gosnmp  *gosnmp.GoSNMP
@@ -29,14 +23,13 @@ func (self Client) String() string {
     return fmt.Sprintf("%s", self.gosnmp.Target)
 }
 
-func (self Config) Connect() (*Client, error) {
+func Connect(config Config) (*Client, error) {
     client := &Client{
-        config: self,
         gosnmp:   &gosnmp.GoSNMP{
-            Target:     self.Host,
+            Target:     config.Host,
             Port:       161,
             Version:    gosnmp.Version2c,
-            Community:  self.Community,
+            Community:  config.Community,
             Timeout:    TIMEOUT,
             Retries:    RETRIES,
         },
