@@ -19,7 +19,6 @@ type PDU struct {
     RequestID   int32
     ErrorStatus int
     ErrorIndex  int
-
     VarBinds    []VarBind
 }
 
@@ -77,26 +76,26 @@ func parsePDU(seq []interface{}) (pdu PDU, err error) {
     }
 
     if seqRequestID, ok := seq[1].(int64); !ok {
-        err = fmt.Errorf("invalid request-id")
+        err = fmt.Errorf("invalid request-id: %#v", seq[1])
         return
     } else {
         pdu.RequestID = int32(seqRequestID)
     }
 
     if seqErrorStatus, ok := seq[2].(int64); !ok {
-        return pdu, fmt.Errorf("invalid error-status")
+        return pdu, fmt.Errorf("invalid error-status: %#v", seq[2])
     } else {
         pdu.ErrorStatus = int(seqErrorStatus)
     }
 
     if seqErrorIndex, ok := seq[3].(int64); !ok {
-        return pdu, fmt.Errorf("invalid error-index")
+        return pdu, fmt.Errorf("invalid error-index: %#v", seq[3])
     } else {
         pdu.ErrorIndex = int(seqErrorIndex)
     }
 
     if seqVarBinds, ok := seq[4].([]interface{}); !ok {
-        return pdu, fmt.Errorf("invalid variable-bindings")
+        return pdu, fmt.Errorf("invalid variable-bindings: %#v", seq[4])
     } else if pduVarBinds, err := parseVarBinds(seqVarBinds); err != nil {
         return pdu, fmt.Errorf("invalid variable-bindings: %s", err)
     } else {
@@ -114,7 +113,7 @@ func parseVarBinds(seq []interface{}) (vars []VarBind, err error) {
 
     for _, seqItem := range seq[1:] {
         if varSeq, ok := seqItem.([]interface{}); !ok {
-            return vars, fmt.Errorf("invalid varbind sequence")
+            return vars, fmt.Errorf("invalid varbind sequence: %#v", seqItem)
         } else if varBind, err := parseVarBind(varSeq); err != nil {
             return vars, err
         } else {
@@ -132,7 +131,7 @@ func parseVarBind(seq []interface{}) (varBind VarBind, err error) {
     }
 
     if seqName, ok := seq[1].(wapsnmp.Oid); !ok {
-        err = fmt.Errorf("invalid name")
+        err = fmt.Errorf("invalid name: %#v", seq[1])
         return
     } else {
         varBind.Name = seqName
