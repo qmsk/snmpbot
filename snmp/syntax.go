@@ -11,7 +11,7 @@ import (
 type IndexSyntax interface {
     // Set value from a table-entry OID sub-identifier index
     // See RFC1442#7.7 SNMPv2 SMI, Mapping of the INDEX clause
-    parseIndex(oid OID) (interface{}, error)
+    parseIndex(oid OID) (IndexSyntax, error)
 
     // String representation
     String() string
@@ -19,7 +19,7 @@ type IndexSyntax interface {
 
 type Syntax interface {
     // Parse a wapsnmp.BER value into a higher-level representation per the object syntax
-    parseValue(snmpValue interface{}) (interface{}, error)
+    parseValue(snmpValue interface{}) (Syntax, error)
 }
 
 /* Errors */
@@ -42,7 +42,7 @@ func (self Integer) MarshalJSON() ([]byte, error) {
     return json.Marshal(int(self))
 }
 
-func (self Integer) parseIndex(oid OID) (interface{}, error) {
+func (self Integer) parseIndex(oid OID) (IndexSyntax, error) {
     if len(oid) != 1 {
         return nil, fmt.Errorf("Invalid sub-OID for %T index: %v", self, oid)
     }
@@ -50,7 +50,7 @@ func (self Integer) parseIndex(oid OID) (interface{}, error) {
     return Integer(oid[0]), nil
 }
 
-func (self Integer) parseValue(snmpValue interface{}) (interface{}, error) {
+func (self Integer) parseValue(snmpValue interface{}) (Syntax, error) {
     switch value := snmpValue.(type) {
     case int64:
         return Integer(value), nil
@@ -72,7 +72,7 @@ func (self String) MarshalJSON() ([]byte, error) {
     return json.Marshal(string(self))
 }
 
-func (self String) parseValue(snmpValue interface{}) (interface{}, error) {
+func (self String) parseValue(snmpValue interface{}) (Syntax, error) {
     switch value := snmpValue.(type) {
     case string:
         return String(value), nil
@@ -94,7 +94,7 @@ func (self Binary) MarshalJSON() ([]byte, error) {
     return json.Marshal([]byte(self))
 }
 
-func (self Binary) parseValue(snmpValue interface{}) (interface{}, error) {
+func (self Binary) parseValue(snmpValue interface{}) (Syntax, error) {
     switch value := snmpValue.(type) {
     case string:
         return Binary(value), nil
@@ -107,7 +107,7 @@ var BinarySyntax Binary
 
 
 /* ObjectID */
-func (self OID) parseValue(snmpValue interface{}) (interface{}, error) {
+func (self OID) parseValue(snmpValue interface{}) (Syntax, error) {
     switch value := snmpValue.(type) {
     case wapsnmp.Oid:
         return OID(value), nil
@@ -129,7 +129,7 @@ func (self Counter) MarshalJSON() ([]byte, error) {
     return json.Marshal(uint(self))
 }
 
-func (self Counter) parseValue(snmpValue interface{}) (interface{}, error) {
+func (self Counter) parseValue(snmpValue interface{}) (Syntax, error) {
     switch value := snmpValue.(type) {
     case wapsnmp.Counter:
         return Counter(value), nil
@@ -151,7 +151,7 @@ func (self Gauge) MarshalJSON() ([]byte, error) {
     return json.Marshal(uint(self))
 }
 
-func (self Gauge) parseValue(snmpValue interface{}) (interface{}, error) {
+func (self Gauge) parseValue(snmpValue interface{}) (Syntax, error) {
     switch value := snmpValue.(type) {
     case wapsnmp.Gauge:
         return Gauge(value), nil
@@ -173,7 +173,7 @@ func (self TimeTicks) MarshalJSON() ([]byte, error) {
     return json.Marshal(time.Duration(self))
 }
 
-func (self TimeTicks) parseValue(snmpValue interface{}) (interface{}, error) {
+func (self TimeTicks) parseValue(snmpValue interface{}) (Syntax, error) {
     switch value := snmpValue.(type) {
     case time.Duration:
         return TimeTicks(value), nil
@@ -202,7 +202,7 @@ func (self MacAddress) MarshalJSON() ([]byte, error) {
     return json.Marshal(self.String())
 }
 
-func (self MacAddress) parseIndex(oid OID) (interface{}, error) {
+func (self MacAddress) parseIndex(oid OID) (IndexSyntax, error) {
     if len(oid) != 6 {
         return nil, fmt.Errorf("Invalid sub-OID for %T index: %v", self, oid)
     }
@@ -216,7 +216,7 @@ func (self MacAddress) parseIndex(oid OID) (interface{}, error) {
     return value, nil
 }
 
-func (self MacAddress) parseValue(snmpValue interface{}) (interface{}, error) {
+func (self MacAddress) parseValue(snmpValue interface{}) (Syntax, error) {
     switch value := snmpValue.(type) {
     case string:
         if len(value) != 6 {
