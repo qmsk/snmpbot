@@ -59,14 +59,35 @@ func LookupTable(oid OID) *Table {
     }
 }
 
+func LookupNotificationType(oid OID) *NotificationType {
+    if mib := LookupMIB(oid); mib== nil {
+        return nil
+    } else if notificationType := mib.LookupNotificationType(oid); notificationType == nil {
+        return nil
+    } else {
+        return notificationType
+    }
+}
+
 // Return a human-readble string representation of the OID, including an MIB, Object and Index
-func Format(oid OID) string {
+func FormatObject(oid OID) string {
     if mib := LookupMIB(oid); mib == nil {
-        return fmt.Sprintf("%s", oid)
+        return oid.String()
     } else if object := mib.LookupObject(oid); object == nil {
         return mib.Format(oid)
     } else {
         return object.Format(oid)
+    }
+}
+
+// Return a human-readble string representation of the OID, including an MIB, Object and Index
+func FormatNotificationType(oid OID) string {
+    if mib := LookupMIB(oid); mib == nil {
+        return oid.String()
+    } else if notificationType := mib.LookupNotificationType(oid); notificationType == nil {
+        return mib.Format(oid)
+    } else {
+        return notificationType.Format(oid)
     }
 }
 
@@ -199,6 +220,16 @@ func (self *MIB) LookupTable(oid OID) *Table {
     return nil
 }
 
+// Return NotificationType by OID, or nil
+func (self *MIB) LookupNotificationType(oid OID) *NotificationType {
+    for _, notificationType := range self.notificationTypes {
+        if notificationType.Equals(oid) {
+            return notificationType
+        }
+    }
+    return nil
+}
+
 // Return Object by Name, or nil
 func (self *MIB) ResolveObject(name string) *Object {
     for _, object := range self.objects {
@@ -236,6 +267,7 @@ func (self *MIB) registerObject(name string, syntax Syntax, oid OID) *Object {
 func (self *MIB) registerNotificationType(name string, oid OID) *NotificationType {
     notificationType := &NotificationType{
         Node:   Node{OID: oid, Name: name},
+        MIB:    self,
     }
 
     self.notificationTypes = append(self.notificationTypes, notificationType)
@@ -299,4 +331,12 @@ type NotificationType struct {
 
 func (self NotificationType) String() string {
     return fmt.Sprintf("%s::%s", self.MIB, self.Name)
+}
+
+func (self NotificationType) Format(oid OID) string {
+    if index := self.Index(oid); index == nil {
+        return fmt.Sprintf("%s", self)
+    } else {
+        return fmt.Sprintf("%s%s", self, index)
+    }
 }
