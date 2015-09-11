@@ -2,6 +2,7 @@ package snmp
 
 import (
     "fmt"
+    "io/ioutil"
     "log"
     "net"
     "os"
@@ -75,16 +76,20 @@ func parseTrapV1(trapPdu TrapPDU) (trap Trap, err error) {
 
 // Listen and dispatch traps
 type TrapListen struct {
+    log         *log.Logger
+
     udpConn    *net.UDPConn
     udpSize     uint
 
-    log         *log.Logger
     listener    chan Trap
 }
 
 func NewTrapListen(addr string) (*TrapListen, error) {
     trapListen := &TrapListen{
+        log:        log.New(ioutil.Discard, "", 0),
+
         udpSize:    UDP_SIZE,
+
         listener:   make(chan Trap),
     }
 
@@ -106,6 +111,10 @@ func NewTrapListen(addr string) (*TrapListen, error) {
 
 func (self TrapListen) String() string {
     return fmt.Sprintf("%v", self.udpConn.LocalAddr())
+}
+
+func (self *TrapListen) Log() {
+    self.log = log.New(os.Stderr, fmt.Sprintf("snmp.TrapListen %v: ", self), 0)
 }
 
 func (self *TrapListen) recv() (addr *net.UDPAddr, packet Packet, packetPdu []interface{}, err error) {
