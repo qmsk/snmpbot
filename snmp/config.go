@@ -1,7 +1,6 @@
 package snmp
 
 import (
-    "log"
     "net"
     "net/url"
 )
@@ -28,7 +27,7 @@ func ParseConfig(str string, baseConfig Config) (config Config, err error) {
         config.Community = COMMUNITY
     }
 
-    log.Printf("ParseConfig %s: url=%#v\n", str, configUrl)
+    //log.Printf("ParseConfig %s: url=%#v\n", str, configUrl)
 
     if host, port, err := net.SplitHostPort(configUrl.Host); err == nil {
         config.Host = host
