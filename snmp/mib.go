@@ -31,7 +31,7 @@ func LookupMIB(oid OID) *MIB {
 // Return MIB by Name
 func ResolveMIB(name string) *MIB {
     for _, mib := range mibs {
-        if mib.String() == name {
+        if mib.Name == name {
             return mib
         }
     }
@@ -91,29 +91,6 @@ func FormatNotificationType(oid OID) string {
     }
 }
 
-// Return Object by OID, MIB::Object Name
-// Return nil if not found
-func ResolveObject(name string) *Object {
-    if name[0] == '.' {
-        return LookupObject(ParseOID(name))
-
-    } else if sepIndex := strings.Index(name, "::"); sepIndex != -1 {
-        mibName := name[:sepIndex]
-        objectName := name[sepIndex+2:]
-
-        if mib := ResolveMIB(mibName); mib == nil {
-            return nil
-        } else if object := mib.ResolveObject(objectName); object == nil {
-            return nil
-        } else {
-            return object
-        }
-
-    } else {
-        panic(fmt.Errorf("Invalid name: %v", name))
-    }
-}
-
 // Return OID from OID, MIB.Name::Object.Name
 // Return nil if not found
 func Resolve(name string) OID {
@@ -150,8 +127,27 @@ func Resolve(name string) OID {
     }
 }
 
+// Return Object by OID, MIB::Object Name
+// Return nil if not found
+func ResolveObject(name string) *Object {
+    if sepIndex := strings.Index(name, "::"); sepIndex < 0 {
+        return LookupObject(ParseOID(name))
+    } else {
+        mibName := name[:sepIndex]
+        objectName := name[sepIndex+2:]
+
+        if mib := ResolveMIB(mibName); mib == nil {
+            return nil
+        } else if object := mib.ResolveObject(objectName); object == nil {
+            return nil
+        } else {
+            return object
+        }
+    }
+}
+
 func ResolveTable(name string) *Table {
-    if sepIndex := strings.Index(name, "::"); sepIndex == -1 {
+    if sepIndex := strings.Index(name, "::"); sepIndex < 0 {
         return LookupTable(ParseOID(name))
     } else {
         mibName := name[:sepIndex]
@@ -167,6 +163,7 @@ func ResolveTable(name string) *Table {
     }
 }
 
+// XXX: get rid of me
 type Node struct {
     OID
 
@@ -233,7 +230,7 @@ func (self *MIB) LookupNotificationType(oid OID) *NotificationType {
 // Return Object by Name, or nil
 func (self *MIB) ResolveObject(name string) *Object {
     for _, object := range self.objects {
-        if object.String() == name {
+        if object.Name == name {
             return object
         }
     }
@@ -243,7 +240,7 @@ func (self *MIB) ResolveObject(name string) *Object {
 // Return Table by Name, or nil
 func (self *MIB) ResolveTable(name string) *Table {
     for _, table := range self.tables {
-        if table.String() == name {
+        if table.Name == name {
             return table
         }
     }
