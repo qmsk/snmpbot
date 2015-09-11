@@ -251,6 +251,14 @@ func (self Enum) String() string {
     }
 }
 
+func (self Enum) MarshalJSON() ([]byte, error) {
+    if self.Name != "" {
+        return json.Marshal(self.Name)
+    } else {
+        return json.Marshal(self.Value)
+    }
+}
+
 type EnumSyntax []Enum
 
 func (self EnumSyntax) parseValue(snmpValue interface{}) (interface{}, error) {
