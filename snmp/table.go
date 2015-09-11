@@ -10,7 +10,7 @@ type Table struct {
     Node
     MIB             *MIB        // part of what MIB
 
-    Index           TableIndex
+    Index           []TableIndex
     Entry           []*Object
 }
 
@@ -40,10 +40,21 @@ func (self *Client) GetTable(table *Table) (map[string]map[string]interface{}, e
             indexOID := tableEntry.OID.Index(oid)
             var index string
 
-            if indexValue, err := table.Index.IndexSyntax.parseIndex(indexOID); err != nil {
-                return err
-            } else {
-                index = indexValue.String()
+            for _, tableIndex := range table.Index {
+                if indexLength := tableIndex.IndexSyntax.peekIndex(indexOID); indexLength <= 0 || indexLength > len(indexOID) {
+                    return fmt.Errorf("invalid index for %s:%T: %v", tableIndex.Name, tableIndex.IndexSyntax, indexOID)
+
+                } else if indexValue, err := tableIndex.IndexSyntax.parseIndex(indexOID[:indexLength]); err != nil {
+                    return err
+
+                } else {
+                    indexOID = indexOID[indexLength:]
+                    if index == "" {
+                        index = indexValue.String()
+                    } else {
+                        index += "/" + indexValue.String()
+                    }
+                }
             }
 
             if _, found := tableMap[index]; !found {

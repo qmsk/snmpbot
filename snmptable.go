@@ -60,7 +60,9 @@ func main() {
         }
 
         // print header
-        fmt.Printf("%s", snmpTable.Index.Name)
+        for _, tableIndex := range snmpTable.Index {
+            fmt.Printf("[%s]", tableIndex.Name)
+        }
 
         for _, entry := range snmpTable.Entry {
             fmt.Printf("\t%s", entry.Name)
@@ -70,7 +72,7 @@ func main() {
 
         // print rows
         for index, entryMap := range tableMap {
-            fmt.Printf("%s", index)
+            fmt.Printf("[%s]", index)
 
             for _, tableEntry := range snmpTable.Entry {
                 value := entryMap[tableEntry.Name]

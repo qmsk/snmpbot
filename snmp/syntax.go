@@ -10,6 +10,9 @@ import (
 
 /* Types */
 type IndexSyntax interface {
+    // parse index length
+    peekIndex(oid OID) int
+
     // Set value from a table-entry OID sub-identifier index
     // See RFC1442#7.7 SNMPv2 SMI, Mapping of the INDEX clause
     parseIndex(oid OID) (IndexSyntax, error)
@@ -41,6 +44,10 @@ func (self Integer) String() string {
 
 func (self Integer) MarshalJSON() ([]byte, error) {
     return json.Marshal(int(self))
+}
+
+func (self Integer) peekIndex(oid OID) int {
+    return 1
 }
 
 func (self Integer) parseIndex(oid OID) (IndexSyntax, error) {
@@ -196,6 +203,10 @@ func (self IpAddress) MarshalJSON() ([]byte, error) {
     return json.Marshal(self.String())
 }
 
+func (self IpAddress) peekIndex(oid OID) int {
+    return 4
+}
+
 func (self IpAddress) parseIndex(oid OID) (IndexSyntax, error) {
     if len(oid) != 4 {
         return nil, fmt.Errorf("Invalid sub-OID for %T index: %v", self, oid)
@@ -273,6 +284,10 @@ func (self MacAddress) String() string {
 
 func (self MacAddress) MarshalJSON() ([]byte, error) {
     return json.Marshal(self.String())
+}
+
+func (self MacAddress) peekIndex(oid OID) int {
+    return 6
 }
 
 func (self MacAddress) parseIndex(oid OID) (IndexSyntax, error) {
