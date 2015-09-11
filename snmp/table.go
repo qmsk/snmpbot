@@ -5,6 +5,67 @@ import (
     "reflect"
 )
 
+/* MIB-based tables */
+type Table struct {
+    OID
+
+    Name            string
+    Index           TableIndex
+    Entry           []*Object
+}
+
+type TableIndex struct {
+    OID
+
+    Name            string
+    IndexSyntax     IndexSyntax
+}
+
+func (self *Client) GetTableMIB(table *Table) (map[string]map[string]interface{}, error) {
+    tableMap := make(map[string]map[string]interface{})
+
+    var tableOID []OID
+
+    for _, tableEntry := range table.Entry {
+        tableOID = append(tableOID, tableEntry.OID)
+    }
+
+    err := self.WalkTable(tableOID, func(varBinds []VarBind) error {
+        for i, varBind := range varBinds {
+            oid := OID(varBind.Name)
+
+            tableEntry := table.Entry[i]
+            indexOID := tableEntry.OID.Index(oid)
+            var index string
+
+            if indexValue, err := table.Index.IndexSyntax.parseIndex(indexOID); err != nil {
+                return err
+            } else {
+                index = indexValue.String()
+            }
+
+            if _, found := tableMap[index]; !found {
+                tableMap[index] = make(map[string]interface{})
+            }
+
+            if value, err := tableEntry.Syntax.parseValue(varBind.Value); err != nil {
+                return err
+            } else {
+                tableMap[index][tableEntry.Name] = value
+            }
+        }
+
+        return nil
+    })
+
+    if err != nil {
+        return nil, err
+    } else {
+        return tableMap, nil
+    }
+}
+
+/* Reflection-based table struct-maps */
 type tableMeta struct {
     indexType   reflect.Type
     entryType   reflect.Type

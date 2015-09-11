@@ -58,6 +58,7 @@ type MIB struct {
     Name        string
 
     objects     []*Object
+    tables      []*Table
 }
 
 func (self MIB) String() string {
@@ -97,6 +98,12 @@ func (self *MIB) registerNotificationType(name string, ids... int) *Notification
     return notificationType
 }
 
+func (self *MIB) registerTable(table *Table) *Table {
+    self.tables = append(self.tables, table)
+
+    return table
+}
+
 // Object registered within a MIB
 type Object struct {
     OID
@@ -122,4 +129,3 @@ func (self Object) ParseValue(snmpValue interface{}) (interface{}, error) {
 type NotificationType struct {
     Object
 }
-
