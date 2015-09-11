@@ -2,9 +2,7 @@ package snmp
 
 import (
     "fmt"
-    "github.com/soniah/gosnmp"
     "reflect"
-    "strings"
 )
 
 type tableMeta struct {
@@ -41,20 +39,22 @@ func reflectTable(tableType reflect.Type) (meta tableMeta, err error) {
 }
 
 // Decode each OID to index the entry within the table map, and set the field to its snmp value
-func loadTable(meta tableMeta, tableValue reflect.Value, snmpRow []gosnmp.SnmpPDU) error {
-    if len(snmpRow) != len(meta.fields) {
+func loadTable(meta tableMeta, tableValue reflect.Value, varBinds []VarBind) error {
+    if len(varBinds) != len(meta.fields) {
+        // guaranteed by WalkTable()
         panic("snmp table row fields mismatch")
     }
 
     // load row
-    for i, snmpVar := range snmpRow {
+    for i, varBind := range varBinds {
         // index
-        oid := ParseOID(snmpVar.Name)
+        oid := OID(varBind.Name)
         fieldOid := meta.fields[i]
 
         oidIndex := fieldOid.Index(oid)
 
         if oidIndex == nil {
+            // guaranteed by WalkTable()
             panic("snmp table row field mismatch")
         }
 
@@ -76,60 +76,14 @@ func loadTable(meta tableMeta, tableValue reflect.Value, snmpRow []gosnmp.SnmpPD
 
         // field
         fieldValue := entryValue.Elem().Field(i)
-        field := fieldValue.Addr().Interface().(Value)
+        fieldSyntax := fieldValue.Addr().Interface().(Syntax)
 
-        if err := field.setValue(snmpVar.Type, snmpVar.Value); err != nil {
+        if value, err := fieldSyntax.parseValue(varBind.Value); err != nil {
             return err
-        }
-
-        // log.Printf("snmp.Client.GetTable %v: %v[%v] = %v\n", meta.entryType.Name(), meta.entryType.Field(i).Name, index, field)
-    }
-
-    return nil
-}
-
-// Walk through a table with the given list of entry field OIDs
-// Call given handler with each returned row, returning any error.
-func (self *Client) getTable(oids []OID, handler func ([]gosnmp.SnmpPDU) error) error {
-    var getRoot []string
-    var getNext []string
-
-    for _, oid := range oids {
-        getRoot = append(getRoot, oid.String())
-        getNext = append(getNext, oid.String())
-    }
-
-    for row := 0; getNext != nil; row++ {
-        if self.log != nil { self.log.Printf("snmp.GetNext %v...\n", getNext) }
-
-        response, err := self.gosnmp.GetNext(getNext)
-        if err != nil {
-            return err
-        }
-
-        if len(response.Variables) != len(getNext) {
-            return fmt.Errorf("snmp variable count mismatch: %v should be %v\n", row, len(response.Variables), len(getNext))
-        }
-
-        // load getNext
-        for col, snmpVar := range response.Variables {
-            if snmpVar.Type == gosnmp.EndOfMibView || snmpVar.Type == gosnmp.NoSuchObject || snmpVar.Type == gosnmp.NoSuchInstance {
-                continue
-            } else if !strings.HasPrefix(snmpVar.Name, getRoot[col]) || snmpVar.Name == getNext[col] {
-                // stop
-                getNext = nil
-                break
-            } else {
-                getNext[col] = snmpVar.Name
-            }
-        }
-
-        if getNext == nil {
-            break
         } else {
-            if err := handler(response.Variables); err != nil {
-                return err
-            }
+            //log.Printf("snmp.Client.GetTable %v: %v[%v] = %v\n", meta.entryType.Name(), meta.entryType.Field(i).Name, index, value)
+
+            fieldValue.Set(reflect.ValueOf(value))
         }
     }
 
@@ -146,8 +100,8 @@ func (self *Client) GetTable(table interface{}) error {
         return err
     }
 
-    return self.getTable(tableMeta.fields, func(snmpRow []gosnmp.SnmpPDU) error {
-        return loadTable(tableMeta, tableValue, snmpRow)
+    return self.WalkTable(tableMeta.fields, func(varBinds []VarBind) error {
+        return loadTable(tableMeta, tableValue, varBinds)
     })
 }
 

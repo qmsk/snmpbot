@@ -3,17 +3,11 @@ package snmp
 import (
     "encoding/json"
     "fmt"
-    "github.com/soniah/gosnmp"
     "time"
     wapsnmp "github.com/cdevr/WapSNMP"
 )
 
 /* Types */
-type Value interface {
-    // Set value from an SNMP object retrieved as an SNMP VarBind
-    setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error
-}
-
 type Index interface {
     // Set value from a table-entry OID sub-identifier index
     // See RFC1442#7.7 SNMPv2 SMI, Mapping of the INDEX clause
@@ -29,22 +23,6 @@ type Syntax interface {
 }
 
 /* Errors */
-type TypeError struct {
-    Value           Value
-    SnmpType        gosnmp.Asn1BER
-}
-func (self TypeError) Error() string {
-    return fmt.Sprintf("Invalid SNMP type for %T: %v", self.Value, self.SnmpType)
-}
-
-type ValueError struct {
-    Value           Value
-    SnmpValue       interface{}
-}
-func (self ValueError) Error() string {
-    return fmt.Sprintf("Invalid SNMP value for %T: %v", self.Value, self.SnmpValue)
-}
-
 type SyntaxError struct {
     Syntax          Syntax
     SnmpValue       interface{}
@@ -62,20 +40,6 @@ func (self Integer) String() string {
 
 func (self Integer) MarshalJSON() ([]byte, error) {
     return json.Marshal(int(self))
-}
-
-func (self *Integer) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
-    switch snmpType {
-    case gosnmp.Integer:
-        value := snmpValue.(int)
-
-        *self = Integer(value)
-
-    default:
-        return TypeError{self, snmpType}
-    }
-
-    return nil
 }
 
 func (self *Integer) setIndex(oid OID) error {
@@ -106,19 +70,6 @@ func (self String) MarshalJSON() ([]byte, error) {
     return json.Marshal(string(self))
 }
 
-func (self *String) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
-    switch snmpType {
-    case gosnmp.OctetString:
-        value := snmpValue.([]byte)
-
-        *self = String(value)
-    default:
-        return TypeError{self, snmpType}
-    }
-
-    return nil
-}
-
 func (self String) parseValue(snmpValue interface{}) (interface{}, error) {
     switch value := snmpValue.(type) {
     case string:
@@ -141,18 +92,17 @@ func (self Binary) MarshalJSON() ([]byte, error) {
     return json.Marshal([]byte(self))
 }
 
-func (self *Binary) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
-    switch snmpType {
-    case gosnmp.OctetString:
-        value := snmpValue.([]byte)
-
-        *self = Binary(value)
+func (self Binary) parseValue(snmpValue interface{}) (interface{}, error) {
+    switch value := snmpValue.(type) {
+    case string:
+        return Binary(value), nil
     default:
-        return TypeError{self, snmpType}
+        return nil, SyntaxError{self, snmpValue}
     }
-
-    return nil
 }
+
+var BinarySyntax Binary
+
 
 /* ObjectID */
 func (self OID) parseValue(snmpValue interface{}) (interface{}, error) {
@@ -177,18 +127,16 @@ func (self Counter) MarshalJSON() ([]byte, error) {
     return json.Marshal(uint(self))
 }
 
-func (self *Counter) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
-    switch snmpType {
-    case gosnmp.Counter32:
-        value := snmpValue.(uint)
-
-        *self = Counter(value)
+func (self Counter) parseValue(snmpValue interface{}) (interface{}, error) {
+    switch value := snmpValue.(type) {
+    case wapsnmp.Counter:
+        return Counter(value), nil
     default:
-        return TypeError{self, snmpType}
+        return nil, SyntaxError{self, snmpValue}
     }
-
-    return nil
 }
+
+var CounterSyntax Counter
 
 /* Gauge */
 type Gauge uint
@@ -201,18 +149,16 @@ func (self Gauge) MarshalJSON() ([]byte, error) {
     return json.Marshal(uint(self))
 }
 
-func (self *Gauge) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
-    switch snmpType {
-    case gosnmp.Gauge32:
-        value := snmpValue.(uint)
-
-        *self = Gauge(value)
+func (self Gauge) parseValue(snmpValue interface{}) (interface{}, error) {
+    switch value := snmpValue.(type) {
+    case wapsnmp.Gauge:
+        return Gauge(value), nil
     default:
-        return TypeError{self, snmpType}
+        return nil, SyntaxError{self, snmpValue}
     }
-
-    return nil
 }
+
+var GaugeSyntax Gauge
 
 /* TimeTicks */
 type TimeTicks time.Duration
@@ -223,23 +169,6 @@ func (self TimeTicks) String() string {
 
 func (self TimeTicks) MarshalJSON() ([]byte, error) {
     return json.Marshal(time.Duration(self))
-}
-
-func (self *TimeTicks) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
-    switch snmpType {
-    case gosnmp.TimeTicks:
-        value := snmpValue.(int)
-
-        // convert from 100ths of a second
-        duration := time.Duration(value * 10) * time.Millisecond
-
-        *self = TimeTicks(duration)
-
-    default:
-        return TypeError{self, snmpType}
-    }
-
-    return nil
 }
 
 func (self TimeTicks) parseValue(snmpValue interface{}) (interface{}, error) {
@@ -271,26 +200,6 @@ func (self MacAddress) MarshalJSON() ([]byte, error) {
     return json.Marshal(self.String())
 }
 
-func (self *MacAddress) setValue(snmpType gosnmp.Asn1BER, snmpValue interface{}) error {
-    switch snmpType {
-    case gosnmp.OctetString:
-        value := snmpValue.([]byte)
-
-        if len(value) != 6 {
-            return ValueError{self, snmpValue}
-        }
-
-        for i := 0; i < 6; i++ {
-            self[i] = byte(value[i])
-        }
-
-    default:
-        return TypeError{self, snmpType}
-    }
-
-    return nil
-}
-
 func (self *MacAddress) setIndex(oid OID) error {
     if len(oid) != 6 {
         return fmt.Errorf("Invalid sub-OID for %T index: %v", self, oid)
@@ -302,3 +211,24 @@ func (self *MacAddress) setIndex(oid OID) error {
 
     return nil
 }
+
+func (self MacAddress) parseValue(snmpValue interface{}) (interface{}, error) {
+    switch value := snmpValue.(type) {
+    case string:
+        if len(value) != 6 {
+            return nil, SyntaxError{self, snmpValue}
+        }
+
+        var retValue MacAddress
+
+        for i := 0; i < 6; i++ {
+            retValue[i] = byte(value[i])
+        }
+
+        return retValue, nil
+    default:
+        return nil, SyntaxError{self, snmpValue}
+    }
+}
+
+var MacAddressSyntax MacAddress

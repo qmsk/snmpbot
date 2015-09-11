@@ -2,7 +2,6 @@ package snmp
 
 import (
     "fmt"
-    "github.com/soniah/gosnmp"
     "io/ioutil"
     "log"
     "net"
@@ -34,8 +33,6 @@ type Client struct {
     requestMutex    sync.Mutex
     requestId       int32
     requests        map[int32]*request
-
-    gosnmp  *gosnmp.GoSNMP
 }
 
 func (self Client) String() string {
@@ -67,15 +64,6 @@ func Connect(config Config) (*Client, error) {
     client := &Client{
         log:        log.New(ioutil.Discard, "", 0),
 
-        gosnmp:   &gosnmp.GoSNMP{
-            Target:     config.Host,
-            Port:       161,
-            Version:    gosnmp.Version2c,
-            Community:  config.Community,
-            Timeout:    TIMEOUT,
-            Retries:    RETRIES,
-        },
-
         version:    VERSION,
         community:  config.Community,
         timeout:    TIMEOUT,
@@ -85,10 +73,6 @@ func Connect(config Config) (*Client, error) {
 
         requestId:  1337,
         requests:   make(map[int32]*request),
-    }
-
-    if err := client.gosnmp.Connect(); err != nil {
-        return nil, err
     }
 
     if err := client.connect(config); err != nil {
@@ -317,4 +301,3 @@ func (self *Client) GetNext(oids... OID) ([]VarBind, error) {
 
     return self.requestGet(wapsnmp.AsnGetNextRequest, oids)
 }
-
