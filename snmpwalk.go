@@ -40,17 +40,21 @@ func main() {
         } else if snmpClient, err = snmp.Connect(snmpConfig); err != nil {
             log.Fatalf("Connect %s: %s\n", snmpConfig, err)
         } else {
-            log.Printf("%s: Config %v: Client %v\n", host, snmpConfig, snmpClient)
-
             if snmpLog {
                 snmpClient.Log()
             }
         }
 
-        // resolve root
-        walkOid := snmp.ParseOID(snmpConfig.Object)
+        // resolve
+        walkOID := snmp.Resolve(snmpConfig.Object)
+        if walkOID == nil {
+            log.Fatalf("%s: Resolve %s\n", host, snmpConfig.Object)
+        }
 
-        err = snmpClient.WalkTree(walkOid, func(oid snmp.OID, snmpValue interface{}) {
+        log.Printf("%s: Config %v: Client %v: Walk %v\n", host, snmpConfig, snmpClient, walkOID)
+
+        // walk
+        err = snmpClient.WalkTree(walkOID, func(oid snmp.OID, snmpValue interface{}) {
             name := snmp.LookupString(oid)
             value := snmpValue
 

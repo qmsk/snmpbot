@@ -14,6 +14,10 @@ type Table struct {
     Entry           []*Object
 }
 
+func (self Table) String() string {
+    return self.Name
+}
+
 type TableIndex struct {
     Name            string
     IndexSyntax     IndexSyntax
