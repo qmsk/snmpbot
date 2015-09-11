@@ -34,19 +34,11 @@ type State struct {
 }
 
 /* Set of active SNMP hosts */
-type Table struct {
-    sync.Mutex
-
-    Name        string
-
-    Map         interface{} // snmp.table compatible map
-}
-
 type Host struct {
     Name            string
     snmpClient      *snmp.Client
 
-    Tables          map[string]*Table
+    Tables          map[string]*snmp.Table
 }
 
 func (self *State) loadHostsJson (options options, stream io.Reader) error {
@@ -74,11 +66,11 @@ func (self *State) loadHostsJson (options options, stream io.Reader) error {
                 Name:       name,
                 snmpClient: snmpClient,
 
-                Tables:     make(map[string]*Table),
+                Tables:     make(map[string]*snmp.Table),
             }
 
-            host.registerTable("interfaces", make(snmp.InterfaceTable))
-            host.registerTable("bridge-fdb", make(snmp.Bridge_FdbTable))
+            host.registerTable(snmp.Interfaces_ifTable)
+            host.registerTable(snmp.Bridge_dot1dTpFdbTable)
 
             self.hosts[name] = host
         }
@@ -87,13 +79,13 @@ func (self *State) loadHostsJson (options options, stream io.Reader) error {
     return nil
 }
 
-func (self *Host) registerTable (name string, tableMap interface{}) {
-    self.Tables[name] = &Table{Name: name, Map: tableMap}
+func (self *Host) registerTable (snmpTable *snmp.Table) {
+    self.Tables[snmpTable.Name] = snmpTable
 }
 
 func (self *State) listenTraps() {
     for trap := range self.trapListen.Listen() {
-        log.Printf("listenTraps: %s@%s: %s: %s\n", trap.Agent, trap.SysUpTime, snmp.LookupString(trap.SnmpTrapOID), trap.Objects)
+        log.Printf("listenTraps: %s@%s: %s: %s\n", trap.Agent, trap.SysUpTime, snmp.FormatNotificationType(trap.SnmpTrapOID), trap.Objects)
     }
 }
 
@@ -104,7 +96,7 @@ type Item struct {
     Host        string
     Table       string
     Index       string
-    Entry       interface{} // struct
+    Entry       map[string]interface{} // struct
 }
 
 // track state for multiple ongoing polls
@@ -120,30 +112,25 @@ func newPoller() *Poll {
 }
 
 // start polling a host-table in the background
-func (self *Poll) pollHostTable(host *Host, table *Table) {
-    // XXX: this is the routine that updates/accesses the table map;
-    //      should be sync'd with only one concurrent goroutine per Table()
+func (self *Poll) pollHostTable(host *Host, snmpTable *snmp.Table) {
     go func() {
+        // keep collect() waiting
         self.waitGroup.Add(1)
         defer self.waitGroup.Done()
 
-        // we must own the table-map while updating/walking it
-        table.Lock()
-        defer table.Unlock()
-
-        if err := host.snmpClient.GetTable(table.Map); err != nil {
+        if tableMap, err := host.snmpClient.GetTable(snmpTable); err != nil {
             return
+        } else {
+            for index, entry := range tableMap {
+                self.items <- Item{host.Name, snmpTable.String(), index, entry}
+            }
         }
-
-        snmp.WalkTable(table.Map, func(index string, entry interface{}) {
-            self.items <- Item{host.Name, table.Name, index, entry}
-        })
     }()
 }
 
 // collect all items from ongoing polls into a map, returning once all polls are complete
 func (self *Poll) collect() interface{} {
-    results := make(map[string]map[string]map[string]interface{})
+    results := make(map[string]map[string]map[string]map[string]interface{})
 
     // close the items chan once all polls are complete
     go func() {
@@ -154,11 +141,11 @@ func (self *Poll) collect() interface{} {
     // collect all items from running polls
     for item := range self.items {
         if results[item.Host] == nil {
-            results[item.Host] = make(map[string]map[string]interface{})
+            results[item.Host] = make(map[string]map[string]map[string]interface{})
         }
 
         if results[item.Host][item.Table] == nil {
-            results[item.Host][item.Table] = make(map[string]interface{})
+            results[item.Host][item.Table] = make(map[string]map[string]interface{})
         }
 
         results[item.Host][item.Table][item.Index] = item.Entry
@@ -175,8 +162,8 @@ func (self *State) handleHttp (response http.ResponseWriter, request *http.Reque
     poll := newPoller()
 
     for _, host := range self.hosts {
-        for _, table := range host.Tables {
-            poll.pollHostTable(host, table)
+        for _, snmpTable := range host.Tables {
+            poll.pollHostTable(host, snmpTable)
         }
     }
 
