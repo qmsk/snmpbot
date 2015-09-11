@@ -1,7 +1,6 @@
 package snmp
 
 // SNMP BRIDGE-MIB implementation
-
 var (
     BridgeMIB       = registerMIB("BRIDGE-MIB", OID{1,3,6,1,2,1,17})
 
@@ -17,7 +16,9 @@ var (
 
     Bridge_dot1dTpFdbEntry  = Bridge_dot1dTp.define(3, 1)
     Bridge_dot1dTpFdbTable          = BridgeMIB.registerTable(&Table{Node:Node{OID: Bridge_dot1dTp.define(3), Name: "dot1dTpFdbTable"},
-        Index:  TableIndex{Name: "dot1dTpFdbAddress", IndexSyntax: MacAddressSyntax},
+        Index:  []TableIndex{
+            {"dot1dTpFdbAddress", MacAddressSyntax},
+        },
         Entry: []*Object{
             BridgeMIB.registerObject("dot1dTpFdbAddress",   MacAddressSyntax,   Bridge_dot1dTpFdbEntry.define(1)),
             BridgeMIB.registerObject("dot1dTpFdbPort",      IntegerSyntax,      Bridge_dot1dTpFdbEntry.define(2)),

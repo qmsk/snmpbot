@@ -11,8 +11,8 @@ var (
 
     Interfaces_ifNumber = Interfaces.registerObject("ifNumber", IntegerSyntax, Interfaces.define(1))
     Interfaces_ifTable  = Interfaces.registerTable(&Table{Node:Node{OID: Interfaces.define(2), Name: "ifTable"},
-        Index: TableIndex{
-            Name: "ifIndex", IndexSyntax: IntegerSyntax,
+        Index: []TableIndex{
+            {"ifIndex", IntegerSyntax},
         },
         Entry: []*Object{
             Interfaces.registerObject("ifIndex",        IntegerSyntax,      Interfaces.define(2,1,1)),
@@ -20,7 +20,7 @@ var (
             Interfaces.registerObject("ifType",         IntegerSyntax,      Interfaces.define(2,1,3)),
             Interfaces.registerObject("ifMtu",          IntegerSyntax,      Interfaces.define(2,1,4)),
             Interfaces.registerObject("ifSpeed",        GaugeSyntax,        Interfaces.define(2,1,5)),
-            Interfaces.registerObject("ifPhysAddress",  BinarySyntax,       Interfaces.define(2,1,6)),
+            Interfaces.registerObject("ifPhysAddress",  PhysAddressSyntax,  Interfaces.define(2,1,6)),
             Interfaces.registerObject("ifAdminStatus",  EnumSyntax{
                 {1, "up"},
                 {2, "down"},
