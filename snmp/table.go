@@ -8,6 +8,7 @@ import (
 /* MIB-based tables */
 type Table struct {
     Node
+    MIB             *MIB        // part of what MIB
 
     Index           TableIndex
     Entry           []*Object

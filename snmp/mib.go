@@ -38,21 +38,6 @@ func ResolveMIB(name string) *MIB {
     return nil
 }
 
-// Lookup a full OID against registered MIBs and their Objects.
-// Returns MIB, Object, OID{...} if the given oid indexes an object
-// Returns MIB, Object, nil if the given oid matches an object exactly
-// Returns MIB, nil, OID{...} if the given oid matches to a MIB, but is not a registered object
-// Returns nil, nil, nil if the given OID is unknown
-func Lookup(oid OID) *Node {
-    if mib := LookupMIB(oid); mib == nil {
-        return nil
-    } else if node := mib.Lookup(oid); node == nil {
-        return nil
-    } else {
-        return node
-    }
-}
-
 // Return Object by OID
 func LookupObject(oid OID) *Object {
     if mib := LookupMIB(oid); mib == nil {
@@ -74,16 +59,14 @@ func LookupTable(oid OID) *Table {
     }
 }
 
-// Lookup OID to a MIB-Object, and return a human-readable string
-func LookupString(oid OID) string {
+// Return a human-readble string representation of the OID, including an MIB, Object and Index
+func Format(oid OID) string {
     if mib := LookupMIB(oid); mib == nil {
         return fmt.Sprintf("%s", oid)
-    } else if node := mib.Lookup(oid); node == nil {
-        return fmt.Sprintf("%s%s", mib, mib.Index(oid))
-    } else if node.Equals(oid) {
-        return fmt.Sprintf("%s::%s", mib, node)
+    } else if object := mib.LookupObject(oid); object == nil {
+        return mib.Format(oid)
     } else {
-        return fmt.Sprintf("%s::%s%s", mib, node, node.Index(oid))
+        return object.Format(oid)
     }
 }
 
@@ -177,21 +160,22 @@ func (self Node) String() string {
 type MIB struct {
     Node
 
-    nodes       []*Node
-
-    objects     []*Object
-    tables      []*Table
+    objects             []*Object
+    tables              []*Table
+    notificationTypes   []*NotificationType
 }
 
-// Lookup a full OID within this MIB
-func (self *MIB) Lookup(oid OID) *Node {
-    for _, node := range self.nodes {
-        if index := node.Index(oid); index != nil {
-            return node
-        }
-    }
+func (self MIB) String() string {
+    return self.Name
+}
 
-    return nil
+// Format a full OID per this Object
+func (self MIB) Format(oid OID) string {
+    if index := self.Index(oid); index == nil {
+        return fmt.Sprintf("%s", self)
+    } else {
+        return fmt.Sprintf("%s%s", self, index)
+    }
 }
 
 // Return Object by OID, or nil
@@ -235,47 +219,66 @@ func (self *MIB) ResolveTable(name string) *Table {
     return nil
 }
 
-func (self *MIB) register(node *Node) *Node {
-    self.nodes = append(self.nodes, node)
-
-    return node
-}
-
 // Build and register Object
 func (self *MIB) registerObject(name string, syntax Syntax, oid OID) *Object {
-    object := &Object{Node: Node{OID: oid, Name:name},
+    object := &Object{
+        Node:   Node{OID: oid, Name:name},
+        MIB:    self,
         Syntax: syntax,
     }
 
-    self.register(&object.Node)
     self.objects = append(self.objects, object)
+
 
     return object
 }
 
 func (self *MIB) registerNotificationType(name string, oid OID) *NotificationType {
-    notificationType := &NotificationType{Node: Node{OID: oid, Name: name},
-
+    notificationType := &NotificationType{
+        Node:   Node{OID: oid, Name: name},
     }
 
-    self.register(&notificationType.Node)
+    self.notificationTypes = append(self.notificationTypes, notificationType)
 
     return notificationType
 }
 
 func (self *MIB) registerTable(table *Table) *Table {
+    table.MIB = self
+
     self.tables = append(self.tables, table)
 
-    self.register(&table.Node)
+    // register objects as belonging to a Table
+    for _, tableEntry := range table.Entry {
+        tableEntry.Table = table
+    }
 
     return table
 }
 
-// Object registered within a MIB
+// SNMPv2-SMI OBJECT-TYPE
+// Object contained within a MIB.
+// Can be scalar, or with a Table-Entry.
 type Object struct {
     Node
+    MIB         *MIB        // part of what MIB
 
     Syntax      Syntax
+
+    Table       *Table      // optional, if part of a table
+}
+
+func (self Object) String() string {
+    return fmt.Sprintf("%s::%s", self.MIB, self.Name)
+}
+
+// Format a full OID per this Object
+func (self Object) Format(oid OID) string {
+    if index := self.Index(oid); index == nil {
+        return fmt.Sprintf("%s", self)
+    } else {
+        return fmt.Sprintf("%s%s", self, index)
+    }
 }
 
 // Parse a raw SNMP value per its Syntax
@@ -287,7 +290,13 @@ func (self Object) ParseValue(snmpValue interface{}) (interface{}, error) {
     }
 }
 
-// XXX: just use Object with additional fields instead?
+// SNMPv2-SMI NOTIFICATION-TYPE
+// Used in SNMPv2 Trap-PDU SNMPv2::snmpTrapOID as an OID value to determine the trapped event. Does not carry any value.
 type NotificationType struct {
     Node
+    MIB         *MIB
+}
+
+func (self NotificationType) String() string {
+    return fmt.Sprintf("%s::%s", self.MIB, self.Name)
 }
