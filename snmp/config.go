@@ -1,7 +1,6 @@
 package snmp
 
 import (
-    "fmt"
     "log"
     "net"
     "net/url"
@@ -42,6 +41,14 @@ func ParseConfig(str string, baseConfig Config) (config Config, err error) {
         config.Port = ""
     }
 
+    if configUrl.Path != "" {
+        config.Object = configUrl.Path[1:]
+    } else if baseConfig.Object != "" {
+        config.Object = baseConfig.Object
+    } else {
+        config.Object = ""
+    }
+
     return config, nil
 }
 
@@ -49,8 +56,26 @@ type Config struct {
     Community   string  `json:community`
     Host        string  `json:host`
     Port        string  `json:port`
+
+    Object      string  `json:object`
 }
 
 func (self Config) String() string {
-    return fmt.Sprintf("%s@%s:%s", self.Community, self.Host, self.Port)
+    str := ""
+
+    if self.Community != "" {
+        str += self.Community + "@"
+    }
+
+    str += self.Host
+
+    if self.Port != "" {
+        str += ":" + self.Port
+    }
+
+    if self.Object != "" {
+        str += "/" + self.Object
+    }
+
+    return str
 }
