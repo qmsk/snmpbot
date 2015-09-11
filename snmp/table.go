@@ -23,6 +23,7 @@ type TableIndex struct {
     IndexSyntax     IndexSyntax
 }
 
+// Get an entire table, returning as a map
 func (self *Client) GetTable(table *Table) (map[string]map[string]interface{}, error) {
     tableMap := make(map[string]map[string]interface{})
 
@@ -76,6 +77,18 @@ func (self *Client) GetTable(table *Table) (map[string]map[string]interface{}, e
     } else {
         return tableMap, nil
     }
+}
+
+// Probe for supported Tables
+func (self *Client) ProbeTables(handler func(*Table)) error {
+    for _, mib := range mibs {
+        for _, table := range mib.tables {
+            // TODO: probe...
+            handler(table)
+        }
+    }
+
+    return nil
 }
 
 /* Reflection-based table struct-maps */

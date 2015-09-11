@@ -69,18 +69,19 @@ func (self *State) loadHostsJson (options options, stream io.Reader) error {
                 Tables:     make(map[string]*snmp.Table),
             }
 
-            host.registerTable(snmp.Interfaces_ifTable)
-            host.registerTable(snmp.Bridge_dot1dTpFdbTable)
-
             self.hosts[name] = host
+
+            // discover supported tables
+            err := host.snmpClient.ProbeTables(func(snmpTable *snmp.Table){
+                host.Tables[snmpTable.Name] = snmpTable
+            })
+            if err != nil {
+                log.Printf("Client %s: ProbeTables: %s\n", name, err)
+            }
         }
     }
 
     return nil
-}
-
-func (self *Host) registerTable (snmpTable *snmp.Table) {
-    self.Tables[snmpTable.Name] = snmpTable
 }
 
 func (self *State) listenTraps() {
@@ -119,6 +120,7 @@ func (self *Poll) pollHostTable(host *Host, snmpTable *snmp.Table) {
         defer self.waitGroup.Done()
 
         if tableMap, err := host.snmpClient.GetTable(snmpTable); err != nil {
+            log.Printf("%s: GetTable %s: %s\n", host, snmpTable, err)
             return
         } else {
             for index, entry := range tableMap {
