@@ -117,7 +117,7 @@ func ResolveObject(name string) *Object {
 // Return OID from OID, MIB.Name::Object.Name
 // Return nil if not found
 func Resolve(name string) OID {
-    if name[0] == '.' {
+    if len(name) == 0 || name[0] == '.' || name[0] == '1' { // XXX: isnumeric()
         return ParseOID(name)
 
     } else if sepIndex := strings.Index(name, "::"); sepIndex != -1 {
