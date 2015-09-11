@@ -69,7 +69,7 @@ func main() {
                 }
             }
 
-            fmt.Printf("%v: %v: %#v\n", host, name, value)
+            fmt.Printf("%v: %v: %v\n", host, name, value)
         })
         if err != nil {
             log.Fatalf("%s Walk: %s\n", snmpClient, err)
