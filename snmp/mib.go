@@ -78,6 +78,12 @@ func (self *MIB) Lookup(oid OID) (*Object, OID) {
     return nil, nil
 }
 
+func (self *MIB) register(object *Object) *Object {
+    self.objects = append(self.objects, object)
+
+    return object
+}
+
 func (self *MIB) registerObject(name string, syntax Syntax, ids... int) *Object {
     object := &Object{
         OID:    self.define(ids...),
