@@ -13,6 +13,7 @@ import (
 )
 
 const (
+    PORT        = "161"
     TIMEOUT     = time.Duration(2) * time.Second
     RETRIES     = 3
     VERSION     = wapsnmp.SNMPv2c
@@ -101,7 +102,13 @@ func Connect(config Config) (*Client, error) {
 }
 
 func (self *Client) connect(config Config) error {
-    netAddr := net.JoinHostPort(config.Host, config.Port)
+    port := config.Port
+
+    if port == "" {
+        port = PORT
+    }
+
+    netAddr := net.JoinHostPort(config.Host, port)
 
     if udpAddr, err := net.ResolveUDPAddr("udp", netAddr); err != nil {
         return err

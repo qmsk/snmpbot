@@ -9,7 +9,6 @@ import (
 
 const (
     COMMUNITY   = "public"
-    PORT        = "161"
 )
 
 // Parse a pseudo-URL config string:
@@ -40,7 +39,7 @@ func ParseConfig(str string, baseConfig Config) (config Config, err error) {
         config.Port = baseConfig.Port
     } else {
         config.Host = configUrl.Host
-        config.Port = PORT
+        config.Port = ""
     }
 
     return config, nil
