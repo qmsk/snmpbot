@@ -56,10 +56,12 @@ func main() {
         // walk
         err = snmpClient.WalkTree(walkOID, func(oid snmp.OID, snmpValue interface{}) {
             object := snmp.LookupObject(oid)
-            name := snmp.Format(oid)
+            name := oid.String()
             value := snmpValue
 
             if object != nil {
+                name = object.Format(oid)
+
                 if objectValue, err := object.ParseValue(value); err != nil {
                     log.Printf("%s: Invalid %s value: %s\n", host, name, err)
                 } else {
