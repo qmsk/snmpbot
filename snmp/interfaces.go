@@ -21,8 +21,20 @@ var (
             Interfaces.registerObject("ifMtu",          IntegerSyntax,      Interfaces.define(2,1,4)),
             Interfaces.registerObject("ifSpeed",        GaugeSyntax,        Interfaces.define(2,1,5)),
             Interfaces.registerObject("ifPhysAddress",  BinarySyntax,       Interfaces.define(2,1,6)),
-            Interfaces.registerObject("ifAdminStatus",  IntegerSyntax,      Interfaces.define(2,1,7)),
-            Interfaces.registerObject("ifOperStatus",   IntegerSyntax,      Interfaces.define(2,1,8)),
+            Interfaces.registerObject("ifAdminStatus",  EnumSyntax{
+                {1, "up"},
+                {2, "down"},
+                {3, "testing"},
+            }, Interfaces.define(2,1,7)),
+            Interfaces.registerObject("ifOperStatus",   EnumSyntax{
+                {1, "up"},
+                {2, "down"},
+                {3, "testing"},
+                {4, "unknown"},
+                {5, "dormant"},
+                {6, "notPresent"},
+                {7, "lowerLayerDown"},
+            }, Interfaces.define(2,1,8)),
             Interfaces.registerObject("ifLastChange",   TimeTicksSyntax,    Interfaces.define(2,1,9)),
         },
     })
