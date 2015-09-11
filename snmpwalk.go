@@ -58,7 +58,7 @@ func main() {
             name := snmp.LookupString(oid)
             value := snmpValue
 
-            _, object, _ := snmp.Lookup(oid)
+            object := snmp.LookupObject(oid)
 
             if object != nil {
                 if syntaxValue, err := object.ParseValue(value); err != nil {

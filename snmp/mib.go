@@ -10,8 +10,8 @@ var (
     mibs []*MIB
 )
 
-func registerMIB(name string, ids... int) *MIB {
-    mib := &MIB{OID: OID(ids), Name: name}
+func registerMIB(name string, oid OID) *MIB {
+    mib := &MIB{Node:Node{OID: oid, Name: name}}
 
     mibs = append(mibs, mib)
 
@@ -26,17 +26,6 @@ func LookupMIB(oid OID) *MIB {
         }
     }
     return nil
-}
-
-// Return Object by OID
-func LookupObject(oid OID) *Object {
-    if mib := LookupMIB(oid); mib == nil {
-        return nil
-    } else if object := mib.LookupObject(oid); object == nil {
-        return nil
-    } else {
-        return object
-    }
 }
 
 // Return MIB by Name
@@ -54,40 +43,47 @@ func ResolveMIB(name string) *MIB {
 // Returns MIB, Object, nil if the given oid matches an object exactly
 // Returns MIB, nil, OID{...} if the given oid matches to a MIB, but is not a registered object
 // Returns nil, nil, nil if the given OID is unknown
-func Lookup(oid OID) (*MIB, *Object, OID) {
-    if mib := LookupMIB(oid); mib != nil {
-        if object, objectIndex := mib.Lookup(oid); object != nil {
-            return mib, object, objectIndex
-        } else {
-            return mib, nil, mib.Index(oid)
-        }
+func Lookup(oid OID) *Node {
+    if mib := LookupMIB(oid); mib == nil {
+        return nil
+    } else if node := mib.Lookup(oid); node == nil {
+        return nil
+    } else {
+        return node
     }
-
-    return nil, nil, nil
 }
 
-// Lookup OID to a MIB-Object, and return a human-readable string
-func LookupString(oid OID) string {
-    mib, object, index := Lookup(oid)
-
-    if object != nil && index != nil {
-        return fmt.Sprintf("%s::%s%s", mib, object, index)
-    } else if object != nil {
-        return fmt.Sprintf("%s::%s", mib, object)
-    } else if mib != nil {
-        return fmt.Sprintf("%s%s", mib, index)
+// Return Object by OID
+func LookupObject(oid OID) *Object {
+    if mib := LookupMIB(oid); mib == nil {
+        return nil
+    } else if object := mib.LookupObject(oid); object == nil {
+        return nil
     } else {
-        return fmt.Sprintf("%s", oid)
+        return object
     }
 }
 
 func LookupTable(oid OID) *Table {
-    if mib := LookupMIB(oid); mib == nil {
+    if mib := LookupMIB(oid); mib== nil {
         return nil
     } else if table := mib.LookupTable(oid); table == nil {
         return nil
     } else {
         return table
+    }
+}
+
+// Lookup OID to a MIB-Object, and return a human-readable string
+func LookupString(oid OID) string {
+    if mib := LookupMIB(oid); mib == nil {
+        return fmt.Sprintf("%s", oid)
+    } else if node := mib.Lookup(oid); node == nil {
+        return fmt.Sprintf("%s%s", mib, mib.Index(oid))
+    } else if node.Equals(oid) {
+        return fmt.Sprintf("%s::%s", mib, node)
+    } else {
+        return fmt.Sprintf("%s::%s%s", mib, node, node.Index(oid))
     }
 }
 
@@ -167,31 +163,35 @@ func ResolveTable(name string) *Table {
     }
 }
 
-// Registry of OIDs within a MIB
-type MIB struct {
+type Node struct {
     OID
 
     Name        string
+}
+
+func (self Node) String() string {
+    return self.Name
+}
+
+// Registry of OIDs within a MIB
+type MIB struct {
+    Node
+
+    nodes       []*Node
 
     objects     []*Object
     tables      []*Table
 }
 
-func (self MIB) String() string {
-    return self.Name
-}
-
 // Lookup a full OID within this MIB
-func (self *MIB) Lookup(oid OID) (*Object, OID) {
-    for _, object := range self.objects {
-        if object.Equals(oid) {
-            return object, nil
-        } else if objectIndex := object.Index(oid); objectIndex != nil {
-            return object, objectIndex
+func (self *MIB) Lookup(oid OID) *Node {
+    for _, node := range self.nodes {
+        if index := node.Index(oid); index != nil {
+            return node
         }
     }
 
-    return nil, nil
+    return nil
 }
 
 // Return Object by OID, or nil
@@ -235,29 +235,30 @@ func (self *MIB) ResolveTable(name string) *Table {
     return nil
 }
 
-func (self *MIB) register(object *Object) *Object {
-    self.objects = append(self.objects, object)
+func (self *MIB) register(node *Node) *Node {
+    self.nodes = append(self.nodes, node)
 
-    return object
+    return node
 }
 
 // Build and register Object
-func (self *MIB) registerObject(name string, syntax Syntax, ids... int) *Object {
-    object := &Object{
-        OID:    self.define(ids...),
-        Name:   name,
+func (self *MIB) registerObject(name string, syntax Syntax, oid OID) *Object {
+    object := &Object{Node: Node{OID: oid, Name:name},
         Syntax: syntax,
     }
 
+    self.register(&object.Node)
     self.objects = append(self.objects, object)
 
     return object
 }
 
-func (self *MIB) registerNotificationType(name string, ids... int) *NotificationType {
-    notificationType := &NotificationType{Object: Object{OID: self.define(ids...), Name: name}}
+func (self *MIB) registerNotificationType(name string, oid OID) *NotificationType {
+    notificationType := &NotificationType{Node: Node{OID: oid, Name: name},
 
-    self.objects = append(self.objects, &notificationType.Object) // XXX: srsly?
+    }
+
+    self.register(&notificationType.Node)
 
     return notificationType
 }
@@ -265,19 +266,16 @@ func (self *MIB) registerNotificationType(name string, ids... int) *Notification
 func (self *MIB) registerTable(table *Table) *Table {
     self.tables = append(self.tables, table)
 
+    self.register(&table.Node)
+
     return table
 }
 
 // Object registered within a MIB
 type Object struct {
-    OID
+    Node
 
-    Name        string
     Syntax      Syntax
-}
-
-func (self Object) String() string {
-    return self.Name
 }
 
 // Parse a raw SNMP value per its Syntax
@@ -291,5 +289,5 @@ func (self Object) ParseValue(snmpValue interface{}) (interface{}, error) {
 
 // XXX: just use Object with additional fields instead?
 type NotificationType struct {
-    Object
+    Node
 }

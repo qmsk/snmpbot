@@ -7,9 +7,8 @@ import (
 
 /* MIB-based tables */
 type Table struct {
-    OID
+    Node
 
-    Name            string
     Index           TableIndex
     Entry           []*Object
 }
