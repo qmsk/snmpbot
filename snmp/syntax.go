@@ -3,6 +3,7 @@ package snmp
 import (
     "encoding/json"
     "fmt"
+    "net"
     "time"
     wapsnmp "github.com/cdevr/WapSNMP"
 )
@@ -183,6 +184,78 @@ func (self TimeTicks) parseValue(snmpValue interface{}) (interface{}, error) {
 }
 
 var TimeTicksSyntax TimeTicks
+
+/* IPAddress */
+type IpAddress net.IP
+
+func (self IpAddress) String() string {
+    return net.IP(self).String()
+}
+
+func (self IpAddress) MarshalJSON() ([]byte, error) {
+    return json.Marshal(self.String())
+}
+
+func (self IpAddress) parseIndex(oid OID) (IndexSyntax, error) {
+    if len(oid) != 4 {
+        return nil, fmt.Errorf("Invalid sub-OID for %T index: %v", self, oid)
+    }
+
+    value := make(IpAddress, 4)
+
+    for i := 0; i < 4; i++ {
+        value[i] = byte(oid[i])
+    }
+
+    return value, nil
+}
+
+func (self IpAddress) parseValue(snmpValue interface{}) (interface{}, error) {
+    switch value := snmpValue.(type) {
+    case net.IP:
+        if ip4 := value.To4(); ip4 == nil {
+            return nil, SyntaxError{self, snmpValue}
+        } else {
+            return IpAddress(ip4), nil
+        }
+    default:
+        return nil, SyntaxError{self, snmpValue}
+    }
+}
+
+var IpAddressSyntax IpAddress
+
+/* PhysAddress */
+type PhysAddress []byte
+
+func (self PhysAddress) String() string {
+    str := ""
+
+    for _, octet := range self {
+        if str != "" {
+            str += ":"
+        }
+
+        str += fmt.Sprintf("%02x", octet)
+    }
+
+    return str
+}
+
+func (self PhysAddress) MarshalJSON() ([]byte, error) {
+    return json.Marshal(self.String())
+}
+
+func (self PhysAddress) parseValue(snmpValue interface{}) (interface{}, error) {
+    switch value := snmpValue.(type) {
+    case string:
+        return PhysAddress(([]byte)(value)), nil
+    default:
+        return nil, SyntaxError{self, snmpValue}
+    }
+}
+
+var PhysAddressSyntax PhysAddress
 
 /* MacAddress */
 type MacAddress [6]byte
