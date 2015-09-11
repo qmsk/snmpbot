@@ -6,11 +6,11 @@ var (
     IfMIB       = registerMIB("IF-MIB",     OID{1,3,6,1,2,1,31})
     Interfaces  = registerMIB("interfaces", OID{1,3,6,1,2,1,2})
 
-    If_linkDown = SNMPv2MIB.registerNotificationType("linkDown",    Interfaces.define(1,5,3))
-    If_linkUp   = SNMPv2MIB.registerNotificationType("linkUp",      Interfaces.define(1,5,4))
+    Interfaces_linkDown = SNMPv2MIB.registerNotificationType("linkDown",    Interfaces.define(1,5,3))
+    Interfaces_linkUp   = SNMPv2MIB.registerNotificationType("linkUp",      Interfaces.define(1,5,4))
 
-    If_ifNumber = Interfaces.registerObject("ifNumber", IntegerSyntax, Interfaces.define(1))
-    If_ifTable  = Interfaces.registerTable(&Table{Node:Node{OID: Interfaces.define(2), Name: "ifTable"},
+    Interfaces_ifNumber = Interfaces.registerObject("ifNumber", IntegerSyntax, Interfaces.define(1))
+    Interfaces_ifTable  = Interfaces.registerTable(&Table{Node:Node{OID: Interfaces.define(2), Name: "ifTable"},
         Index: TableIndex{
             Name: "ifIndex", IndexSyntax: IntegerSyntax,
         },

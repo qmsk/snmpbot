@@ -56,9 +56,9 @@ func parseTrapV1(trapPdu TrapPDU) (trap Trap, err error) {
     case TrapWarmStart:
         trap.SnmpTrapOID = SNMPv2_warmStart.OID
     case TrapLinkDown:
-        trap.SnmpTrapOID = If_linkDown.OID
+        trap.SnmpTrapOID = Interfaces_linkDown.OID
     case TrapLinkUp:
-        trap.SnmpTrapOID = If_linkUp.OID
+        trap.SnmpTrapOID = Interfaces_linkUp.OID
     case TrapAuthenticationFailure:
         trap.SnmpTrapOID = SNMPv2_authenticationFailure.OID
     case TrapEgpNeighborLoss:
