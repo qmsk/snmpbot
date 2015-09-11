@@ -2,6 +2,7 @@ package main
 
 import (
     "github.com/jessevdk/go-flags"
+    "fmt"
     "net/http"
     "io"
     "encoding/json"
@@ -15,22 +16,16 @@ const (
     HTTP_LISTEN = ":8085"
 )
 
-type options struct {
+type Options struct {
     HttpListen      string  `long:"http-listen" description:"HTTP listen address"`
     SnmpLog         bool    `long:"snmp-log" description:"Log SNMP requests"`
     SnmpTrapListen  string  `long:"snmp-trap-listen" description:"SNMP trap listen address"`
 
+    HostsJson       flags.Filename `short:"H" long:"hosts-json" description:"Path to hosts .json"`
+
     Args    struct {
-        HostsJson   flags.Filename `short:"H" long:"hosts-json" description:"Path to hosts .json"`
-    } `positional-args:"yes" required:"yes"`
-}
-
-/* Top-level state */
-type State struct {
-    hosts       map[string]*Host
-
-    httpServer  *http.Server
-    trapListen  *snmp.TrapListen
+        Hosts       []string
+    } `positional-args:"yes"`
 }
 
 /* Set of active SNMP hosts */
@@ -41,7 +36,55 @@ type Host struct {
     Tables          map[string]*snmp.Table
 }
 
-func (self *State) loadHostsJson (options options, stream io.Reader) error {
+func (self Host) String() string {
+    return self.Name
+}
+
+/* Top-level state */
+type State struct {
+    options     Options
+    hosts       map[string]*Host
+
+    httpServer  *http.Server
+    trapListen  *snmp.TrapListen
+}
+
+func (self *State) init(options Options) {
+    self.options = options
+    self.hosts = make(map[string]*Host)
+}
+
+func (self *State) addHost (name string, snmpConfig snmp.Config) (*Host, error ){
+    if snmpClient, err := snmp.Connect(snmpConfig); err != nil {
+        return nil, fmt.Errorf("Connect %s: %s\n", snmpConfig, err)
+
+    } else {
+        if self.options.SnmpLog {
+            snmpClient.Log()
+        }
+
+        host := &Host{
+            Name:       name,
+            snmpClient: snmpClient,
+
+            Tables:     make(map[string]*snmp.Table),
+        }
+
+        self.hosts[name] = host
+
+        // discover supported tables
+        err := host.snmpClient.ProbeTables(func(snmpTable *snmp.Table){
+            host.Tables[snmpTable.Name] = snmpTable
+        })
+        if err != nil {
+            return nil, fmt.Errorf("Client %s: ProbeTables: %s\n", snmpClient, err)
+        }
+
+        return host, nil
+    }
+}
+
+func (self *State) loadHostsJson (stream io.Reader) error {
     decoder := json.NewDecoder(stream)
     configs := make(map[string]snmp.Config)
 
@@ -50,34 +93,11 @@ func (self *State) loadHostsJson (options options, stream io.Reader) error {
     }
 
     // host Clients
-    self.hosts = make(map[string]*Host)
-
     for name, snmpConfig := range configs {
-        if snmpClient, err := snmp.Connect(snmpConfig); err != nil {
-            log.Printf("Client %s: Connect %s: %s\n", name, snmpConfig, err)
+        if host, err := self.addHost(name, snmpConfig); err != nil {
+            return fmt.Errorf("%s: %v\n", name, err)
         } else {
-            log.Printf("Client %s: Connect %s\n", name, snmpConfig)
-
-            if options.SnmpLog {
-                snmpClient.Log()
-            }
-
-            host := &Host{
-                Name:       name,
-                snmpClient: snmpClient,
-
-                Tables:     make(map[string]*snmp.Table),
-            }
-
-            self.hosts[name] = host
-
-            // discover supported tables
-            err := host.snmpClient.ProbeTables(func(snmpTable *snmp.Table){
-                host.Tables[snmpTable.Name] = snmpTable
-            })
-            if err != nil {
-                log.Printf("Client %s: ProbeTables: %s\n", name, err)
-            }
+            log.Printf("Host %s: %v\n", name, host.snmpClient)
         }
     }
 
@@ -178,10 +198,9 @@ func (self *State) handleHttp (response http.ResponseWriter, request *http.Reque
 }
 
 func main () {
-    var options options = options{
+    options := Options{
         HttpListen: HTTP_LISTEN,
     }
-    var state State
 
     if args, err := flags.Parse(&options); err != nil {
         log.Printf("Options: %s\n", err)
@@ -190,25 +209,43 @@ func main () {
         log.Printf("Options: %+v %+v\n", options, args)
     }
 
+    var state State
+    state.init(options)
+
     // snmp hosts from json
-    if file, err := os.Open((string)(options.Args.HostsJson)); err != nil {
+    if string(options.HostsJson) == "" {
+
+    } else if file, err := os.Open(string(options.HostsJson)); err != nil {
         log.Printf("Open --hosts-json: %s\n", err)
         os.Exit(1)
-    } else if err := state.loadHostsJson(options, file); err != nil {
-        log.Printf("Load --hosts-json=%s: %s\n", options.Args.HostsJson, err)
+    } else if err := state.loadHostsJson(file); err != nil {
+        log.Printf("Load --hosts-json=%s: %s\n", options.HostsJson, err)
         os.Exit(2)
     } else {
-        log.Printf("Hosts: %+v\n", state.hosts)
+
+    }
+
+    // snmp hosts from args
+    baseConfig := snmp.Config{}
+
+    for _, hostString := range options.Args.Hosts {
+        if config, err := snmp.ParseConfig(hostString, baseConfig); err != nil {
+            log.Fatalf("host %v: %s\n", hostString, err)
+        } else if host, err := state.addHost(config.Host, config); err != nil {
+            log.Fatalf("host %v: %s\n", hostString, err)
+        } else {
+            log.Printf("Host %s: %v\n", host, host.snmpClient)
+        }
     }
 
     // snmp listen
     if options.SnmpTrapListen == "" {
 
     } else if trapListen, err := snmp.NewTrapListen(options.SnmpTrapListen); err != nil {
-        log.Printf("Open --snmp-trap listen=%s: %s\n", options.SnmpTrapListen, err)
+        log.Printf("SNMP TrapListen %s: %s\n", options.SnmpTrapListen, err)
         os.Exit(2)
     } else {
-        log.Printf("SMP TrapListen: %s\n", trapListen)
+        log.Printf("SNMP TrapListen: %s\n", trapListen)
 
         state.trapListen = trapListen
 
