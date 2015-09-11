@@ -27,6 +27,7 @@ func main() {
 
     snmpConfigBase := snmp.Config{
         Community:  snmpCommunity,
+        Object:     snmpRoot,
     }
 
     for _, host := range flag.Args() {
@@ -47,13 +48,7 @@ func main() {
         }
 
         // resolve root
-        var walkOid snmp.OID
-
-        if snmpRoot != "" {
-            walkOid = snmp.ParseOID(snmpRoot)
-        } else {
-            walkOid = snmp.OID{}
-        }
+        walkOid := snmp.ParseOID(snmpConfig.Object)
 
         err = snmpClient.WalkTree(walkOid, func(oid snmp.OID, snmpValue interface{}) {
             name := snmp.LookupString(oid)
