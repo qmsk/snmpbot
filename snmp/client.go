@@ -118,7 +118,8 @@ func (self *Client) Log() {
     self.log = log.New(os.Stderr, fmt.Sprintf("snmp.Client %v: ", self), 0)
 }
 
-func (self *Client) send(packet Packet, pdu PDU) error {
+// Encode and send a generic PDU
+func (self *Client) sendPDU(packet Packet, pdu PDU) error {
     self.udpMutex.Lock()
     defer self.udpMutex.Unlock()
 
@@ -140,6 +141,7 @@ func (self *Client) send(packet Packet, pdu PDU) error {
     return nil
 }
 
+// Recv and decode a generic PDU
 func (self *Client) recv() (packet Packet, pdu PDU, err error) {
     // recv
     buf := make([]byte, self.udpSize)
@@ -162,7 +164,7 @@ func (self *Client) recv() (packet Packet, pdu PDU, err error) {
     }
 }
 
-// Go recv() and dispatch responses
+// Goroutine dedicated to handling all incoming response packets
 func (self *Client) recvLoop() {
     for {
         //self.log.Printf("recv...\n")
@@ -177,6 +179,7 @@ func (self *Client) recvLoop() {
     }
 }
 
+// Dispatch response PDU to waiting dispatchRequest()
 func (self *Client) dispatchResponse(pdu PDU) {
     self.requestMutex.Lock()
     defer self.requestMutex.Unlock()
@@ -217,32 +220,18 @@ func (self *Client) finishRequest(request *request) {
     delete(self.requests, request.pdu.RequestID)
 }
 
-func (self *Client) request(requestType wapsnmp.BERType, varBinds []VarBind) ([]VarBind, error) {
-    request := request{
-        packet: Packet{
-            Version:    self.version,
-            Community:  self.community,
-            PduType:    requestType,
-        },
-        pdu: PDU{
-            VarBinds:   varBinds,
-        },
-        responseChan: make(chan PDU),
-    }
+// Start request, retrying send until response or timeout.
+// Uses startRequest/finishRequest to register for dispatchResponse()
+func (self *Client) request(request *request) (PDU, error) {
+    self.startRequest(request)
 
-    // send and wait for response
-    var responsePDU PDU
-    var retry int
+    defer self.finishRequest(request)
 
-    self.startRequest(&request)
-    defer self.finishRequest(&request)
-
-retry:
-    for retry = self.retries; retry > 0; retry-- {
+    for retry := self.retries; retry > 0; retry-- {
         //self.log.Printf("request %v: send\n", request)
 
-        if err := self.send(request.packet, request.pdu); err != nil {
-            return nil, err
+        if err := self.sendPDU(request.packet, request.pdu); err != nil {
+            return PDU{}, err
         }
 
         timeout := time.After(self.timeout)
@@ -251,93 +240,74 @@ retry:
         case <-timeout:
             //self.log.Printf("request %v: retry\n", request)
             continue
-        case responsePDU = <-request.responseChan:
+        case responsePDU := <-request.responseChan:
             //self.log.Printf("request %v: response\n", request)
-            // leaves retry > 0
-            break retry
+            return responsePDU, nil
         }
     }
 
-    // handle response
-    if retry == 0 {
-        //self.log.Printf("request %v: timeout\n", request)
+    return PDU{}, fmt.Errorf("timeout")
+}
 
-        return nil, fmt.Errorf("timeout")
+// Build a generic-PDU request, dispatch it, and return any errors
+func (self *Client) requestPDU(requestType wapsnmp.BERType, requestPDU PDU) (PDU, error) {
+    request := request{
+        packet: Packet{
+            Version:    self.version,
+            Community:  self.community,
+            PduType:    requestType,
+        },
+        pdu: requestPDU,
+        responseChan: make(chan PDU),
+    }
+
+    // send and wait for response
+    if responsePDU, err := self.request(&request); err != nil {
+        //self.log.Printf("request %v: error: %s\n", request, err)
+
+        return responsePDU, err
 
     } else if responsePDU.ErrorStatus != 0 {
         err := RequestError{requestType, responsePDU.ErrorStatus, responsePDU.ErrorIndex}
 
-        //self.log.Printf("request %v: error: %s\n", request, err)
+        //self.log.Printf("request %v: SNMP error: %s\n", request, err)
 
-        return nil, err
+        return responsePDU, err
+
     } else {
         //self.log.Printf("request %v: done\n", request)
 
+        return responsePDU, nil
+    }
+}
+
+// Dispatch a generic-PDU request, with the given OIDs as VarBinds
+func (self *Client) requestGet(requestType wapsnmp.BERType, oids []OID) ([]VarBind, error) {
+    requestPDU := PDU{}
+
+    for _, oid := range oids {
+        requestPDU.VarBinds = append(requestPDU.VarBinds, VarBind{Name: wapsnmp.Oid(oid)})
+    }
+
+    if responsePDU, err := self.requestPDU(requestType, requestPDU); err != nil {
+        return nil, err
+    } else if len(responsePDU.VarBinds) != len(requestPDU.VarBinds) {
+        return nil, fmt.Errorf("response var-binds mismatch")
+    } else {
+        // TODO: noSuchObject, noSuchInstance
         return responsePDU.VarBinds, nil
     }
 }
 
 func (self *Client) Get(oids... OID) ([]VarBind, error) {
-    var requestVars []VarBind
-
     self.log.Printf("Get %v\n", oids)
 
-    for _, oid := range oids {
-        requestVars = append(requestVars, VarBind{Name: wapsnmp.Oid(oid)})
-    }
-
-    if responseVars, err := self.request(wapsnmp.AsnGetRequest, requestVars); err != nil {
-        return nil, err
-    } else if len(responseVars) != len(requestVars) {
-        return nil, fmt.Errorf("response var-binds count mismatch")
-    } else {
-        return responseVars, nil
-    }
+    return self.requestGet(wapsnmp.AsnGetRequest, oids)
 }
 
 func (self *Client) GetNext(oids... OID) ([]VarBind, error) {
-    var requestVars []VarBind
-
     self.log.Printf("GetNext %v\n", oids)
 
-    for _, oid := range oids {
-        requestVars = append(requestVars, VarBind{Name: wapsnmp.Oid(oid)})
-    }
-
-    if responseVars, err := self.request(wapsnmp.AsnGetNextRequest, requestVars); err != nil {
-        return nil, err
-    } else if len(responseVars) != len(requestVars) {
-        return nil, fmt.Errorf("response var-binds count mismatch")
-    } else {
-        return responseVars, nil
-    }
+    return self.requestGet(wapsnmp.AsnGetNextRequest, oids)
 }
 
-func (self *Client) Walk(walkOID OID, handler func (oid OID, value interface{})) error {
-    nextOID := walkOID.Copy()
-
-    for {
-        if varBinds, err := self.GetNext(nextOID); err != nil {
-            return err
-        } else {
-            varBind := varBinds[0]
-            varOID := OID(varBind.Name)
-
-            self.log.Printf("Walk %v: %v\n", walkOID, varOID)
-
-            if varBind.Value == wapsnmp.EndOfMibView {
-                break
-            } else if varOID.Equals(nextOID) {
-                break
-            } else if walkOID.Index(varOID) == nil {
-                break
-            } else {
-                nextOID = varOID
-
-                handler(varOID, varBind.Value)
-            }
-        }
-    }
-
-    return nil
-}

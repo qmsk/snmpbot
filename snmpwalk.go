@@ -55,7 +55,7 @@ func main() {
             walkOid = snmp.OID{}
         }
 
-        err = snmpClient.Walk(walkOid, func(oid snmp.OID, snmpValue interface{}) {
+        err = snmpClient.WalkTree(walkOid, func(oid snmp.OID, snmpValue interface{}) {
             name := snmp.LookupString(oid)
             value := snmpValue
 
