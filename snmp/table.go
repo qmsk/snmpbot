@@ -60,10 +60,12 @@ func loadTable(meta tableMeta, tableValue reflect.Value, varBinds []VarBind) err
 
         // index
         indexValue := reflect.New(meta.indexType).Elem()
-        index := indexValue.Addr().Interface().(Index)
+        indexSyntax := indexValue.Addr().Interface().(IndexSyntax)
 
-        if err := index.setIndex(oidIndex); err != nil {
+        if index, err := indexSyntax.parseIndex(oidIndex); err != nil {
             return err
+        } else {
+            indexValue.Set(reflect.ValueOf(index))
         }
 
         // entry
@@ -90,7 +92,7 @@ func loadTable(meta tableMeta, tableValue reflect.Value, varBinds []VarBind) err
     return nil
 }
 
-// Populate a map[IndexType]*struct{... Type `snmp:"oid"`} from SNMP
+// Populate a map[IndexSyntax]*struct{... Syntax `snmp:"oid"`} from SNMP
 func (self *Client) GetTable(table interface{}) error {
     tableType := reflect.TypeOf(table)
     tableValue := reflect.ValueOf(table)

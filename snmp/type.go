@@ -8,10 +8,10 @@ import (
 )
 
 /* Types */
-type Index interface {
+type IndexSyntax interface {
     // Set value from a table-entry OID sub-identifier index
     // See RFC1442#7.7 SNMPv2 SMI, Mapping of the INDEX clause
-    setIndex(oid OID) error
+    parseIndex(oid OID) (interface{}, error)
 
     // String representation
     String() string
@@ -42,10 +42,12 @@ func (self Integer) MarshalJSON() ([]byte, error) {
     return json.Marshal(int(self))
 }
 
-func (self *Integer) setIndex(oid OID) error {
-    *self = Integer(oid[0])
+func (self Integer) parseIndex(oid OID) (interface{}, error) {
+    if len(oid) != 1 {
+        return nil, fmt.Errorf("Invalid sub-OID for %T index: %v", self, oid)
+    }
 
-    return nil
+    return Integer(oid[0]), nil
 }
 
 func (self Integer) parseValue(snmpValue interface{}) (interface{}, error) {
@@ -200,16 +202,18 @@ func (self MacAddress) MarshalJSON() ([]byte, error) {
     return json.Marshal(self.String())
 }
 
-func (self *MacAddress) setIndex(oid OID) error {
+func (self MacAddress) parseIndex(oid OID) (interface{}, error) {
     if len(oid) != 6 {
-        return fmt.Errorf("Invalid sub-OID for %T index: %v", self, oid)
+        return nil, fmt.Errorf("Invalid sub-OID for %T index: %v", self, oid)
     }
+
+    value := MacAddress{}
 
     for i := 0; i < 6; i++ {
-        self[i] = byte(oid[i])
+        value[i] = byte(oid[i])
     }
 
-    return nil
+    return value, nil
 }
 
 func (self MacAddress) parseValue(snmpValue interface{}) (interface{}, error) {

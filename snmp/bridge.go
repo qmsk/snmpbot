@@ -10,8 +10,12 @@ type Bridge_FdbIndex struct {
     Address     MacAddress
 }
 
-func (self *Bridge_FdbIndex) setIndex (oid OID) error {
-    return self.Address.setIndex(oid)
+func (self *Bridge_FdbIndex) parseIndex (oid OID) (interface{}, error) {
+    if address, err := self.Address.parseIndex(oid); err != nil {
+        return nil, err
+    } else {
+        return Bridge_FdbIndex{Address: address.(MacAddress)}, nil
+    }
 }
 
 func (self Bridge_FdbIndex) String() string {

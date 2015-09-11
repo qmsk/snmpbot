@@ -14,8 +14,12 @@ type InterfaceIndex struct {
     Index       Integer
 }
 
-func (self *InterfaceIndex) setIndex (oid OID) error {
-    return self.Index.setIndex(oid)
+func (self InterfaceIndex) parseIndex (oid OID) (interface{}, error) {
+    if index, err := self.Index.parseIndex(oid); err != nil {
+        return nil, err
+    } else {
+        return InterfaceIndex{Index: index.(Integer)}, nil
+    }
 }
 
 func (self InterfaceIndex) String() string {
