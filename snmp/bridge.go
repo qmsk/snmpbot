@@ -21,7 +21,13 @@ var (
         Entry: []*Object{
             BridgeMIB.register(&Object{OID: Bridge_dot1dTpFdbEntry.define(1),   Name: "dot1dTpFdbAddress",  Syntax: MacAddressSyntax}),
             BridgeMIB.register(&Object{OID: Bridge_dot1dTpFdbEntry.define(2),   Name: "dot1dTpFdbPort",     Syntax: IntegerSyntax}),
-            BridgeMIB.register(&Object{OID: Bridge_dot1dTpFdbEntry.define(3),   Name: "dot1dTpFdbStatus",   Syntax: IntegerSyntax}),    // TODO: enum
+            BridgeMIB.register(&Object{OID: Bridge_dot1dTpFdbEntry.define(3),   Name: "dot1dTpFdbStatus",   Syntax: EnumSyntax{
+                {1, "other"},
+                {2, "invalid"},
+                {3, "learned"},
+                {4, "self"},
+                {5, "mgmt"},
+            }}),
         },
     })
 )
