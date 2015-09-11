@@ -54,7 +54,7 @@ func main() {
         log.Printf("%s: Config %v: Client %v: Table %v\n", host, snmpConfig, snmpClient, snmpTable)
 
         // walk table
-        tableMap, err := snmpClient.GetTableMIB(snmpTable)
+        tableMap, err := snmpClient.GetTable(snmpTable)
         if err != nil {
             log.Fatalf("%s: GetTable %v: %s\n", host, snmpTable, err)
         }

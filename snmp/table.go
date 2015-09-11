@@ -15,7 +15,7 @@ type Table struct {
 }
 
 func (self Table) String() string {
-    return self.Name
+    return fmt.Sprintf("%s::%s", self.MIB, self.Name)
 }
 
 type TableIndex struct {
@@ -23,7 +23,7 @@ type TableIndex struct {
     IndexSyntax     IndexSyntax
 }
 
-func (self *Client) GetTableMIB(table *Table) (map[string]map[string]interface{}, error) {
+func (self *Client) GetTable(table *Table) (map[string]map[string]interface{}, error) {
     tableMap := make(map[string]map[string]interface{})
 
     var tableOID []OID
@@ -156,7 +156,7 @@ func loadTable(meta tableMeta, tableValue reflect.Value, varBinds []VarBind) err
 }
 
 // Populate a map[IndexSyntax]*struct{... Syntax `snmp:"oid"`} from SNMP
-func (self *Client) GetTable(table interface{}) error {
+func (self *Client) GetTableReflect(table interface{}) error {
     tableType := reflect.TypeOf(table)
     tableValue := reflect.ValueOf(table)
 
@@ -168,16 +168,4 @@ func (self *Client) GetTable(table interface{}) error {
     return self.WalkTable(tableMeta.fields, func(varBinds []VarBind) error {
         return loadTable(tableMeta, tableValue, varBinds)
     })
-}
-
-// Walk a table as supported by GetTable(); Calls the given handler func with each index and the entry struct
-func WalkTable(table interface{}, handler func (string, interface{})) {
-    tableValue := reflect.ValueOf(table)
-
-    for _, mapKey := range tableValue.MapKeys() {
-        index := fmt.Sprintf("%v", mapKey.Interface())
-        entry := tableValue.MapIndex(mapKey).Interface()
-
-        handler(index, entry)
-    }
 }
