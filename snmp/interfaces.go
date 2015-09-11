@@ -12,7 +12,7 @@ var (
     If_ifNumber = Interfaces.registerObject("ifNumber", IntegerSyntax, 1)
     If_ifTable  = Interfaces.registerTable(&Table{OID: Interfaces.define(2), Name: "ifTable",
         Index: TableIndex{
-            OID: Interfaces.define(2, 1, 1), Name: "ifIndex", IndexSyntax: IntegerSyntax,
+            Name: "ifIndex", IndexSyntax: IntegerSyntax,
         },
         Entry: []*Object{
             Interfaces.registerObject("ifIndex",        IntegerSyntax,      2,1,1),

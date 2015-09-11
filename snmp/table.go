@@ -15,8 +15,6 @@ type Table struct {
 }
 
 type TableIndex struct {
-    OID
-
     Name            string
     IndexSyntax     IndexSyntax
 }
