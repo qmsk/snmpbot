@@ -33,6 +33,70 @@ var (
     })
 )
 
+var (
+    P_BRIDGE_EnabledStatusSyntax        = EnumSyntax{
+        {1, "enabled"},
+        {2, "disabled"},
+    }
+)
+
+var (
+    Q_BRIDGE_MIB        = registerMIB("Q-BRIDGE-MIB", OID{1,3,6,1,2,1,17,7})    // extends BRIDGE-MIB
+
+    Q_BRIDGE_dot1qBase      = Q_BRIDGE_MIB.define(1,1)
+    Q_BRIDGE_dot1qTp        = Q_BRIDGE_MIB.define(1,2)
+    Q_BRIDGE_dot1qStatic    = Q_BRIDGE_MIB.define(1,3)
+    Q_BRIDGE_dot1qVlan      = Q_BRIDGE_MIB.define(1,4)
+    Q_BRIDGE_dot1vProtocol  = Q_BRIDGE_MIB.define(1,5)
+
+    Q_BRIDGE_dot1qVlanVersionNumber = Q_BRIDGE_MIB.registerObject("dot1qVlanVersionNumber", IntegerSyntax,  Q_BRIDGE_dot1qBase.define(1))
+    Q_BRIDGE_dot1qMaxVlanId         = Q_BRIDGE_MIB.registerObject("dot1qMaxVlanId",         IntegerSyntax,  Q_BRIDGE_dot1qBase.define(2))
+    Q_BRIDGE_dot1qMaxSupportedVlans = Q_BRIDGE_MIB.registerObject("dot1qMaxSupportedVlans", UnsignedSyntax, Q_BRIDGE_dot1qBase.define(3))
+    Q_BRIDGE_dot1qNumVlans          = Q_BRIDGE_MIB.registerObject("dot1qNumVlans",          UnsignedSyntax, Q_BRIDGE_dot1qBase.define(4))
+    Q_BRIDGE_dot1qGvrpStatus        = Q_BRIDGE_MIB.registerObject("dot1qGvrpStatus",        P_BRIDGE_EnabledStatusSyntax,   Q_BRIDGE_dot1qBase.define(5))
+
+    Q_BRIDGE_dot1qTpFdbEntry        = Q_BRIDGE_dot1qTp.define(2, 1)
+    Q_BRIDGE_dot1qTpFdbTable        = Q_BRIDGE_MIB.registerTable(&Table{Node:Node{OID: Q_BRIDGE_dot1qTp.define(2), Name: "dot1qTpFdbTable"},
+        Index:  []TableIndex{
+            {"dot1qFdbId",          UnsignedSyntax},
+            {"dot1qTpFdbAddress",   MacAddressSyntax},
+        },
+        Entry:  []*Object{
+            // dot1qTpFdbAddress .1 not-accessible
+            Q_BRIDGE_MIB.registerObject("dot1qTpFdbPort",      IntegerSyntax,          Q_BRIDGE_dot1qTpFdbEntry.define(2)),
+            Q_BRIDGE_MIB.registerObject("dot1qTpFdbStatus",    EnumSyntax{
+                {1, "other"},
+                {2, "invalid"},
+                {3, "learned"},
+                {4, "self"},
+                {5, "mgmt"},
+            }, Q_BRIDGE_dot1qTpFdbEntry.define(3)),
+        },
+    })
+
+    Q_BRIDGE_dot1qVlanNumDeletes    = Q_BRIDGE_MIB.registerObject("dot1qVlanNumDeletes", CounterSyntax, Q_BRIDGE_dot1qVlan.define(1))
+    Q_BRIDGE_dot1qVlanCurrentEntry  = Q_BRIDGE_dot1qVlan.define(2, 1)
+    Q_BRIDGE_dot1qVlanCurrentTable  = Q_BRIDGE_MIB.registerTable(&Table{Node:Node{OID: Q_BRIDGE_dot1qVlan.define(2), Name: "dot1qVlanCurrentTable"},
+        Index: []TableIndex{
+            {"dot1qVlanTimeMark",   TimeTicksSyntax},
+            {"dot1qVlanIndex",      UnsignedSyntax},
+        },
+        Entry:  []*Object{
+            // dot1qVlanTimeMark not-accessible .1
+            // dot1qVlanIndex not-accessible .2
+            Q_BRIDGE_MIB.registerObject("dot1qVlanFdbId",                   UnsignedSyntax,     Q_BRIDGE_dot1qVlanCurrentEntry.define(3)),
+            Q_BRIDGE_MIB.registerObject("dot1qVlanCurrentEgressPorts",      BinarySyntax,       Q_BRIDGE_dot1qVlanCurrentEntry.define(4)),
+            Q_BRIDGE_MIB.registerObject("dot1qVlanCurrentUntaggedPorts",    BinarySyntax,       Q_BRIDGE_dot1qVlanCurrentEntry.define(5)),
+            Q_BRIDGE_MIB.registerObject("dot1qVlanStatus",                  EnumSyntax{
+                {1, "other"},
+                {2, "permanent"},
+                {3, "dynamicGvrp"},
+            }, Q_BRIDGE_dot1qVlanCurrentEntry.define(6)),
+            Q_BRIDGE_MIB.registerObject("dot1qVlanCreationTime",            TimeTicksSyntax,    Q_BRIDGE_dot1qVlanCurrentEntry.define(7)),
+        },
+    })
+)
+
 type Bridge_FdbIndex struct {
     Address     MacAddress
 }
