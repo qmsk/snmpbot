@@ -76,7 +76,7 @@ func (self *Client) GetTable(table *Table) (map[string]map[string]interface{}, e
             }
 
             if value, err := tableEntry.Syntax.parseValue(varBind.Value); err != nil {
-                return err
+                return fmt.Errorf("invalid value for %s: %s", tableEntry.Name, err)
             } else {
                 tableMap[indexKey][tableEntry.Name] = value
             }

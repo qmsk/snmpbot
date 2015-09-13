@@ -17,8 +17,6 @@ func (self *Client) WalkTree(walkOID OID, handler func (oid OID, value interface
             varBind := varBinds[0]
             varOID := OID(varBind.Name)
 
-            self.log.Printf("WalkTree %v: %v\n", walkOID, varOID)
-
             if varBind.Value == wapsnmp.EndOfMibView {
                 break
             } else if varOID.Equals(nextOID) {
