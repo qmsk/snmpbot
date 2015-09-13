@@ -181,6 +181,16 @@ func (self TimeTicks) MarshalJSON() ([]byte, error) {
     return json.Marshal(time.Duration(self))
 }
 
+func (self TimeTicks) peekIndex(oid OID) int {
+    return 1
+}
+
+func (self TimeTicks) parseIndex(oid OID) (IndexSyntax, error) {
+    value := time.Duration(oid[0] * 10) * time.Millisecond
+
+    return TimeTicks(value), nil
+}
+
 func (self TimeTicks) parseValue(snmpValue interface{}) (interface{}, error) {
     switch value := snmpValue.(type) {
     case time.Duration:
