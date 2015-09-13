@@ -38,6 +38,7 @@ func (self *Client) WalkTree(walkOID OID, handler func (oid OID, value interface
 
 // Walk through a table with the given list of entry field OIDs
 // Call given handler with each returned row, returning any error.
+// Any missing columns in the table will be given as empty VarBind's (Name == nil), as long as there is at least one column value.
 func (self *Client) WalkTable(tableOID []OID, handler func ([]VarBind) error) error {
     var nextOID []OID
 
@@ -45,28 +46,44 @@ func (self *Client) WalkTable(tableOID []OID, handler func ([]VarBind) error) er
         nextOID = append(nextOID, oid)
     }
 
+    // continue walking as long as we have something
     for {
         varBinds, err := self.GetNext(nextOID...)
         if err != nil {
             return err
         }
 
+        // check result, update nextOIDs
+        valid := false
+
         for i, varBind := range varBinds {
             oid := OID(varBind.Name)
 
             if varBind.Value == wapsnmp.EndOfMibView { // XXX: NoSuchObject, NoSuchInstance
+                varBinds[i] = VarBind{}
+
                 continue
             } else if oid.Equals(nextOID[i]) {
+                varBinds[i] = VarBind{}
+
                 // not making progress
-                return nil
+                continue
             } else if tableOID[i].Index(oid) == nil {
+                varBinds[i] = VarBind{}
+
                 // walked out of table
-                return nil
-            } else {
-                nextOID[i] = oid
+                continue
             }
+
+            nextOID[i] = oid
+            valid = true
         }
 
+        if !valid {
+            break
+        }
+
+        // valid row
         if err := handler(varBinds); err != nil {
             return err
         }
