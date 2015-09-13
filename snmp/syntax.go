@@ -115,6 +115,10 @@ var BinarySyntax Binary
 
 
 /* ObjectID */
+func (self OID) MarshalJSON() ([]byte, error) {
+    return json.Marshal(self.String())
+}
+
 func (self OID) parseValue(snmpValue interface{}) (interface{}, error) {
     switch value := snmpValue.(type) {
     case wapsnmp.Oid:
