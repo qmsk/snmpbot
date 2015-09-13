@@ -92,18 +92,6 @@ func (self *Client) GetTable(table *Table) (map[string]map[string]interface{}, e
     }
 }
 
-// Probe for supported Tables
-func (self *Client) ProbeTables(handler func(*Table)) error {
-    for _, mib := range mibs {
-        for _, table := range mib.tables {
-            // TODO: probe...
-            handler(table)
-        }
-    }
-
-    return nil
-}
-
 /* Reflection-based table struct-maps */
 type tableMeta struct {
     indexType   reflect.Type
