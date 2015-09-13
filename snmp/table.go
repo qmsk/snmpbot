@@ -23,7 +23,9 @@ type TableIndex struct {
     IndexSyntax     IndexSyntax
 }
 
-// Get an entire table, returning as a map
+// Walk through a table, returning all entries as an indexed map.
+// The map index is a combined string representation of the table's index syntax, which is only intended to be unique, and not have any semantic value.
+// Each table entry will contain the separate index values as "[...]" fields.
 func (self *Client) GetTable(table *Table) (map[string]map[string]interface{}, error) {
     tableMap := make(map[string]map[string]interface{})
 
@@ -37,9 +39,16 @@ func (self *Client) GetTable(table *Table) (map[string]map[string]interface{}, e
         for i, varBind := range varBinds {
             oid := OID(varBind.Name)
 
+            if oid == nil {
+                continue
+            }
+
             tableEntry := table.Entry[i]
             indexOID := tableEntry.OID.Index(oid)
-            var index string
+
+            // Parse the entry Index into a sequence of index names within the entry, and a string key
+            var indexValues []IndexSyntax
+            var indexKey string
 
             for _, tableIndex := range table.Index {
                 if indexLength := tableIndex.IndexSyntax.peekIndex(indexOID); indexLength <= 0 || indexLength > len(indexOID) {
@@ -49,23 +58,27 @@ func (self *Client) GetTable(table *Table) (map[string]map[string]interface{}, e
                     return err
 
                 } else {
+                    indexValues = append(indexValues, indexValue)
+                    indexKey += "[" + indexValue.String() + "]"
+
+                    // slice for next index
                     indexOID = indexOID[indexLength:]
-                    if index == "" {
-                        index = indexValue.String()
-                    } else {
-                        index += "/" + indexValue.String()
-                    }
                 }
             }
 
-            if _, found := tableMap[index]; !found {
-                tableMap[index] = make(map[string]interface{})
+            if _, found := tableMap[indexKey]; !found {
+                tableMap[indexKey] = make(map[string]interface{})
+
+                // populate the index fields
+                for i, tableIndex := range table.Index {
+                    tableMap[indexKey]["[" + tableIndex.Name + "]"] = indexValues[i]
+                }
             }
 
             if value, err := tableEntry.Syntax.parseValue(varBind.Value); err != nil {
                 return err
             } else {
-                tableMap[index][tableEntry.Name] = value
+                tableMap[indexKey][tableEntry.Name] = value
             }
         }
 
