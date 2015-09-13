@@ -389,3 +389,40 @@ func (self EnumSyntax) parseValue(snmpValue interface{}) (interface{}, error) {
         return nil, SyntaxError{self, snmpValue}
     }
 }
+
+/* BRIDGE-MIB */
+type BridgeId struct {
+    Priority    uint
+    Address     MacAddress
+}
+
+func (self BridgeId) String() string {
+    return fmt.Sprintf("%d:%s", self.Priority, self.Address)
+}
+
+func (self BridgeId) MarshalJSON() ([]byte, error) {
+    return json.Marshal(self.String())
+}
+
+func (self BridgeId) parseValue(snmpValue interface{}) (interface{}, error) {
+    switch value := snmpValue.(type) {
+    case string:
+        if len(value) != 8 {
+            return nil, SyntaxError{self, snmpValue}
+        }
+
+        var typeValue BridgeId
+
+        typeValue.Priority = uint(value[0]) << 8 + uint(value[1])
+
+        for i := 0; i < 6; i++ {
+            typeValue.Address[i] = byte(value[2+i])
+        }
+
+        return typeValue, nil
+    default:
+        return nil, SyntaxError{self, snmpValue}
+    }
+}
+
+var BridgeIdSyntax BridgeId

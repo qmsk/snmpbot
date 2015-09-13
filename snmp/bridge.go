@@ -5,11 +5,51 @@ var (
     BridgeMIB       = registerMIB("BRIDGE-MIB", OID{1,3,6,1,2,1,17})
 
     Bridge_dot1dBase    = BridgeMIB.define(1)
+    Bridge_dot1dStp     = BridgeMIB.define(2)
     Bridge_dot1dTp      = BridgeMIB.define(4)
+
 
     Bridge_dot1dBaseBridgeAddress       = BridgeMIB.registerObject("dot1dBaseBridgeAddress",        MacAddressSyntax,   Bridge_dot1dBase.define(1))
     Bridge_dot1dBaseNumPorts            = BridgeMIB.registerObject("dot1dBaseNumPorts",             IntegerSyntax,      Bridge_dot1dBase.define(2))
     Bridge_dot1dBaseType                = BridgeMIB.registerObject("dot1dBaseType",                 IntegerSyntax,      Bridge_dot1dBase.define(3))
+
+    Bridge_dot1dStpProtocolSpecification    = BridgeMIB.registerObject("dot1dStpProtocolSpecification",     IntegerSyntax,      Bridge_dot1dStp.define(1))
+    Bridge_dot1dStpPriority                 = BridgeMIB.registerObject("dot1dStpPriority",                  IntegerSyntax,      Bridge_dot1dStp.define(2))
+    Bridge_dot1dStpTimeSinceTopologyChange  = BridgeMIB.registerObject("dot1dStpTimeSinceTopologyChange",   TimeTicksSyntax,    Bridge_dot1dStp.define(3))
+    Bridge_dot1dStpTopChanges               = BridgeMIB.registerObject("dot1dStpTopChanges",                CounterSyntax,      Bridge_dot1dStp.define(4))
+    Bridge_dot1dStpDesignatedRoot           = BridgeMIB.registerObject("dot1dStpDesignatedRoot",            BridgeIdSyntax,     Bridge_dot1dStp.define(5))
+    Bridge_dot1dStpRootCost                 = BridgeMIB.registerObject("dot1dStpRootCost",                  IntegerSyntax,      Bridge_dot1dStp.define(6))
+    Bridge_dot1dStpRootPort                 = BridgeMIB.registerObject("dot1dStpRootPort",                  IntegerSyntax,      Bridge_dot1dStp.define(7))
+
+    Bridge_dot1dStpPortEntry                = Bridge_dot1dStp.define(15, 1)
+    Bridge_dot1dStpPortTable                = BridgeMIB.registerTable(&Table{Node:Node{OID: Bridge_dot1dStp.define(15), Name: "dot1dStpPortTable"},
+        Index:  []TableIndex{
+            {"dot1dStpPort",    IntegerSyntax},
+        },
+        Entry:  []*Object{
+            BridgeMIB.registerObject("dot1dStpPort",                    IntegerSyntax,          Bridge_dot1dStpPortEntry.define(1)),
+            BridgeMIB.registerObject("dot1dStpPortPriority",            IntegerSyntax,          Bridge_dot1dStpPortEntry.define(2)),
+            BridgeMIB.registerObject("dot1dStpPortState",               EnumSyntax{
+                {1, "disabled"},
+                {2, "blocking"},
+                {3, "listening"},
+                {4, "learning"},
+                {5, "forwarding"},
+                {6, "broken"},
+            }, Bridge_dot1dStpPortEntry.define(3)),
+            BridgeMIB.registerObject("dot1dStpPortEnable",              EnumSyntax{
+                {1, "enabled"},
+                {2, "disabled"},
+            }, Bridge_dot1dStpPortEntry.define(4)),
+            BridgeMIB.registerObject("dot1dStpPortPathCost",            IntegerSyntax,          Bridge_dot1dStpPortEntry.define(5)),
+            BridgeMIB.registerObject("dot1dStpPortDesignatedRoot",      BridgeIdSyntax,         Bridge_dot1dStpPortEntry.define(6)),
+            BridgeMIB.registerObject("dot1dStpPortDesignatedCost",      IntegerSyntax,          Bridge_dot1dStpPortEntry.define(7)),
+            BridgeMIB.registerObject("dot1dStpPortDesignatedBridge",    BridgeIdSyntax,         Bridge_dot1dStpPortEntry.define(8)),
+            BridgeMIB.registerObject("dot1dStpPortDesignatedPort",      BinarySyntax,           Bridge_dot1dStpPortEntry.define(9)),
+            BridgeMIB.registerObject("dot1dStpPortForwardTransitions",  CounterSyntax,          Bridge_dot1dStpPortEntry.define(10)),
+            // BridgeMIB.registerObject("dot1dStpPortPathCost32",          IntegerSyntax,          Bridge_dot1dStpPortEntry.define(11)), XXX: compat issues
+        },
+    })
 
     Bridge_dot1dTpLearnedEntryDiscards  = BridgeMIB.registerObject("dot1dTpLearnedEntryDiscards",   CounterSyntax,      Bridge_dot1dTp.define(1))
     Bridge_dot1dTpAgingTime             = BridgeMIB.registerObject("dot1dTpAgingTime",              IntegerSyntax,      Bridge_dot1dTp.define(2))
