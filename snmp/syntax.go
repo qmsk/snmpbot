@@ -163,6 +163,14 @@ func (self Gauge) MarshalJSON() ([]byte, error) {
     return json.Marshal(uint(self))
 }
 
+func (self Gauge) peekIndex(oid OID) int {
+    return 1
+}
+
+func (self Gauge) parseIndex(oid OID) (IndexSyntax, error) {
+    return Gauge(oid[0]), nil
+}
+
 func (self Gauge) parseValue(snmpValue interface{}) (interface{}, error) {
     switch value := snmpValue.(type) {
     case wapsnmp.Gauge:
@@ -173,6 +181,7 @@ func (self Gauge) parseValue(snmpValue interface{}) (interface{}, error) {
 }
 
 var GaugeSyntax Gauge
+var UnsignedSyntax Gauge    // indistinguishable
 
 /* TimeTicks */
 type TimeTicks time.Duration
