@@ -18,6 +18,7 @@ const (
 
 type Options struct {
     HttpListen      string  `long:"http-listen" description:"HTTP listen address"`
+    HttpStatic      string  `long:"http-static" description:"HTTP /static path"`
     SnmpLog         bool    `long:"snmp-log" description:"Log SNMP requests"`
     SnmpTrapListen  string  `long:"snmp-trap-listen" description:"SNMP trap listen address"`
 
@@ -257,11 +258,16 @@ func main () {
         Addr:   options.HttpListen,
     }
 
-    http.HandleFunc("/", state.handleHttp)
+    http.HandleFunc("/snmp/", state.handleHttp)
 
-    // XXX: go http
+    if options.HttpStatic != "" {
+        httpStatic := http.FileServer(http.Dir(options.HttpStatic))
+
+        http.Handle("/static/", http.StripPrefix("/static/", httpStatic))
+    }
+
+    // run http
     if err := state.httpServer.ListenAndServe(); err != nil {
-        log.Printf("Start --http-listen=%s: %s\n", options.HttpListen, err)
-        os.Exit(1)
+        log.Fatalf("Start --http-listen=%s: %s\n", state.options.HttpListen, err)
     }
 }
