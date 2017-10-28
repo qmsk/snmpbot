@@ -46,18 +46,28 @@ const (
 	TrapEnterpriseSpecific    GenericTrap = 6
 )
 
-type ValueError int // context-specific NULLs in VarBind.Value
+type ErrorValue int // context-specific NULLs in VarBind.Value
 
 const (
-	NoSuchObjectError   ValueError = 0
-	NoSuchInstanceError ValueError = 1
-	EndOfMibViewError   ValueError = 2
+	NoSuchObjectValue   ErrorValue = 0
+	NoSuchInstanceValue ErrorValue = 1
+	EndOfMibViewValue   ErrorValue = 2
+)
+
+type ApplicationValueType int // application-specific values in VarBind.Value
+
+const (
+	IPAddressType   ApplicationValueType = 0
+	Counter32Type   ApplicationValueType = 1
+	Gauge32Type     ApplicationValueType = 2
+	TimeTicks32Type ApplicationValueType = 3
+	OpaqueType      ApplicationValueType = 4
 )
 
 type Packet struct {
 	Version   Version
 	Community []byte
-	PDU       asn1.RawValue
+	RawPDU    asn1.RawValue
 }
 
 type PDU struct {
@@ -78,6 +88,12 @@ type TrapPDU struct {
 }
 
 type VarBind struct {
-	Name  OID
-	Value interface{}
+	Name     OID
+	RawValue asn1.RawValue
 }
+
+type IPAddress net.IP
+type Counter32 uint32
+type Gauge32 uint32
+type TimeTicks32 uint32 // duration of 1/100 s
+type Opaque []byte

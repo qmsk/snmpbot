@@ -51,7 +51,7 @@ func TestPacketMarshal(t *testing.T) {
 		t.Errorf("pdu.pack: %v", err)
 		return
 	} else {
-		packet.PDU = packedPDU
+		packet.RawPDU = packedPDU
 	}
 
 	if bytes, err := packet.marshal(); err != nil {
@@ -61,36 +61,130 @@ func TestPacketMarshal(t *testing.T) {
 	}
 }
 
-func TestPacketUnmarshal(t *testing.T) {
+type packetUnmarshalTest struct {
+	data    []byte
+	packet  Packet
+	pduType PDUType
+	pdu     PDU
+	values  []interface{}
+}
+
+func testPacketUnmarshal(t *testing.T, test packetUnmarshalTest) {
 	var packet Packet
 	var pdu PDU
 
-	var expectedPacket = Packet{
-		Version:   SNMPv2c,
-		Community: []byte("public"),
-	}
-	var expectedPDU = PDU{
-		RequestID: 24800755,
-		VarBinds: []VarBind{
-			VarBind{
-				Name:  OID{1, 3, 6, 1, 2, 1, 1, 5, 0},
-				Value: []byte("UBNT EdgeSwitch"),
-			},
-		},
-	}
-
-	if err := packet.unmarshal(testGetResponsePacket); err != nil {
+	if err := packet.unmarshal(test.data); err != nil {
 		t.Errorf("packet.unmarshal: %v", err)
 		return
 	}
 
-	if err := pdu.unpack(packet.PDU); err != nil {
+	if err := pdu.unpack(packet.RawPDU); err != nil {
 		t.Errorf("pdu.unpack: %v", err)
 		return
 	}
 
-	assert.Equal(t, expectedPacket.Version, packet.Version)
-	assert.Equal(t, expectedPacket.Community, packet.Community)
-	assert.Equal(t, GetResponseType, packet.PDUType())
-	assert.Equal(t, expectedPDU, pdu)
+	assert.Equal(t, test.packet.Version, packet.Version)
+	assert.Equal(t, test.packet.Community, packet.Community)
+	assert.Equal(t, test.pduType, packet.PDUType())
+	assert.Equal(t, test.pdu.RequestID, pdu.RequestID)
+	assert.Equal(t, test.pdu.ErrorStatus, pdu.ErrorStatus)
+	assert.Equal(t, test.pdu.ErrorIndex, pdu.ErrorIndex)
+
+	for i, varBind := range pdu.VarBinds {
+		if i >= len(test.pdu.VarBinds) {
+			t.Errorf("extra varBind[%d]: %#v", i, varBind)
+			continue
+		}
+
+		assert.Equal(t, test.pdu.VarBinds[i].Name, varBind.Name, "VarBinds[i].Name", i)
+
+		if value, err := varBind.Value(); err != nil {
+			t.Errorf("varBind[%d].Value: %s", i, err)
+			continue
+		} else if i >= len(test.values) {
+			t.Fatalf("missing test.values for varBind[%d]", i)
+		} else {
+			assert.Equal(t, test.values[i], value, "VarBinds[i].Value", i)
+		}
+	}
+}
+
+func TestPacketUnmarshal(t *testing.T) {
+	testPacketUnmarshal(t, packetUnmarshalTest{
+		data: decodeTestPacket(`
+        30 38 02 01 01 04 06 70 75 62 6c 69 63 a2 2b 02
+        04 01 7a 6d f3 02 01 00 02 01 00 30 1d 30 1b 06
+        08 2b 06 01 02 01 01 05 00 04 0f 55 42 4e 54 20
+        45 64 67 65 53 77 69 74 63 68
+    `),
+		packet: Packet{
+			Version:   SNMPv2c,
+			Community: []byte("public"),
+		},
+		pduType: GetResponseType,
+		pdu: PDU{
+			RequestID: 24800755,
+			VarBinds: []VarBind{
+				VarBind{
+					Name: OID{1, 3, 6, 1, 2, 1, 1, 5, 0},
+				},
+			},
+		},
+		values: []interface{}{
+			[]byte("UBNT EdgeSwitch"),
+		},
+	})
+}
+
+func TestPacketUnmarshalCounter32(t *testing.T) {
+	testPacketUnmarshal(t, packetUnmarshalTest{
+		data: decodeTestPacket(`
+			30 30 02 01 01 04 06 70 75 62 6c 69 63 a2 23 02
+			04 29 9e 37 ef 02 01 00 02 01 00 30 15 30 13 06
+			0a 2b 06 01 02 01 02 02 01 0a 01 41 05 00 a8 dc
+			8b 3b
+		`),
+		packet: Packet{
+			Version:   SNMPv2c,
+			Community: []byte("public"),
+		},
+		pduType: GetResponseType,
+		pdu: PDU{
+			RequestID: 698234863,
+			VarBinds: []VarBind{
+				VarBind{
+					Name: OID{1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1},
+				},
+			},
+		},
+		values: []interface{}{
+			Counter32(2833025851),
+		},
+	})
+}
+
+func TestPacketUnmarshalNoSuchInstance(t *testing.T) {
+	testPacketUnmarshal(t, packetUnmarshalTest{
+		data: decodeTestPacket(`
+			30 29 02 01 01 04 06 70 75 62 6c 69 63 a2 1c 02
+			04 47 6b 38 88 02 01 00 02 01 00 30 0e 30 0c 06
+			08 2b 06 01 02 01 01 05 01 81 00
+		`),
+		packet: Packet{
+			Version:   SNMPv2c,
+			Community: []byte("public"),
+		},
+		pduType: GetResponseType,
+		pdu: PDU{
+			RequestID: 1198209160,
+			VarBinds: []VarBind{
+				VarBind{
+					Name: OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
+				},
+			},
+		},
+		values: []interface{}{
+			NoSuchInstanceValue,
+		},
+	})
 }
