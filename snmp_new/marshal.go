@@ -35,6 +35,7 @@ func (packet Packet) marshal() ([]byte, error) {
 func (pdu PDU) pack(pduType PDUType) (asn1.RawValue, error) {
 	for i, varBind := range pdu.VarBinds {
 		if varBind.Value == nil {
+			// encoding/asn1 refuses to marshal the nil interface
 			pdu.VarBinds[i].Value = asn1.NullRawValue
 		}
 	}
@@ -46,15 +47,3 @@ func (pdu PDU) pack(pduType PDUType) (asn1.RawValue, error) {
 		pdu.VarBinds,
 	)
 }
-
-/*
-func packVarBinds(varBinds []VarBind) []asn1.RawValue {
-	var packed = make([]asn1.RawValue, len(varBinds))
-
-	for i, varBind := range varBinds {
-		packed[i] = varBind.pack()
-	}
-
-	return packed
-}
-*/
