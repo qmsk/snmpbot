@@ -44,6 +44,15 @@ func (varBind VarBind) OID() OID {
 	return OID(varBind.Name)
 }
 
+// Return ErrorValue if exists, otherwise nil
+func (varBind VarBind) ErrorValue() error {
+	if varBind.RawValue.Class == asn1.ClassContextSpecific {
+		return ErrorValue(varBind.RawValue.Tag)
+	}
+
+	return nil
+}
+
 func (varBind VarBind) Value() (interface{}, error) {
 	switch varBind.RawValue.Class {
 	case asn1.ClassUniversal:
