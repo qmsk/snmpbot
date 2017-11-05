@@ -165,12 +165,49 @@ func TestGetRequest(t *testing.T) {
 	})
 }
 
+func TestGetRequestErrorValue(t *testing.T) {
+	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0}
+	var value = snmp.NoSuchObjectValue
+
+	withTestClient(t, func(transport *testTransport, client *Client) {
+		transport.mockGet(oid, snmp.MakeVarBind(oid, value))
+
+		if varBinds, err := client.Get(oid); err != nil {
+			t.Fatalf("Get(%v): %v", oid, err)
+		} else {
+			assertVarBind(t, varBinds, 0, oid, value)
+		}
+	})
+}
+
 func TestWalk(t *testing.T) {
 	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1} // IF-MIB::ifName
 	var varBinds = []snmp.VarBind{
 		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, []byte("if1")),
 		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, []byte("if2")),
 		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 2, 1}, snmp.Counter32(0)),
+	}
+
+	withTestClient(t, func(transport *testTransport, client *Client) {
+		transport.mockGetNext(oid, varBinds[0])
+		transport.mockGetNext(varBinds[0].OID(), varBinds[1])
+		transport.mockGetNext(varBinds[1].OID(), varBinds[2])
+
+		if err := client.Walk(func(varBinds ...snmp.VarBind) error {
+
+			return nil
+		}, oid); err != nil {
+			t.Fatalf("Walk(%v): %v", oid, err)
+		}
+	})
+}
+
+func TestWalkV2(t *testing.T) {
+	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1} // IF-MIB::ifName
+	var varBinds = []snmp.VarBind{
+		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, []byte("if1")),
+		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, []byte("if2")),
+		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, snmp.EndOfMibViewValue),
 	}
 
 	withTestClient(t, func(transport *testTransport, client *Client) {
