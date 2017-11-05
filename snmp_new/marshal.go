@@ -28,11 +28,11 @@ func marshalSequence(cls int, tag int, values ...interface{}) ([]byte, error) {
 	}
 }
 
-func (packet Packet) marshal() ([]byte, error) {
+func (packet Packet) Marshal() ([]byte, error) {
 	return asn1.Marshal(packet)
 }
 
-func (pdu PDU) pack(pduType PDUType) (asn1.RawValue, error) {
+func (pdu PDU) Pack(pduType PDUType) (asn1.RawValue, error) {
 	for i, varBind := range pdu.VarBinds {
 		if varBind.RawValue.Class == 0 && varBind.RawValue.Tag == 0 {
 			pdu.VarBinds[i].RawValue = asn1.NullRawValue

@@ -29,7 +29,7 @@ func unpack(raw asn1.RawValue, value interface{}) error {
 	return nil
 }
 
-func (packet *Packet) unmarshal(buf []byte) error {
+func (packet *Packet) Unmarshal(buf []byte) error {
 	if _, err := ber.Unmarshal(buf, packet); err != nil {
 		return err
 	} else {
@@ -48,7 +48,7 @@ func (packet *Packet) PDUType() PDUType {
 	return PDUType(packet.RawPDU.Tag)
 }
 
-func (pdu *PDU) unpack(raw asn1.RawValue) error {
+func (pdu *PDU) Unpack(raw asn1.RawValue) error {
 	if raw.Class != asn1.ClassContextSpecific {
 		return fmt.Errorf("unexpected PDU: ASN.1 class=%d tag=%d", raw.Class, raw.Tag)
 	}

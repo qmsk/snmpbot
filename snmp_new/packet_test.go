@@ -17,68 +17,44 @@ func decodeTestPacket(str string) []byte {
 	}
 }
 
-var testGetNextRequestPacket = decodeTestPacket(`
-30 21 											-- SEQUENCE
-02 01 01 										-- INTEGER version
-04 06 70 75 62 6c 69 63 		-- OCTET STRING community
-a1 14												-- GetNextRequest-PDU
-  02 02 05 39									-- INTEGER request-id
-  02 01 00										-- INTEGER error-status
-  02 01 00										-- INTEGER error-index
-  30 08												-- SEQUENCE variable-bindings
-    30 06												-- SEQUENCE
-      06 02 2b 06									-- OID name
-      05 00												-- NULL value
-`)
-
-var testGetResponsePacket = decodeTestPacket(`
-30 38 02 01 01 04 06 70 75 62 6c 69 63 a2 2b 02
-04 01 7a 6d f3 02 01 00 02 01 00 30 1d 30 1b 06
-08 2b 06 01 02 01 01 05 00 04 0f 55 42 4e 54 20
-45 64 67 65 53 77 69 74 63 68
-`)
-
-func TestPacketMarshal(t *testing.T) {
-	var packet = Packet{Version: SNMPv2c, Community: []byte("public")}
-	var pdu = PDU{
-		RequestID: 1337,
-		VarBinds: []VarBind{
-			VarBind{Name: OID{1, 3, 6}},
-		},
-	}
-
-	if packedPDU, err := pdu.pack(GetNextRequestType); err != nil {
-		t.Errorf("pdu.pack: %v", err)
-		return
-	} else {
-		packet.RawPDU = packedPDU
-	}
-
-	if bytes, err := packet.marshal(); err != nil {
-		t.Errorf("packet.marshal: %v", err)
-	} else {
-		assert.Equal(t, testGetNextRequestPacket, bytes)
-	}
-}
-
-type packetUnmarshalTest struct {
-	data    []byte
+type packetTest struct {
+	bytes   []byte
 	packet  Packet
 	pduType PDUType
 	pdu     PDU
 	values  []interface{}
 }
 
-func testPacketUnmarshal(t *testing.T, test packetUnmarshalTest) {
+func testPacketMarshal(t *testing.T, test packetTest) {
+	for i, value := range test.values {
+		if err := test.pdu.VarBinds[i].Set(value); err != nil {
+			t.Fatalf("pdu.VarBinds[%d].Pack: %v", i, err)
+		}
+	}
+
+	if packedPDU, err := test.pdu.Pack(test.pduType); err != nil {
+		t.Fatalf("pdu.pack: %v", err)
+	} else {
+		test.packet.RawPDU = packedPDU
+	}
+
+	if bytes, err := test.packet.Marshal(); err != nil {
+		t.Fatalf("packet.marshal: %v", err)
+	} else {
+		assert.Equal(t, test.bytes, bytes)
+	}
+}
+
+func testPacketUnmarshal(t *testing.T, test packetTest) {
 	var packet Packet
 	var pdu PDU
 
-	if err := packet.unmarshal(test.data); err != nil {
+	if err := packet.Unmarshal(test.bytes); err != nil {
 		t.Errorf("packet.unmarshal: %v", err)
 		return
 	}
 
-	if err := pdu.unpack(packet.RawPDU); err != nil {
+	if err := pdu.Unpack(packet.RawPDU); err != nil {
 		t.Errorf("pdu.unpack: %v", err)
 		return
 	}
@@ -110,8 +86,8 @@ func testPacketUnmarshal(t *testing.T, test packetUnmarshalTest) {
 }
 
 func TestPacketUnmarshal(t *testing.T) {
-	testPacketUnmarshal(t, packetUnmarshalTest{
-		data: decodeTestPacket(`
+	testPacketUnmarshal(t, packetTest{
+		bytes: decodeTestPacket(`
         30 38 02 01 01 04 06 70 75 62 6c 69 63 a2 2b 02
         04 01 7a 6d f3 02 01 00 02 01 00 30 1d 30 1b 06
         08 2b 06 01 02 01 01 05 00 04 0f 55 42 4e 54 20
@@ -136,9 +112,36 @@ func TestPacketUnmarshal(t *testing.T) {
 	})
 }
 
+func TestPacketMarshalCounter32(t *testing.T) {
+	testPacketMarshal(t, packetTest{
+		bytes: decodeTestPacket(`
+			30 30 02 01 01 04 06 70 75 62 6c 69 63 a2 23 02
+			04 29 9e 37 ef 02 01 00 02 01 00 30 15 30 13 06
+			0a 2b 06 01 02 01 02 02 01 0a 01 41 05 00 a8 dc
+			8b 3b
+		`),
+		packet: Packet{
+			Version:   SNMPv2c,
+			Community: []byte("public"),
+		},
+		pduType: GetResponseType,
+		pdu: PDU{
+			RequestID: 698234863,
+			VarBinds: []VarBind{
+				VarBind{
+					Name: OID{1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1},
+				},
+			},
+		},
+		values: []interface{}{
+			Counter32(2833025851),
+		},
+	})
+}
+
 func TestPacketUnmarshalCounter32(t *testing.T) {
-	testPacketUnmarshal(t, packetUnmarshalTest{
-		data: decodeTestPacket(`
+	testPacketUnmarshal(t, packetTest{
+		bytes: decodeTestPacket(`
 			30 30 02 01 01 04 06 70 75 62 6c 69 63 a2 23 02
 			04 29 9e 37 ef 02 01 00 02 01 00 30 15 30 13 06
 			0a 2b 06 01 02 01 02 02 01 0a 01 41 05 00 a8 dc
@@ -164,8 +167,8 @@ func TestPacketUnmarshalCounter32(t *testing.T) {
 }
 
 func TestPacketUnmarshalNoSuchInstance(t *testing.T) {
-	testPacketUnmarshal(t, packetUnmarshalTest{
-		data: decodeTestPacket(`
+	testPacketUnmarshal(t, packetTest{
+		bytes: decodeTestPacket(`
 			30 29 02 01 01 04 06 70 75 62 6c 69 63 a2 1c 02
 			04 47 6b 38 88 02 01 00 02 01 00 30 0e 30 0c 06
 			08 2b 06 01 02 01 01 05 01 81 00
