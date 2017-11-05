@@ -2,9 +2,9 @@ package snmp
 
 import (
 	"encoding/asn1"
-	//"github.com/geoffgarside/ber"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -137,6 +137,20 @@ type PDU struct {
 	VarBinds    []VarBind
 }
 
+func (pdu PDU) String() string {
+	if pdu.ErrorStatus != 0 {
+		return fmt.Sprintf("!%v", pdu.ErrorStatus)
+	}
+
+	var varBinds = make([]string, len(pdu.VarBinds))
+
+	for i, varBind := range pdu.VarBinds {
+		varBinds[i] = varBind.String()
+	}
+
+	return strings.Join(varBinds, ", ")
+}
+
 // SNMPv1 Trap-PDU
 type TrapPDU struct {
 	Enterprise   OID
@@ -153,7 +167,13 @@ type VarBind struct {
 }
 
 func (varBind VarBind) String() string {
-	return fmt.Sprintf("%v", varBind.Name)
+	if value, err := varBind.Value(); err != nil {
+		return fmt.Sprintf("!%v", varBind.Name)
+	} else if value != nil {
+		return fmt.Sprintf("%v=%v", varBind.Name, value)
+	} else {
+		return fmt.Sprintf("%v", varBind.Name)
+	}
 }
 
 type IPAddress net.IP
