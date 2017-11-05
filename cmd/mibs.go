@@ -28,8 +28,11 @@ func (options Options) PrintVarBind(varBind snmp.VarBind) {
 }
 
 func (options Options) PrintObject(object *mibs.Object, varBind snmp.VarBind) {
-	if name, value, err := object.Format(varBind); err != nil {
-		fmt.Printf("%v = <%T> % !%v\n", name, value, value, err)
+	name := object.FormatIndex(varBind.OID())
+	value, err := object.Unpack(varBind)
+
+	if err != nil {
+		fmt.Printf("%v = <%T> %v !%v\n", name, value, value, err)
 	} else {
 		fmt.Printf("%v = %v\n", name, value)
 	}

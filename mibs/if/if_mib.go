@@ -18,7 +18,7 @@ var (
 		Syntax: mibs.IntegerSyntax,
 	})
 	Table = Interfaces.RegisterTable(Interfaces.MakeID("ifTable", 2), mibs.Table{
-		Index: []mibs.TableIndex{
+		IndexSyntax: []mibs.TableIndexSyntax{
 			{"ifIndex", mibs.IntegerIndexSyntax},
 		},
 	})
