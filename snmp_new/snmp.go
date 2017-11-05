@@ -35,6 +35,31 @@ const (
 	ReportType         PDUType = 8
 )
 
+func (pduType PDUType) String() string {
+	switch pduType {
+	case GetRequestType:
+		return "GetRequest"
+	case GetNextRequestType:
+		return "GetNextRequest"
+	case GetResponseType:
+		return "GetResponse"
+	case SetRequestType:
+		return "SetRequest"
+	case TrapV1Type:
+		return "TrapV1"
+	case GetBulkRequestType:
+		return "GetBulkRequest"
+	case InformRequestType:
+		return "InformRequest"
+	case TrapV2Type:
+		return "TrapV2"
+	case ReportType:
+		return "Report"
+	default:
+		return fmt.Sprintf("PDUType(%d)", pduType)
+	}
+}
+
 type GenericTrap int
 
 const (
@@ -55,11 +80,30 @@ const (
 	NoSuchNameError ErrorStatus = 2
 	BadValueError   ErrorStatus = 3
 	ReadOnlyError   ErrorStatus = 4
-	GenricError     ErrorStatus = 5
+	GenericError    ErrorStatus = 5
 )
 
+func (err ErrorStatus) String() string {
+	switch err {
+	case Success:
+		return "Success"
+	case TooBigError:
+		return "TooBig"
+	case NoSuchNameError:
+		return "NoSuchName"
+	case BadValueError:
+		return "BadValue"
+	case ReadOnlyError:
+		return "ReadOnly"
+	case GenericError:
+		return "GenericError"
+	default:
+		return fmt.Sprintf("ErrorStatus(%d)", err)
+	}
+}
+
 func (err ErrorStatus) Error() string {
-	return fmt.Sprintf("SNMP Error: %v", err)
+	return fmt.Sprintf("SNMP Error: %s", err.String())
 }
 
 type ErrorValue int // context-specific NULLs in VarBind.Value
