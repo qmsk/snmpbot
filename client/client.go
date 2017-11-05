@@ -2,7 +2,7 @@ package client
 
 import (
 	"fmt"
-	snmp "github.com/qmsk/snmpbot/snmp_new"
+	"github.com/qmsk/snmpbot/snmp"
 )
 
 const (

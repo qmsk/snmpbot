@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	client "github.com/qmsk/snmpbot/client"
-	cmd "github.com/qmsk/snmpbot/cmd"
-	snmp "github.com/qmsk/snmpbot/snmp_new"
+	"github.com/qmsk/snmpbot/client"
+	"github.com/qmsk/snmpbot/cmd"
+	"github.com/qmsk/snmpbot/snmp"
 	"log"
 	"os"
 )

@@ -1,7 +1,7 @@
 package client
 
 import (
-	snmp "github.com/qmsk/snmpbot/snmp_new"
+	"github.com/qmsk/snmpbot/snmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"

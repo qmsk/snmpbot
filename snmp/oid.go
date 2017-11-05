@@ -8,58 +8,60 @@ import (
 
 type OID []int
 
-func ParseOID(str string) (oid OID) {
-	if len(str) > 0 && str[0] == '.' {
+func ParseOID(str string) (OID, error) {
+	if str == "" {
+		return nil, nil
+	} else if str == "." {
+		return OID{}, nil
+	} else if str[0] != '.' {
+		return nil, fmt.Errorf("Invalid OID: does not start with .")
+	} else {
 		str = str[1:]
 	}
 
-	if str == "" {
-		return OID{}
-	}
+	var parts = strings.Split(str, ".")
+	var oid = make(OID, len(parts))
 
-	parts := strings.Split(str, ".")
-
-	for _, part := range parts {
+	for i, part := range parts {
 		if id, err := strconv.Atoi(part); err != nil {
-			panic(err)
+			return nil, fmt.Errorf("Invalid OID part: %v", part)
 		} else {
-			oid = append(oid, id)
+			oid[i] = id
 		}
 	}
-	return
+
+	return oid, nil
 }
 
-func (self OID) String() (str string) {
-	if self == nil {
+func (oid OID) String() (str string) {
+	if oid == nil {
 		return "."
 	}
 
-	for _, id := range self {
+	for _, id := range oid {
 		str += fmt.Sprintf(".%d", id)
 	}
 	return str
 }
 
-func (self OID) Copy() OID {
-	var oid OID
+func (oid OID) Copy() OID {
+	var copy OID
 
-	oid = append(oid, self...)
-
-	return oid
+	return append(copy, oid...)
 }
 
 // Extend this OID with the given ids, returning the new, more-specific, OID.
-func (self OID) define(ids ...int) OID {
-	return append(self.Copy(), ids...)
+func (oid OID) Extend(ids ...int) OID {
+	return append(oid.Copy(), ids...)
 }
 
 // Compare two OIDs for equality
-func (self OID) Equals(oid OID) bool {
-	if len(self) != len(oid) {
+func (oid OID) Equals(other OID) bool {
+	if len(oid) != len(other) {
 		return false
 	}
-	for i := range self {
-		if self[i] != oid[i] {
+	for i := range oid {
+		if oid[i] != other[i] {
 			return false
 		}
 	}
@@ -69,20 +71,20 @@ func (self OID) Equals(oid OID) bool {
 // Test if the given OID is a more-specific of this OID, returning the extended part if so.
 // Returns {0} if the OIDs are an exact match
 // Returns nil if the OIDs do not match
-func (self OID) Index(oid OID) (index OID) {
-	if len(oid) < len(self) {
+func (oid OID) Index(other OID) (index OID) {
+	if len(other) < len(oid) {
 		return nil
 	}
 
-	for i := range self {
-		if self[i] != oid[i] {
+	for i := range oid {
+		if oid[i] != other[i] {
 			return nil
 		}
 	}
 
-	if len(oid) == len(self) {
+	if len(other) == len(oid) {
 		return OID{0}
 	} else {
-		return oid[len(self):]
+		return other[len(oid):]
 	}
 }
