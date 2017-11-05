@@ -26,7 +26,7 @@ func snmpget(client *client.Client, oids ...snmp.OID) error {
 			if value, err := varBind.Value(); err != nil {
 				log.Printf("VarBind[%v].Value: %v", varBind.OID(), err)
 			} else {
-				fmt.Printf("%v = <%T> %v\n", varBind.OID(), value, value)
+				fmt.Printf("%v = <%T> %v\n", cmd.FormatOID(varBind.OID()), value, value)
 			}
 		}
 	}

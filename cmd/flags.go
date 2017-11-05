@@ -58,7 +58,7 @@ func (options Options) ParseClientOIDs(args []string) (*client.Client, []snmp.OI
 	}
 
 	for i, arg := range args[1:] {
-		if oid, err := snmp.ParseOID(arg); err != nil {
+		if oid, err := ParseOID(arg); err != nil {
 			return nil, nil, fmt.Errorf("Invalid OID %v: %v", arg, err)
 		} else {
 			oids[i] = oid
