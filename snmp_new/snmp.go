@@ -3,6 +3,7 @@ package snmp
 import (
 	"encoding/asn1"
 	//"github.com/geoffgarside/ber"
+	"fmt"
 	"net"
 	"time"
 )
@@ -46,6 +47,21 @@ const (
 	TrapEnterpriseSpecific    GenericTrap = 6
 )
 
+type ErrorStatus int
+
+const (
+	Success         ErrorStatus = 0
+	TooBigError     ErrorStatus = 1
+	NoSuchNameError ErrorStatus = 2
+	BadValueError   ErrorStatus = 3
+	ReadOnlyError   ErrorStatus = 4
+	GenricError     ErrorStatus = 5
+)
+
+func (err ErrorStatus) Error() string {
+	return fmt.Sprintf("SNMP Error: %v", err)
+}
+
 type ErrorValue int // context-specific NULLs in VarBind.Value
 
 const (
@@ -72,7 +88,7 @@ type Packet struct {
 
 type PDU struct {
 	RequestID   int
-	ErrorStatus int
+	ErrorStatus ErrorStatus
 	ErrorIndex  int
 	VarBinds    []VarBind
 }
@@ -90,6 +106,10 @@ type TrapPDU struct {
 type VarBind struct {
 	Name     OID
 	RawValue asn1.RawValue
+}
+
+func (varBind VarBind) String() string {
+	return fmt.Sprintf("%v", varBind.Name)
 }
 
 type IPAddress net.IP

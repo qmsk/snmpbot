@@ -110,10 +110,13 @@ func (varBind VarBind) Value() (interface{}, error) {
 		switch ErrorValue(varBind.RawValue.Tag) {
 		case NoSuchObjectValue:
 			return NoSuchObjectValue, nil
+
 		case NoSuchInstanceValue:
 			return NoSuchInstanceValue, nil
+
 		case EndOfMibViewValue:
 			return EndOfMibViewValue, nil
+
 		default:
 			return nil, fmt.Errorf("Unkown varbind value context-specific tag=%d", varBind.RawValue.Tag)
 		}
