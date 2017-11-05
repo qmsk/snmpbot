@@ -34,10 +34,17 @@ func testParseFormatOID(t *testing.T, test oidTest) {
 	testFormatOID(t, test)
 }
 
-func TestParseOIDInvalidError(t *testing.T) {
+func TestParseOIDMibNotFoundError(t *testing.T) {
 	testParseOID(t, oidTest{
 		name: "ASDF-MIB",
 		err:  "MIB not found: ASDF-MIB",
+	})
+}
+
+func TestParseOIDNameNotFoundError(t *testing.T) {
+	testParseOID(t, oidTest{
+		name: "TEST-MIB::missing",
+		err:  "TEST-MIB name not found: missing",
 	})
 }
 
@@ -45,6 +52,13 @@ func TestOIDEmpty(t *testing.T) {
 	testParseFormatOID(t, oidTest{
 		name: "",
 		oid:  nil,
+	})
+}
+
+func TestOIDRaw(t *testing.T) {
+	testParseFormatOID(t, oidTest{
+		name: ".1.3.6.1",
+		oid:  snmp.OID{1, 3, 6, 1},
 	})
 }
 
