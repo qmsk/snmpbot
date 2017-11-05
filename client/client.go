@@ -49,7 +49,7 @@ func (client *Client) String() string {
 		return "<disconnected>"
 	}
 
-	return fmt.Sprintf("%v", client.transport)
+	return fmt.Sprintf("%s@%v", client.community, client.transport)
 }
 
 func (client *Client) connectUDP(config Config) error {

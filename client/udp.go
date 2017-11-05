@@ -67,6 +67,10 @@ type UDP struct {
 	conn *net.UDPConn
 }
 
+func (udp *UDP) String() string {
+	return fmt.Sprintf("%v", udp.addr)
+}
+
 func (udp *UDP) LocalAddr() (*net.UDPAddr, error) {
 	switch localAddr := udp.conn.LocalAddr().(type) {
 	case *net.UDPAddr:

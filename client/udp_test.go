@@ -38,7 +38,7 @@ func (testServer *testServer) MockGet(oid snmp.OID, value interface{}) {
 }
 
 func (testServer *testServer) get(oid snmp.OID) (snmp.VarBind, error) {
-	var varBind = snmp.VarBind{Name: oid}
+	var varBind = snmp.MakeVarBind(oid, nil)
 
 	if value, ok := testServer.values[oid.String()]; ok {
 		varBind.Set(value)
@@ -56,7 +56,7 @@ func (testServer *testServer) handleGet(pdu snmp.PDU) (snmp.PDU, error) {
 	}
 
 	for i, get := range pdu.VarBinds {
-		if varBind, err := testServer.get(get.Name); err == nil {
+		if varBind, err := testServer.get(get.OID()); err == nil {
 			response.VarBinds[i] = varBind
 		} else if errorStatus, ok := err.(snmp.ErrorStatus); ok {
 			response.ErrorStatus = errorStatus

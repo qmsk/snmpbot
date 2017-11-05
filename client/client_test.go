@@ -74,23 +74,13 @@ func (transport *testTransport) Close() error {
 	return nil
 }
 
-func makeVarBind(oid snmp.OID, value interface{}) snmp.VarBind {
-	var varBind = snmp.VarBind{Name: oid}
-
-	if err := varBind.Set(value); err != nil {
-		panic(err)
-	}
-
-	return varBind
-}
-
 func assertVarBind(t *testing.T, varBinds []snmp.VarBind, index int, expectedOID snmp.OID, expectedValue interface{}) {
 	if len(varBinds) < index {
 		t.Errorf("VarBinds[%d]: short %d", index, len(varBinds))
 	} else if value, err := varBinds[index].Value(); err != nil {
 		t.Errorf("VarBinds[%d]: invalid Value: %v", index, err)
 	} else {
-		assert.Equal(t, expectedOID, varBinds[index].Name)
+		assert.Equal(t, expectedOID, varBinds[index].OID())
 		assert.Equal(t, expectedValue, value)
 	}
 }
@@ -113,7 +103,7 @@ func TestGetRequest(t *testing.T) {
 		PDU: snmp.PDU{
 			RequestID: 1,
 			VarBinds: []snmp.VarBind{
-				makeVarBind(oid, nil),
+				snmp.MakeVarBind(oid, nil),
 			},
 		},
 	}).Return(error(nil), IO{
@@ -126,7 +116,7 @@ func TestGetRequest(t *testing.T) {
 		PDU: snmp.PDU{
 			RequestID: 1,
 			VarBinds: []snmp.VarBind{
-				makeVarBind(oid, value),
+				snmp.MakeVarBind(oid, value),
 			},
 		},
 	})

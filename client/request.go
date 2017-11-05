@@ -97,8 +97,7 @@ func (client *Client) Get(OIDs ...snmp.OID) ([]snmp.VarBind, error) {
 	var requestVars = make([]snmp.VarBind, len(OIDs))
 
 	for i, oid := range OIDs {
-		requestVars[i].Name = oid
-		requestVars[i].SetNull()
+		requestVars[i] = snmp.MakeVarBind(oid, nil)
 	}
 
 	if responseType, responseVars, err := client.requestRead(snmp.GetRequestType, requestVars); err != nil {
@@ -114,8 +113,7 @@ func (client *Client) GetNext(OIDs ...snmp.OID) ([]snmp.VarBind, error) {
 	var requestVars = make([]snmp.VarBind, len(OIDs))
 
 	for i, oid := range OIDs {
-		requestVars[i].Name = oid
-		requestVars[i].SetNull()
+		requestVars[i] = snmp.MakeVarBind(oid, nil)
 	}
 
 	if responseType, responseVars, err := client.requestRead(snmp.GetNextRequestType, requestVars); err != nil {
