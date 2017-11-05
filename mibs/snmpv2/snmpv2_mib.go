@@ -9,29 +9,29 @@ var (
 	MIB       = mibs.RegisterMIB("SNMPv2-MIB", snmp.OID{1, 3, 6, 1, 6, 3, 1})
 	SystemMIB = mibs.RegisterMIB("system", snmp.OID{1, 3, 6, 1, 2, 1, 1})
 
-	SysDescr = SystemMIB.RegisterObject(SystemMIB.Register("sysDescr", 1), mibs.Object{
+	SysDescr = SystemMIB.RegisterObject(SystemMIB.MakeID("sysDescr", 1), mibs.Object{
 		Syntax: mibs.DisplayStringSyntax,
 	})
-	SysObjectID = SystemMIB.RegisterObject(SystemMIB.Register("sysObjectID", 2), mibs.Object{
+	SysObjectID = SystemMIB.RegisterObject(SystemMIB.MakeID("sysObjectID", 2), mibs.Object{
 		Syntax: mibs.ObjectIdentifierSyntax,
 	})
-	SysUpTime = SystemMIB.RegisterObject(SystemMIB.Register("sysUpTime", 3), mibs.Object{
+	SysUpTime = SystemMIB.RegisterObject(SystemMIB.MakeID("sysUpTime", 3), mibs.Object{
 		Syntax: mibs.TimeTicksSyntax,
 	})
-	SysContact = SystemMIB.RegisterObject(SystemMIB.Register("sysContact", 4), mibs.Object{
+	SysContact = SystemMIB.RegisterObject(SystemMIB.MakeID("sysContact", 4), mibs.Object{
 		Syntax: mibs.DisplayStringSyntax,
 	})
-	SysName = SystemMIB.RegisterObject(SystemMIB.Register("sysName", 5), mibs.Object{
+	SysName = SystemMIB.RegisterObject(SystemMIB.MakeID("sysName", 5), mibs.Object{
 		Syntax: mibs.DisplayStringSyntax,
 	})
-	SysLocation = SystemMIB.RegisterObject(SystemMIB.Register("sysLocation", 6), mibs.Object{
+	SysLocation = SystemMIB.RegisterObject(SystemMIB.MakeID("sysLocation", 6), mibs.Object{
 		Syntax: mibs.DisplayStringSyntax,
 	})
-	SysServices = SystemMIB.RegisterObject(SystemMIB.Register("sysServices", 7), mibs.Object{
+	SysServices = SystemMIB.RegisterObject(SystemMIB.MakeID("sysServices", 7), mibs.Object{
 		Syntax: mibs.IntegerSyntax,
 	})
 
-	SysORLastChange = SystemMIB.RegisterObject(SystemMIB.Register("sysORLastChange", 8), mibs.Object{
+	SysORLastChange = SystemMIB.RegisterObject(SystemMIB.MakeID("sysORLastChange", 8), mibs.Object{
 		Syntax: mibs.TimeTicksSyntax,
 	})
 

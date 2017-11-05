@@ -6,8 +6,9 @@ import (
 
 type Object struct {
 	*ID
+	Table *Table
 
-	Syntax Syntax
+	Syntax
 }
 
 func (object *Object) Unpack(varBind snmp.VarBind) (interface{}, error) {

@@ -12,6 +12,7 @@ func newMIB(name string, oid snmp.OID) *MIB {
 		lookup:  make(map[string]*ID),
 		resolve: make(map[string]*ID),
 		objects: make(map[*ID]*Object),
+		tables:  make(map[*ID]*Table),
 	}
 }
 
@@ -22,27 +23,42 @@ type MIB struct {
 	lookup  map[string]*ID
 	resolve map[string]*ID
 	objects map[*ID]*Object
+	tables  map[*ID]*Table
 }
 
 func (mib *MIB) String() string {
 	return mib.OID.String()
 }
 
-func (mib *MIB) Register(name string, oid ...int) *ID {
-	var id = &ID{mib, name, mib.OID.Extend(oid...)}
-
-	mib.lookup[id.OID.String()] = id
-	mib.resolve[id.Name] = id
-
-	return id
+func (mib *MIB) MakeID(name string, ids ...int) ID {
+	return ID{mib, name, mib.OID.Extend(ids...)}
 }
 
-func (mib *MIB) RegisterObject(id *ID, object Object) *Object {
-	object.ID = id
+func (mib *MIB) registerLookup(id *ID) {
+	mib.lookup[id.OID.String()] = id
+}
 
-	mib.objects[id] = &object
+func (mib *MIB) registerResolve(id *ID) {
+	mib.resolve[id.Name] = id
+}
+
+func (mib *MIB) RegisterObject(id ID, object Object) *Object {
+	object.ID = &id
+
+	mib.registerLookup(&id)
+	mib.registerResolve(&id)
+	mib.objects[&id] = &object
 
 	return &object
+}
+
+func (mib *MIB) RegisterTable(id ID, table Table) *Table {
+	table.ID = &id
+
+	mib.registerResolve(&id)
+	mib.tables[&id] = &table
+
+	return &table
 }
 
 func (mib *MIB) Resolve(name string) *ID {

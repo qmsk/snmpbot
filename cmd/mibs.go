@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/qmsk/snmpbot/mibs"
+	_ "github.com/qmsk/snmpbot/mibs/if"
 	_ "github.com/qmsk/snmpbot/mibs/snmpv2"
 	"github.com/qmsk/snmpbot/snmp"
 	"log"
