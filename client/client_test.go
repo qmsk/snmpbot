@@ -68,6 +68,34 @@ func (transport *testTransport) Close() error {
 	return nil
 }
 
+func (transport *testTransport) mockGetNext(requestID requestID, oid snmp.OID, varBind snmp.VarBind) {
+	transport.On("GetNextRequest", IO{
+		Packet: snmp.Packet{
+			Version:   snmp.SNMPv2c,
+			Community: []byte("public"),
+		},
+		PDUType: snmp.GetNextRequestType,
+		PDU: snmp.PDU{
+			RequestID: int(requestID),
+			VarBinds: []snmp.VarBind{
+				snmp.MakeVarBind(oid, nil),
+			},
+		},
+	}).Return(error(nil), IO{
+		Packet: snmp.Packet{
+			Version:   snmp.SNMPv2c,
+			Community: []byte("public"),
+		},
+		PDUType: snmp.GetResponseType,
+		PDU: snmp.PDU{
+			RequestID: int(requestID),
+			VarBinds: []snmp.VarBind{
+				varBind,
+			},
+		},
+	})
+}
+
 func assertVarBind(t *testing.T, varBinds []snmp.VarBind, index int, expectedOID snmp.OID, expectedValue interface{}) {
 	if len(varBinds) < index {
 		t.Errorf("VarBinds[%d]: short %d", index, len(varBinds))
@@ -119,5 +147,29 @@ func TestGetRequest(t *testing.T) {
 
 	} else {
 		assertVarBind(t, varBinds, 0, oid, value)
+	}
+}
+
+func TestWalk(t *testing.T) {
+	var testTransport, client = makeTestClient(t)
+	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1} // IF-MIB::ifName
+	var varBinds = []snmp.VarBind{
+		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, []byte("if1")),
+		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, []byte("if2")),
+		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 2, 1}, snmp.Counter32(0)),
+	}
+
+	testTransport.mockGetNext(1, oid, varBinds[0])
+	testTransport.mockGetNext(2, varBinds[0].OID(), varBinds[1])
+	testTransport.mockGetNext(3, varBinds[1].OID(), varBinds[2])
+
+	go client.Run()
+	defer client.Close()
+
+	if err := client.Walk(func(varBinds ...snmp.VarBind) error {
+
+		return nil
+	}, oid); err != nil {
+		t.Fatalf("Walk(%v): %v", oid, err)
 	}
 }

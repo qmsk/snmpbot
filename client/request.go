@@ -91,35 +91,3 @@ func (client *Client) requestRead(requestType snmp.PDUType, varBinds []snmp.VarB
 		return recv.PDUType, recv.PDU.VarBinds, nil
 	}
 }
-
-func (client *Client) Get(OIDs ...snmp.OID) ([]snmp.VarBind, error) {
-	var requestVars = make([]snmp.VarBind, len(OIDs))
-
-	for i, oid := range OIDs {
-		requestVars[i] = snmp.MakeVarBind(oid, nil)
-	}
-
-	if responseType, responseVars, err := client.requestRead(snmp.GetRequestType, requestVars); err != nil {
-		return responseVars, err
-	} else if responseType != snmp.GetResponseType {
-		return responseVars, fmt.Errorf("Unexpected response type %v for GetRequest", responseType)
-	} else {
-		return responseVars, nil
-	}
-}
-
-func (client *Client) GetNext(OIDs ...snmp.OID) ([]snmp.VarBind, error) {
-	var requestVars = make([]snmp.VarBind, len(OIDs))
-
-	for i, oid := range OIDs {
-		requestVars[i] = snmp.MakeVarBind(oid, nil)
-	}
-
-	if responseType, responseVars, err := client.requestRead(snmp.GetNextRequestType, requestVars); err != nil {
-		return responseVars, err
-	} else if responseType != snmp.GetResponseType {
-		return responseVars, fmt.Errorf("Unexpected response type %v for GetNextRequest", responseType)
-	} else {
-		return responseVars, nil
-	}
-}
