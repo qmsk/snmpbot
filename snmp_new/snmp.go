@@ -8,12 +8,6 @@ import (
 	"time"
 )
 
-type OID = asn1.ObjectIdentifier
-
-const (
-	UDP_SIZE = 16 * 1024
-)
-
 type Version int
 
 const (
@@ -153,31 +147,10 @@ func (pdu PDU) String() string {
 
 // SNMPv1 Trap-PDU
 type TrapPDU struct {
-	Enterprise   OID
+	Enterprise   asn1.ObjectIdentifier
 	AgentAddr    net.IP // []byte
 	GenericTrap  GenericTrap
 	SpecificTrap int
 	TimeStamp    time.Duration // int64
 	VarBinds     []VarBind
 }
-
-type VarBind struct {
-	Name     OID
-	RawValue asn1.RawValue
-}
-
-func (varBind VarBind) String() string {
-	if value, err := varBind.Value(); err != nil {
-		return fmt.Sprintf("!%v", varBind.Name)
-	} else if value != nil {
-		return fmt.Sprintf("%v=%v", varBind.Name, value)
-	} else {
-		return fmt.Sprintf("%v", varBind.Name)
-	}
-}
-
-type IPAddress net.IP
-type Counter32 uint32
-type Gauge32 uint32
-type TimeTicks32 uint32 // duration of 1/100 s
-type Opaque []byte

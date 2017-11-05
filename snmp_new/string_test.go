@@ -12,11 +12,7 @@ type varBindStringTest struct {
 }
 
 func testVarBindString(t *testing.T, test varBindStringTest) {
-	var varBind = VarBind{Name: test.oid}
-
-	if err := varBind.Set(test.value); err != nil {
-		t.Fatalf("varBind.Set %#v: %v", test.value, err)
-	}
+	var varBind = MakeVarBind(test.oid, test.value)
 
 	assert.Equal(t, test.str, varBind.String())
 }

@@ -22,16 +22,10 @@ type packetTest struct {
 	packet  Packet
 	pduType PDUType
 	pdu     PDU
-	values  []interface{}
+	values  []interface{} // for unmarshal
 }
 
 func testPacketMarshal(t *testing.T, test packetTest) {
-	for i, value := range test.values {
-		if err := test.pdu.VarBinds[i].Set(value); err != nil {
-			t.Fatalf("pdu.VarBinds[%d].Pack: %v", i, err)
-		}
-	}
-
 	if packedPDU, err := test.pdu.Pack(test.pduType); err != nil {
 		t.Fatalf("pdu.pack: %v", err)
 	} else {
@@ -108,7 +102,7 @@ func TestPacketMarshal(t *testing.T) {
 		pdu: PDU{
 			RequestID: 1337,
 			VarBinds: []VarBind{
-				VarBind{Name: OID{1, 3, 6}},
+				MakeVarBind(OID{1, 3, 6}, nil),
 			},
 		},
 	})
@@ -130,9 +124,7 @@ func TestPacketUnmarshal(t *testing.T) {
 		pdu: PDU{
 			RequestID: 24800755,
 			VarBinds: []VarBind{
-				VarBind{
-					Name: OID{1, 3, 6, 1, 2, 1, 1, 5, 0},
-				},
+				MakeVarBind(OID{1, 3, 6, 1, 2, 1, 1, 5, 0}, []byte("UBNT EdgeSwitch")),
 			},
 		},
 		values: []interface{}{
@@ -157,13 +149,8 @@ func TestPacketMarshalCounter32(t *testing.T) {
 		pdu: PDU{
 			RequestID: 698234863,
 			VarBinds: []VarBind{
-				VarBind{
-					Name: OID{1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1},
-				},
+				MakeVarBind(OID{1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1}, Counter32(2833025851)),
 			},
-		},
-		values: []interface{}{
-			Counter32(2833025851),
 		},
 	})
 }
@@ -184,9 +171,7 @@ func TestPacketUnmarshalCounter32(t *testing.T) {
 		pdu: PDU{
 			RequestID: 698234863,
 			VarBinds: []VarBind{
-				VarBind{
-					Name: OID{1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1},
-				},
+				MakeVarBind(OID{1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1}, Counter32(2833025851)),
 			},
 		},
 		values: []interface{}{
@@ -210,13 +195,10 @@ func TestPacketUnmarshalNoSuchInstance(t *testing.T) {
 		pdu: PDU{
 			RequestID: 1198209160,
 			VarBinds: []VarBind{
-				VarBind{
-					Name: OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
-				},
+				MakeVarBind(OID{1, 3, 6, 1, 2, 1, 1, 5, 1}, NoSuchInstanceValue),
 			},
 		},
 		values: []interface{}{
 			NoSuchInstanceValue,
-		},
-	})
+		}})
 }

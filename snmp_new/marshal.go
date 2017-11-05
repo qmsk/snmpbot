@@ -54,67 +54,10 @@ func (packet Packet) Marshal() ([]byte, error) {
 }
 
 func (pdu PDU) Pack(pduType PDUType) (asn1.RawValue, error) {
-	for i, varBind := range pdu.VarBinds {
-		if varBind.RawValue.Class == 0 && varBind.RawValue.Tag == 0 {
-			pdu.VarBinds[i].RawValue = asn1.NullRawValue
-		}
-	}
-
 	return packSequence(asn1.ClassContextSpecific, int(pduType),
 		pdu.RequestID,
 		pdu.ErrorStatus,
 		pdu.ErrorIndex,
 		pdu.VarBinds,
 	)
-}
-
-func (varBind *VarBind) Set(genericValue interface{}) error {
-	switch value := genericValue.(type) {
-	case nil:
-		varBind.SetNull()
-	case ErrorValue:
-		return varBind.SetError(value)
-	case IPAddress:
-		return varBind.setApplication(IPAddressType, value)
-	case Counter32:
-		return varBind.setApplication(Counter32Type, int(value))
-	case Gauge32:
-		return varBind.setApplication(Gauge32Type, int(value))
-	case TimeTicks32:
-		return varBind.setApplication(TimeTicks32Type, int(value))
-	case Opaque:
-		return varBind.setApplication(OpaqueType, value)
-	default:
-		if rawValue, err := pack(asn1.ClassUniversal, 0, value); err != nil {
-			return err
-		} else {
-			varBind.RawValue = rawValue
-		}
-	}
-
-	return nil
-}
-
-func (varBind *VarBind) SetNull() {
-	varBind.RawValue = asn1.NullRawValue
-}
-
-func (varBind *VarBind) SetError(errorValue ErrorValue) error {
-	if rawValue, err := pack(asn1.ClassContextSpecific, int(errorValue), nil); err != nil {
-		return err
-	} else {
-		varBind.RawValue = rawValue
-	}
-
-	return nil
-}
-
-func (varBind *VarBind) setApplication(tag ApplicationValueType, value interface{}) error {
-	if rawValue, err := pack(asn1.ClassApplication, int(tag), value); err != nil {
-		return err
-	} else {
-		varBind.RawValue = rawValue
-	}
-
-	return nil
 }
