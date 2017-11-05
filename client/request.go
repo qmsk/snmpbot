@@ -75,7 +75,6 @@ func (client *Client) request(send IO) (IO, error) {
 
 func (client *Client) requestRead(requestType snmp.PDUType, varBinds []snmp.VarBind) (snmp.PDUType, []snmp.VarBind, error) {
 	var send = IO{
-		Addr: client.addr,
 		Packet: snmp.Packet{
 			Version:   client.version,
 			Community: client.community,

@@ -31,12 +31,6 @@ func makeTestClient(t *testing.T) (*testTransport, *Client) {
 	client.community = []byte("public")
 	client.transport = &testTransport
 
-	if udpAddr, err := resolveUDP("127.0.0.1"); err != nil {
-		panic(err)
-	} else {
-		client.addr = udpAddr
-	}
-
 	return &testTransport, &client
 }
 
@@ -94,7 +88,6 @@ func TestGetRequest(t *testing.T) {
 	defer client.Close()
 
 	testTransport.On("GetRequest", IO{
-		Addr: client.addr,
 		Packet: snmp.Packet{
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
@@ -107,7 +100,6 @@ func TestGetRequest(t *testing.T) {
 			},
 		},
 	}).Return(error(nil), IO{
-		Addr: client.addr,
 		Packet: snmp.Packet{
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),

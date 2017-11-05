@@ -3,7 +3,6 @@ package client
 import (
 	"fmt"
 	snmp "github.com/qmsk/snmpbot/snmp_new"
-	"net"
 )
 
 const (
@@ -36,7 +35,6 @@ type Client struct {
 	version   snmp.Version
 	community []byte
 
-	addr      net.Addr
 	transport Transport
 
 	requestID   requestID
@@ -61,7 +59,6 @@ func (client *Client) connectUDP(config Config) error {
 	} else {
 		client.log.Infof("Connect UDP %v: %v", config.Addr, udp)
 
-		client.addr = udp.addr
 		client.transport = udp
 	}
 

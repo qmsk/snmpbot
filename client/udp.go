@@ -80,6 +80,25 @@ func (udp *UDP) LocalAddr() (*net.UDPAddr, error) {
 	}
 }
 
+func (udp *UDP) send(buf []byte, addr net.Addr) error {
+	var size int
+	var err error
+
+	if addr == nil {
+		size, err = udp.conn.Write(buf)
+	} else {
+		size, err = udp.conn.WriteTo(buf, addr)
+	}
+
+	if err != nil {
+		return err
+	} else if size != len(buf) {
+		return fmt.Errorf("short write: %d < %d", size, len(buf))
+	}
+
+	return nil
+}
+
 func (udp *UDP) Send(send IO) error {
 	if rawPDU, err := send.PDU.Pack(send.PDUType); err != nil {
 		return err
@@ -89,10 +108,8 @@ func (udp *UDP) Send(send IO) error {
 
 	if buf, err := send.Packet.Marshal(); err != nil {
 		return err
-	} else if size, err := udp.conn.WriteTo(buf, send.Addr); err != nil {
+	} else if err := udp.send(buf, send.Addr); err != nil {
 		return err
-	} else if size != len(buf) {
-		return fmt.Errorf("short write: %d < %d", size, len(buf))
 	}
 
 	return nil
