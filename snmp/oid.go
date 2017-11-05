@@ -35,6 +35,9 @@ func ParseOID(str string) (OID, error) {
 
 func (oid OID) String() (str string) {
 	if oid == nil {
+		return ""
+	}
+	if len(oid) == 0 {
 		return "."
 	}
 
@@ -69,9 +72,9 @@ func (oid OID) Equals(other OID) bool {
 }
 
 // Test if the given OID is a more-specific of this OID, returning the extended part if so.
-// Returns {0} if the OIDs are an exact match
+// Returns {} if the OIDs are an exact match
 // Returns nil if the OIDs do not match
-func (oid OID) Index(other OID) (index OID) {
+func (oid OID) Index(other OID) []int {
 	if len(other) < len(oid) {
 		return nil
 	}
@@ -83,7 +86,7 @@ func (oid OID) Index(other OID) (index OID) {
 	}
 
 	if len(other) == len(oid) {
-		return OID{0}
+		return OID{}
 	} else {
 		return other[len(oid):]
 	}

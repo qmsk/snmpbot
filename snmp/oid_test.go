@@ -29,7 +29,8 @@ var testOIDString = []struct {
 	oid OID
 	str string
 }{
-	{nil, "."},
+	{nil, ""},
+	{OID{}, "."},
 	{OID{1}, ".1"},
 	{OID{1, 3}, ".1.3"},
 }
@@ -45,10 +46,23 @@ func TestOIDString(t *testing.T) {
 var testOIDIndex = []struct {
 	oid   OID
 	oid2  OID
-	index OID
+	index []int
 }{
-	{OID{1, 3, 6, 1, 6, 3, 1}, OID{1, 3, 6, 1, 6, 3, 1, 1, 5, 1}, OID{1, 5, 1}},
-	{OID{1, 3, 6, 1, 6, 3, 1, 1, 5, 1}, OID{1, 3, 6, 1, 6, 3, 1, 1, 5, 1}, OID{0}},
+	{
+		OID{1, 3, 6, 1, 6, 3, 1},
+		OID{1, 3, 6, 1, 6, 3, 2},
+		nil,
+	},
+	{
+		OID{1, 3, 6, 1, 6, 3, 1, 1, 5, 1},
+		OID{1, 3, 6, 1, 6, 3, 1, 1, 5, 1},
+		[]int{},
+	},
+	{
+		OID{1, 3, 6, 1, 6, 3, 1},
+		OID{1, 3, 6, 1, 6, 3, 1, 1, 5, 1},
+		[]int{1, 5, 1},
+	},
 }
 
 func TestOIDIndex(t *testing.T) {
