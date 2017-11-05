@@ -8,25 +8,29 @@ import (
 
 type OID []int
 
-func ParseOID(str string) (oid OID) {
-	if len(str) > 0 && str[0] == '.' {
+func ParseOID(str string) (OID, error) {
+	if str == "" {
+		return nil, nil
+	} else if str == "." {
+		return OID{}, nil
+	} else if str[0] != '.' {
+		return nil, fmt.Errorf("Invalid OID: does not start with .")
+	} else {
 		str = str[1:]
 	}
 
-	if str == "" {
-		return OID{}
-	}
+	var parts = strings.Split(str, ".")
+	var oid = make(OID, len(parts))
 
-	parts := strings.Split(str, ".")
-
-	for _, part := range parts {
+	for i, part := range parts {
 		if id, err := strconv.Atoi(part); err != nil {
-			panic(err)
+			return nil, fmt.Errorf("Invalid OID part: %v", part)
 		} else {
-			oid = append(oid, id)
+			oid[i] = id
 		}
 	}
-	return
+
+	return oid, nil
 }
 
 func (oid OID) String() (str string) {
