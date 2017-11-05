@@ -34,6 +34,17 @@ func makeTestClient(t *testing.T) (*testTransport, *Client) {
 	return &testTransport, &client
 }
 
+func withTestClient(t *testing.T, f func(*testTransport, *Client)) {
+	var transport, client = makeTestClient(t)
+
+	go client.Run()
+	defer client.Close()
+
+	f(transport, client)
+
+	transport.AssertExpectations(t)
+}
+
 type testTransport struct {
 	mock.Mock
 
@@ -42,9 +53,17 @@ type testTransport struct {
 }
 
 func (transport *testTransport) Send(io IO) error {
+	var requestID = io.PDU.RequestID
+
+	io.PDU.RequestID = 0
+
 	args := transport.MethodCalled(io.PDUType.String(), io)
 
-	transport.recvChan <- args.Get(1).(IO)
+	var recv = args.Get(1).(IO)
+
+	recv.PDU.RequestID = requestID
+
+	transport.recvChan <- recv
 
 	return args.Error(0)
 }
@@ -68,15 +87,14 @@ func (transport *testTransport) Close() error {
 	return nil
 }
 
-func (transport *testTransport) mockGetNext(requestID requestID, oid snmp.OID, varBind snmp.VarBind) {
-	transport.On("GetNextRequest", IO{
+func (transport *testTransport) mockGet(oid snmp.OID, varBind snmp.VarBind) {
+	transport.On("GetRequest", IO{
 		Packet: snmp.Packet{
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
 		},
-		PDUType: snmp.GetNextRequestType,
+		PDUType: snmp.GetRequestType,
 		PDU: snmp.PDU{
-			RequestID: int(requestID),
 			VarBinds: []snmp.VarBind{
 				snmp.MakeVarBind(oid, nil),
 			},
@@ -88,7 +106,32 @@ func (transport *testTransport) mockGetNext(requestID requestID, oid snmp.OID, v
 		},
 		PDUType: snmp.GetResponseType,
 		PDU: snmp.PDU{
-			RequestID: int(requestID),
+			VarBinds: []snmp.VarBind{
+				varBind,
+			},
+		},
+	})
+}
+
+func (transport *testTransport) mockGetNext(oid snmp.OID, varBind snmp.VarBind) {
+	transport.On("GetNextRequest", IO{
+		Packet: snmp.Packet{
+			Version:   snmp.SNMPv2c,
+			Community: []byte("public"),
+		},
+		PDUType: snmp.GetNextRequestType,
+		PDU: snmp.PDU{
+			VarBinds: []snmp.VarBind{
+				snmp.MakeVarBind(oid, nil),
+			},
+		},
+	}).Return(error(nil), IO{
+		Packet: snmp.Packet{
+			Version:   snmp.SNMPv2c,
+			Community: []byte("public"),
+		},
+		PDUType: snmp.GetResponseType,
+		PDU: snmp.PDU{
 			VarBinds: []snmp.VarBind{
 				varBind,
 			},
@@ -108,50 +151,21 @@ func assertVarBind(t *testing.T, varBinds []snmp.VarBind, index int, expectedOID
 }
 
 func TestGetRequest(t *testing.T) {
-	var testTransport, client = makeTestClient(t)
 	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0}
 	var value = []byte("qmsk-snmp test")
 
-	go client.Run()
-	defer client.Close()
+	withTestClient(t, func(transport *testTransport, client *Client) {
+		transport.mockGet(oid, snmp.MakeVarBind(oid, value))
 
-	testTransport.On("GetRequest", IO{
-		Packet: snmp.Packet{
-			Version:   snmp.SNMPv2c,
-			Community: []byte("public"),
-		},
-		PDUType: snmp.GetRequestType,
-		PDU: snmp.PDU{
-			RequestID: 1,
-			VarBinds: []snmp.VarBind{
-				snmp.MakeVarBind(oid, nil),
-			},
-		},
-	}).Return(error(nil), IO{
-		Packet: snmp.Packet{
-			Version:   snmp.SNMPv2c,
-			Community: []byte("public"),
-		},
-		PDUType: snmp.GetResponseType,
-		PDU: snmp.PDU{
-			RequestID: 1,
-			VarBinds: []snmp.VarBind{
-				snmp.MakeVarBind(oid, value),
-			},
-		},
+		if varBinds, err := client.Get(oid); err != nil {
+			t.Fatalf("Get(%v): %v", oid, err)
+		} else {
+			assertVarBind(t, varBinds, 0, oid, value)
+		}
 	})
-
-	if varBinds, err := client.Get(oid); err != nil {
-		t.Fatalf("Get(%v): %v", oid, err)
-	} else if !testTransport.AssertExpectations(t) {
-
-	} else {
-		assertVarBind(t, varBinds, 0, oid, value)
-	}
 }
 
 func TestWalk(t *testing.T) {
-	var testTransport, client = makeTestClient(t)
 	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1} // IF-MIB::ifName
 	var varBinds = []snmp.VarBind{
 		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, []byte("if1")),
@@ -159,17 +173,16 @@ func TestWalk(t *testing.T) {
 		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 2, 1}, snmp.Counter32(0)),
 	}
 
-	testTransport.mockGetNext(1, oid, varBinds[0])
-	testTransport.mockGetNext(2, varBinds[0].OID(), varBinds[1])
-	testTransport.mockGetNext(3, varBinds[1].OID(), varBinds[2])
+	withTestClient(t, func(transport *testTransport, client *Client) {
+		transport.mockGetNext(oid, varBinds[0])
+		transport.mockGetNext(varBinds[0].OID(), varBinds[1])
+		transport.mockGetNext(varBinds[1].OID(), varBinds[2])
 
-	go client.Run()
-	defer client.Close()
+		if err := client.Walk(func(varBinds ...snmp.VarBind) error {
 
-	if err := client.Walk(func(varBinds ...snmp.VarBind) error {
-
-		return nil
-	}, oid); err != nil {
-		t.Fatalf("Walk(%v): %v", oid, err)
-	}
+			return nil
+		}, oid); err != nil {
+			t.Fatalf("Walk(%v): %v", oid, err)
+		}
+	})
 }
