@@ -97,7 +97,7 @@ func (err ErrorStatus) String() string {
 }
 
 func (err ErrorStatus) Error() string {
-	return fmt.Sprintf("SNMP Error: %s", err.String())
+	return fmt.Sprintf("SNMP PDU Error: %s", err.String())
 }
 
 type ErrorValue int // context-specific NULLs in VarBind.Value
@@ -107,6 +107,23 @@ const (
 	NoSuchInstanceValue ErrorValue = 1
 	EndOfMibViewValue   ErrorValue = 2
 )
+
+func (err ErrorValue) String() string {
+	switch err {
+	case NoSuchObjectValue:
+		return "NoSuchObject"
+	case NoSuchInstanceValue:
+		return "NoSuchInstance"
+	case EndOfMibViewValue:
+		return "EndOfMibView"
+	default:
+		return fmt.Sprintf("ErrorValue(%d)", err)
+	}
+}
+
+func (err ErrorValue) Error() string {
+	return fmt.Sprintf("SNMP VarBind Error: %s", err.String())
+}
 
 type ApplicationValueType int // application-specific values in VarBind.Value
 
