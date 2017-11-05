@@ -18,10 +18,8 @@ func init() {
 	options.InitFlags()
 }
 
-func snmpget(client *client.Client, oids ...snmp.OID) error {
-	if varBinds, err := client.Get(oids...); err != nil {
-		return fmt.Errorf("client.Get: %v", err)
-	} else {
+func snmpwalk(client *client.Client, oids ...snmp.OID) error {
+	return client.Walk(func(varBinds ...snmp.VarBind) error {
 		for _, varBind := range varBinds {
 			if value, err := varBind.Value(); err != nil {
 				log.Printf("VarBind[%v].Value: %v", varBind.OID(), err)
@@ -29,13 +27,13 @@ func snmpget(client *client.Client, oids ...snmp.OID) error {
 				fmt.Printf("%v = <%T> %v\n", varBind.OID(), value, value)
 			}
 		}
-	}
 
-	return nil
+		return nil
+	}, oids...)
 }
 
 func main() {
 	options.Main(func(args []string) error {
-		return options.WithClientOIDs(args, snmpget)
+		return options.WithClientOIDs(args, snmpwalk)
 	})
 }
