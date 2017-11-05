@@ -63,6 +63,16 @@ func (mib *MIB) Lookup(oid snmp.OID) *ID {
 	return nil
 }
 
+func (mib *MIB) LookupObject(oid snmp.OID) *Object {
+	if id := mib.Lookup(oid); id == nil {
+		return nil
+	} else if object, ok := mib.objects[id]; !ok {
+		return nil
+	} else {
+		return object
+	}
+}
+
 func (mib *MIB) FormatOID(oid snmp.OID) string {
 	if index := mib.OID.Index(oid); index == nil {
 		return oid.String()

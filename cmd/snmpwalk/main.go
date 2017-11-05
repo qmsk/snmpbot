@@ -1,11 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"github.com/qmsk/snmpbot/client"
 	"github.com/qmsk/snmpbot/cmd"
 	"github.com/qmsk/snmpbot/snmp"
-	"log"
 )
 
 type Options struct {
@@ -21,11 +19,7 @@ func init() {
 func snmpwalk(client *client.Client, oids ...snmp.OID) error {
 	return client.Walk(func(varBinds ...snmp.VarBind) error {
 		for _, varBind := range varBinds {
-			if value, err := varBind.Value(); err != nil {
-				log.Printf("VarBind[%v].Value: %v", varBind.OID(), err)
-			} else {
-				fmt.Printf("%v = <%T> %v\n", cmd.FormatOID(varBind.OID()), value, value)
-			}
+			options.PrintVarBind(varBind)
 		}
 
 		return nil

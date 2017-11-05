@@ -88,10 +88,17 @@ func ParseOID(name string) (snmp.OID, error) {
 func Lookup(oid snmp.OID) (*MIB, *ID) {
 	if mib := registry.Lookup(oid); mib == nil {
 		return nil, nil
-	} else if id := mib.Lookup(oid); id == nil {
-		return mib, nil
 	} else {
-		return mib, id
+		return mib, mib.Lookup(oid)
+	}
+}
+
+// Lookup machine-readable object ID with optional index
+func LookupObject(oid snmp.OID) *Object {
+	if mib := registry.Lookup(oid); mib == nil {
+		return nil
+	} else {
+		return mib.LookupObject(oid)
 	}
 }
 

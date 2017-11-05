@@ -5,7 +5,6 @@ import (
 	"github.com/qmsk/snmpbot/client"
 	"github.com/qmsk/snmpbot/cmd"
 	"github.com/qmsk/snmpbot/snmp"
-	"log"
 )
 
 type Options struct {
@@ -23,11 +22,7 @@ func snmpget(client *client.Client, oids ...snmp.OID) error {
 		return fmt.Errorf("client.Get: %v", err)
 	} else {
 		for _, varBind := range varBinds {
-			if value, err := varBind.Value(); err != nil {
-				log.Printf("VarBind[%v].Value: %v", varBind.OID(), err)
-			} else {
-				fmt.Printf("%v = <%T> %v\n", cmd.FormatOID(varBind.OID()), value, value)
-			}
+			options.PrintVarBind(varBind)
 		}
 	}
 
