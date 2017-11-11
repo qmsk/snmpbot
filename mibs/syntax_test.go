@@ -9,3 +9,4 @@ var testTimeTicksSyntax Syntax = TimeTicksSyntax{}
 var testCounterSyntax Syntax = CounterSyntax{}
 var testMACAddressSyntax Syntax = MACAddressSyntax{}
 var testOctetStringSyntax Syntax = OctetStringSyntax{}
+var testUnsignedSyntax Syntax = UnsignedSyntax{}
