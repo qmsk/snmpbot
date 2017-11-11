@@ -133,6 +133,7 @@ const (
 	Gauge32Type     ApplicationValueType = 2
 	TimeTicks32Type ApplicationValueType = 3
 	OpaqueType      ApplicationValueType = 4
+	Counter64Type   ApplicationValueType = 6
 )
 
 type Packet struct {

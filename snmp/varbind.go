@@ -11,6 +11,7 @@ type Counter32 uint32
 type Gauge32 uint32
 type TimeTicks32 uint32 // duration of 1/100 s
 type Opaque []byte
+type Counter64 uint64
 
 // panics if unable to pack value
 func MakeVarBind(oid OID, value interface{}) VarBind {
@@ -98,6 +99,15 @@ func (varBind VarBind) Value() (interface{}, error) {
 			var value Opaque
 
 			return value, unpack(varBind.RawValue, &value)
+
+		case Counter64Type:
+			var value int64 // XXX: no support for uint64?
+
+			if err := unpack(varBind.RawValue, &value); err != nil {
+				return nil, err
+			} else {
+				return Counter64(value), nil
+			}
 
 		default:
 			return nil, fmt.Errorf("Unkown varbind value application tag=%d", varBind.RawValue.Tag)
