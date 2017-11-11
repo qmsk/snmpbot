@@ -6,7 +6,7 @@ import (
 )
 
 type Object struct {
-	*ID
+	ID
 
 	IndexSyntax
 	Syntax

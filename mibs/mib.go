@@ -5,21 +5,21 @@ import (
 	"github.com/qmsk/snmpbot/snmp"
 )
 
-func makeMIB(id *ID) MIB {
+func makeMIB(id ID) MIB {
 	return MIB{
 		ID: id,
 		registry: makeRegistry(),
-		objects: make(map[*ID]*Object),
-		tables:  make(map[*ID]*Table),
+		objects: make(map[IDKey]*Object),
+		tables:  make(map[IDKey]*Table),
 	}
 }
 
 type MIB struct {
-	*ID
+	ID
 	registry
 
-	objects map[*ID]*Object
-	tables  map[*ID]*Table
+	objects map[IDKey]*Object
+	tables  map[IDKey]*Table
 }
 
 func (mib *MIB) String() string {
@@ -31,45 +31,43 @@ func (mib *MIB) MakeID(name string, ids ...int) ID {
 }
 
 func (mib *MIB) RegisterObject(id ID, object Object) *Object {
-	object.ID = &id
+	object.ID = id
 
-	mib.registry.registerOID(&id)
-	mib.registry.registerName(&id)
+	mib.registry.registerOID(id)
+	mib.registry.registerName(id)
 
-	mib.objects[&id] = &object
+	mib.objects[id.Key()] = &object
 
 	return &object
 }
 
 func (mib *MIB) RegisterTable(id ID, table Table) *Table {
-	table.ID = &id
+	table.ID = id
 
-	mib.registry.registerName(&id)
-	mib.tables[&id] = &table
+	mib.registry.registerName(id)
+	mib.tables[id.Key()] = &table
 
 	return &table
 }
 
 func (mib *MIB) ResolveName(name string) (ID, error) {
-	if id := mib.registry.getName(name); id == nil {
+	if id, ok := mib.registry.getName(name); !ok {
 		return ID{MIB: mib, Name: name}, fmt.Errorf("%v name not found: %v", mib.Name, name)
 	} else {
-		return *id, nil
+		return id, nil
 	}
 }
 
 func (mib *MIB) Lookup(oid snmp.OID) ID {
-	if id := mib.registry.getOID(oid); id == nil {
+	if id, ok := mib.registry.getOID(oid); !ok {
 		return ID{MIB: mib, OID: oid}
 	} else {
-		return *id
+		return id
 	}
 }
 
-func (mib *MIB) LookupObject(oid snmp.OID) *Object {
-	if id := mib.registry.getOID(oid); id == nil {
-		return nil
-	} else if object, ok := mib.objects[id]; !ok {
+func (mib *MIB) GetObject(id ID) *Object {
+	if object, ok := mib.objects[id.Key()]; !ok {
 		return nil
 	} else {
 		return object

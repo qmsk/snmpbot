@@ -5,10 +5,16 @@ import (
 	"github.com/qmsk/snmpbot/snmp"
 )
 
+type IDKey string
+
 type ID struct {
 	MIB  *MIB
 	Name string
 	OID  snmp.OID
+}
+
+func (id ID) Key() IDKey {
+	return IDKey(id.OID.String()) // TODO: perf?
 }
 
 func (id ID) String() string {

@@ -3,7 +3,7 @@ package mibs
 type EntrySyntax []*Object
 
 type Table struct {
-	*ID
+	ID
 
 	IndexSyntax IndexSyntax
 	EntrySyntax EntrySyntax
