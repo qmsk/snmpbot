@@ -6,3 +6,6 @@ var testGaugeSyntax Syntax = GaugeSyntax{}
 var testObjectIdentifierSyntax Syntax = ObjectIdentifierSyntax{}
 var testPhysAddressSyntax Syntax = PhysAddressSyntax{}
 var testTimeTicksSyntax Syntax = TimeTicksSyntax{}
+var testCounterSyntax Syntax = CounterSyntax{}
+var testMACAddressSyntax Syntax = MACAddressSyntax{}
+var testOctetStringSyntax Syntax = OctetStringSyntax{}
