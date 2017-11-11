@@ -1,8 +1,8 @@
 package mibs
 
 import (
-  "fmt"
-  "strings"
+	"fmt"
+	"strings"
 )
 
 type IndexSyntax []*Object
@@ -28,9 +28,9 @@ func (indexSyntax IndexSyntax) UnpackIndex(index []int) ([]Value, error) {
 }
 
 func (indexSyntax IndexSyntax) MapIndex(index []int) (IndexMap, error) {
-  var indexMap = make(IndexMap)
+	var indexMap = make(IndexMap)
 
-  for _, indexObject := range indexSyntax {
+	for _, indexObject := range indexSyntax {
 		if indexValue, indexRemaining, err := indexObject.Syntax.UnpackIndex(index); err != nil {
 			return nil, fmt.Errorf("Invalid index for %v: %v", indexValue, err)
 		} else {
@@ -39,7 +39,7 @@ func (indexSyntax IndexSyntax) MapIndex(index []int) (IndexMap, error) {
 		}
 	}
 
-  return indexMap, nil
+	return indexMap, nil
 }
 
 func (indexSyntax IndexSyntax) FormatIndex(index []int) (string, error) {

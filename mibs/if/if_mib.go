@@ -30,23 +30,23 @@ var (
 
 	Descr = InterfacesMIB.RegisterObject(EntryID.MakeID("ifDescr", 2), mibs.Object{
 		IndexSyntax: IndexSyntax,
-		Syntax: mibs.DisplayStringSyntax{},
+		Syntax:      mibs.DisplayStringSyntax{},
 	})
 	Type = InterfacesMIB.RegisterObject(EntryID.MakeID("ifType", 3), mibs.Object{
 		IndexSyntax: IndexSyntax,
-		Syntax: mibs.IntegerSyntax{},
+		Syntax:      mibs.IntegerSyntax{},
 	})
 	Mtu = InterfacesMIB.RegisterObject(EntryID.MakeID("ifMtu", 4), mibs.Object{
 		IndexSyntax: IndexSyntax,
-		Syntax: mibs.IntegerSyntax{},
+		Syntax:      mibs.IntegerSyntax{},
 	})
 	Speed = InterfacesMIB.RegisterObject(EntryID.MakeID("ifSpeed", 5), mibs.Object{
 		IndexSyntax: IndexSyntax,
-		Syntax: mibs.GaugeSyntax{},
+		Syntax:      mibs.GaugeSyntax{},
 	})
 	PhysAddress = InterfacesMIB.RegisterObject(EntryID.MakeID("ifPhysAddress", 6), mibs.Object{
 		IndexSyntax: IndexSyntax,
-		Syntax: mibs.PhysAddressSyntax{},
+		Syntax:      mibs.PhysAddressSyntax{},
 	})
 	AdminStatus = InterfacesMIB.RegisterObject(EntryID.MakeID("ifAdminStatus", 7), mibs.Object{
 		IndexSyntax: IndexSyntax,
@@ -70,7 +70,7 @@ var (
 	})
 	LastChange = InterfacesMIB.RegisterObject(EntryID.MakeID("ifLastChange", 9), mibs.Object{
 		IndexSyntax: IndexSyntax,
-		Syntax: mibs.TimeTicksSyntax{},
+		Syntax:      mibs.TimeTicksSyntax{},
 	})
 
 	Table = InterfacesMIB.RegisterTable(TableID, mibs.Table{

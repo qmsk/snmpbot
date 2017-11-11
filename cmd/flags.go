@@ -4,8 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/qmsk/snmpbot/client"
-	"github.com/qmsk/snmpbot/snmp"
 	"github.com/qmsk/snmpbot/mibs"
+	"github.com/qmsk/snmpbot/snmp"
 	"log"
 	"os"
 )
@@ -59,7 +59,7 @@ func (options Options) ParseClientIDs(args []string) (*client.Client, []mibs.ID,
 
 	if ids, err := options.ResolveIDs(args[1:]); err != nil {
 		return nil, nil, err
-	} else	if client, err := clientConfig.Client(); err != nil {
+	} else if client, err := clientConfig.Client(); err != nil {
 		return nil, nil, fmt.Errorf("Client: %v", err)
 	} else {
 		return client, ids, nil

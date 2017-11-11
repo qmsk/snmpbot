@@ -1,8 +1,8 @@
 package mibs
 
 import (
-  "github.com/qmsk/snmpbot/snmp"
 	"fmt"
+	"github.com/qmsk/snmpbot/snmp"
 )
 
 type EntrySyntax []*Object

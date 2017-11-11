@@ -7,7 +7,7 @@ import (
 
 func makeRegistry() registry {
 	return registry{
-		byOID: make(map[string]ID),
+		byOID:  make(map[string]ID),
 		byName: make(map[string]ID),
 	}
 }

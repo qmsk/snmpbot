@@ -48,7 +48,6 @@ func TestParseOIDNameNotFoundError(t *testing.T) {
 	})
 }
 
-
 func TestOIDMIBIndexInvalid(t *testing.T) {
 	testParseOID(t, oidTest{
 		name: "TEST-MIB::.0",

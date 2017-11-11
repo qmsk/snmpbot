@@ -7,10 +7,10 @@ import (
 
 func makeMIB(id ID) MIB {
 	return MIB{
-		ID: id,
+		ID:       id,
 		registry: makeRegistry(),
-		objects: make(map[IDKey]*Object),
-		tables:  make(map[IDKey]*Table),
+		objects:  make(map[IDKey]*Object),
+		tables:   make(map[IDKey]*Table),
 	}
 }
 
