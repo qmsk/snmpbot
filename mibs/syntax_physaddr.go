@@ -8,17 +8,24 @@ import (
 
 type PhysAddress []byte
 
-func (addr PhysAddress) String() string {
-	var parts = make([]string, len(addr))
+func (physAddress PhysAddress) String() string {
+	var parts = make([]string, len(physAddress))
 
-	for i, octet := range addr {
+	for i, octet := range physAddress {
 		parts[i] = fmt.Sprintf("%02x", octet)
 	}
 
 	return strings.Join(parts, ":")
 }
 
-func (syntax PhysAddress) Unpack(varBind snmp.VarBind) (Value, error) {
+type PhysAddressSyntax struct{}
+
+func (syntax PhysAddressSyntax) UnpackIndex(index []int) (Value, []int, error) {
+	// TODO
+	return nil, index, SyntaxIndexError{syntax, index}
+}
+
+func (syntax PhysAddressSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 	snmpValue, err := varBind.Value()
 	if err != nil {
 		return nil, err

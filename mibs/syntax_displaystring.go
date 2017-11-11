@@ -1,17 +1,19 @@
 package mibs
 
 import (
-	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
 )
 
 type DisplayString string
 
-func (value DisplayString) String() string {
-	return fmt.Sprintf("%v", string(value))
+type DisplayStringSyntax struct{}
+
+func (syntax DisplayStringSyntax) UnpackIndex(index []int) (Value, []int, error) {
+	// TODO
+	return nil, index, SyntaxIndexError{syntax, index}
 }
 
-func (syntax DisplayString) Unpack(varBind snmp.VarBind) (Value, error) {
+func (syntax DisplayStringSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 	snmpValue, err := varBind.Value()
 	if err != nil {
 		return nil, err

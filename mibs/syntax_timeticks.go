@@ -12,7 +12,14 @@ func (value TimeTicks) String() string {
 	return fmt.Sprintf("%v", time.Duration(value)*10*time.Millisecond)
 }
 
-func (syntax TimeTicks) Unpack(varBind snmp.VarBind) (Value, error) {
+type TimeTicksSyntax struct{}
+
+func (syntax TimeTicksSyntax) UnpackIndex(index []int) (Value, []int, error) {
+	// TODO
+	return nil, index, SyntaxIndexError{syntax, index}
+}
+
+func (syntax TimeTicksSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 	snmpValue, err := varBind.Value()
 	if err != nil {
 		return nil, err

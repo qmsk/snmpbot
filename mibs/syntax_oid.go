@@ -11,7 +11,14 @@ func (value OID) String() string {
 	return fmt.Sprintf("%v", snmp.OID(value))
 }
 
-func (syntax OID) Unpack(varBind snmp.VarBind) (Value, error) {
+type ObjectIdentifierSyntax struct{}
+
+func (syntax ObjectIdentifierSyntax) UnpackIndex(index []int) (Value, []int, error) {
+	// TODO
+	return nil, index, SyntaxIndexError{syntax, index}
+}
+
+func (syntax ObjectIdentifierSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 	snmpValue, err := varBind.Value()
 	if err != nil {
 		return nil, err

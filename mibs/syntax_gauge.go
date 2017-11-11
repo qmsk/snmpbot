@@ -11,7 +11,9 @@ func (value Gauge) String() string {
 	return fmt.Sprintf("%v", snmp.Gauge32(value))
 }
 
-func (syntax Gauge) Unpack(varBind snmp.VarBind) (Value, error) {
+type GaugeSyntax struct{}
+
+func (syntax GaugeSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 	snmpValue, err := varBind.Value()
 	if err != nil {
 		return nil, err
@@ -22,4 +24,9 @@ func (syntax Gauge) Unpack(varBind snmp.VarBind) (Value, error) {
 	default:
 		return nil, SyntaxError{syntax, value}
 	}
+}
+
+func (syntax GaugeSyntax) UnpackIndex(index []int) (Value, []int, error) {
+	// TODO
+	return nil, index, SyntaxIndexError{syntax, index}
 }

@@ -8,47 +8,56 @@ import (
 // SNMP IF-MIB implementation
 
 var MIB = mibs.RegisterMIB("IF-MIB", snmp.OID{1, 3, 6, 1, 2, 1, 31})
-var Interfaces = mibs.RegisterMIB("interfaces", snmp.OID{1, 3, 6, 1, 2, 1, 2})
+var InterfacesMIB = mibs.RegisterMIB("interfaces", snmp.OID{1, 3, 6, 1, 2, 1, 2})
 
 var (
-	Number = Interfaces.RegisterObject(Interfaces.MakeID("ifNumber", 1), mibs.Object{
-		Syntax: mibs.IntegerSyntax,
+	Number = InterfacesMIB.RegisterObject(InterfacesMIB.MakeID("ifNumber", 1), mibs.Object{
+		Syntax: mibs.IntegerSyntax{},
 	})
-	TableLastChange = MIB.RegisterObject(Interfaces.MakeID("ifTableLastChange", 1, 5), mibs.Object{
-		Syntax: mibs.IntegerSyntax,
+	TableLastChange = MIB.RegisterObject(MIB.MakeID("ifTableLastChange", 1, 5), mibs.Object{
+		Syntax: mibs.IntegerSyntax{},
 	})
-	Table = Interfaces.RegisterTable(Interfaces.MakeID("ifTable", 2), mibs.Table{
-		IndexSyntax: []mibs.TableIndexSyntax{
-			{"ifIndex", mibs.IntegerIndexSyntax},
-		},
+	TableID = InterfacesMIB.MakeID("ifTable", 2)
+	EntryID = TableID.MakeID("ifEntry", 1)
+
+	Index = InterfacesMIB.RegisterObject(EntryID.MakeID("ifIndex", 1), mibs.Object{
+		Syntax: mibs.IntegerSyntax{},
 	})
 
-	Index = Table.RegisterObject(Table.MakeID("ifIndex", 1, 1), mibs.Object{
-		Syntax: mibs.IntegerSyntax,
+	IndexSyntax = mibs.IndexSyntax{
+		Index,
+	}
+
+	Descr = InterfacesMIB.RegisterObject(EntryID.MakeID("ifDescr", 2), mibs.Object{
+		IndexSyntax: IndexSyntax,
+		Syntax: mibs.DisplayStringSyntax{},
 	})
-	Descr = Table.RegisterObject(Table.MakeID("ifDescr", 1, 2), mibs.Object{
-		Syntax: mibs.DisplayStringSyntax,
+	Type = InterfacesMIB.RegisterObject(EntryID.MakeID("ifType", 3), mibs.Object{
+		IndexSyntax: IndexSyntax,
+		Syntax: mibs.IntegerSyntax{},
 	})
-	Type = Table.RegisterObject(Table.MakeID("ifType", 1, 3), mibs.Object{
-		Syntax: mibs.IntegerSyntax,
+	Mtu = InterfacesMIB.RegisterObject(EntryID.MakeID("ifMtu", 4), mibs.Object{
+		IndexSyntax: IndexSyntax,
+		Syntax: mibs.IntegerSyntax{},
 	})
-	Mtu = Table.RegisterObject(Table.MakeID("ifMtu", 1, 4), mibs.Object{
-		Syntax: mibs.IntegerSyntax,
+	Speed = InterfacesMIB.RegisterObject(EntryID.MakeID("ifSpeed", 5), mibs.Object{
+		IndexSyntax: IndexSyntax,
+		Syntax: mibs.GaugeSyntax{},
 	})
-	Speed = Table.RegisterObject(Table.MakeID("ifSpeed", 1, 5), mibs.Object{
-		Syntax: mibs.GaugeSyntax,
+	PhysAddress = InterfacesMIB.RegisterObject(EntryID.MakeID("ifPhysAddress", 6), mibs.Object{
+		IndexSyntax: IndexSyntax,
+		Syntax: mibs.PhysAddressSyntax{},
 	})
-	PhysAddress = Table.RegisterObject(Table.MakeID("ifPhysAddress", 1, 6), mibs.Object{
-		Syntax: mibs.PhysAddressSyntax,
-	})
-	AdminStatus = Table.RegisterObject(Table.MakeID("ifAdminStatus", 1, 7), mibs.Object{
+	AdminStatus = InterfacesMIB.RegisterObject(EntryID.MakeID("ifAdminStatus", 7), mibs.Object{
+		IndexSyntax: IndexSyntax,
 		Syntax: mibs.EnumSyntax{
 			{1, "up"},
 			{2, "down"},
 			{3, "testing"},
 		},
 	})
-	OperStatus = Table.RegisterObject(Table.MakeID("ifOperStatus", 1, 8), mibs.Object{
+	OperStatus = InterfacesMIB.RegisterObject(EntryID.MakeID("ifOperStatus", 8), mibs.Object{
+		IndexSyntax: IndexSyntax,
 		Syntax: mibs.EnumSyntax{
 			{1, "up"},
 			{2, "down"},
@@ -59,8 +68,24 @@ var (
 			{7, "lowerLayerDown"},
 		},
 	})
-	LastChange = Table.RegisterObject(Table.MakeID("ifLastChange", 1, 9), mibs.Object{
-		Syntax: mibs.TimeTicksSyntax,
+	LastChange = InterfacesMIB.RegisterObject(EntryID.MakeID("ifLastChange", 9), mibs.Object{
+		IndexSyntax: IndexSyntax,
+		Syntax: mibs.TimeTicksSyntax{},
+	})
+
+	Table = InterfacesMIB.RegisterTable(TableID, mibs.Table{
+		IndexSyntax: IndexSyntax,
+		EntrySyntax: mibs.EntrySyntax{
+			Index,
+			Descr,
+			Type,
+			Mtu,
+			Speed,
+			PhysAddress,
+			AdminStatus,
+			OperStatus,
+			LastChange,
+		},
 	})
 
 /*

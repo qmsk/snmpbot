@@ -7,8 +7,8 @@ import (
 
 type Object struct {
 	*ID
-	Table *Table
 
+	IndexSyntax
 	Syntax
 }
 
@@ -24,7 +24,7 @@ func (object *Object) Format(varBind snmp.VarBind) (string, interface{}, error) 
 }
 
 func (object *Object) FormatIndex(oid snmp.OID) string {
-	if object.Table == nil {
+	if object.IndexSyntax == nil {
 		return object.FormatOID(oid)
 	}
 
@@ -32,7 +32,7 @@ func (object *Object) FormatIndex(oid snmp.OID) string {
 		return oid.String()
 	} else if len(index) == 0 {
 		return object.String()
-	} else if indexString, err := object.Table.FormatIndex(index); err != nil {
+	} else if indexString, err := object.IndexSyntax.FormatIndex(index); err != nil {
 		return fmt.Sprintf("%s::%s%s", object.MIB.Name, object.Name, snmp.OID(index).String())
 	} else {
 		return fmt.Sprintf("%s::%s%s", object.MIB.Name, object.Name, indexString)

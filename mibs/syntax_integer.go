@@ -16,15 +16,17 @@ func (value Integer) MarshalJSON() ([]byte, error) {
 	return json.Marshal(int(value))
 }
 
-func (syntax Integer) UnpackIndex(index []int) (Value, []int, error) {
+type IntegerSyntax struct{}
+
+func (syntax IntegerSyntax) UnpackIndex(index []int) (Value, []int, error) {
 	if len(index) < 1 {
-		return nil, index, IndexError{syntax, index}
+		return nil, index, SyntaxIndexError{syntax, index}
 	}
 
 	return Integer(index[0]), index[1:], nil
 }
 
-func (syntax Integer) Unpack(varBind snmp.VarBind) (Value, error) {
+func (syntax IntegerSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 	snmpValue, err := varBind.Value()
 	if err != nil {
 		return nil, err
