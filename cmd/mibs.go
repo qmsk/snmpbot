@@ -50,7 +50,7 @@ func (options Options) PrintObject(object *mibs.Object, varBind snmp.VarBind) {
 	value, err := object.Unpack(varBind)
 
 	if err != nil {
-		fmt.Printf("%v = <%T> %v !%v\n", name, value, value, err)
+		log.Printf("VarBind[%v](%v): %v", varBind.OID(), object, err)
 	} else {
 		fmt.Printf("%v = %v\n", name, value)
 	}

@@ -13,7 +13,11 @@ type Object struct {
 }
 
 func (object *Object) Unpack(varBind snmp.VarBind) (interface{}, error) {
-	return object.Syntax.Unpack(varBind)
+	if err := varBind.ErrorValue(); err != nil {
+		return nil, err
+	} else {
+		return object.Syntax.Unpack(varBind)
+	}
 }
 
 func (object *Object) Format(varBind snmp.VarBind) (string, interface{}, error) {
