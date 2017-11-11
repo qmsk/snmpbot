@@ -39,15 +39,18 @@ func (registry *registry) getName(name string) (ID, bool) {
 }
 
 func (registry *registry) getOID(oid snmp.OID) (ID, bool) {
-	var lookup = ""
+	var key = ""
+	var id = ID{OID: oid}
+	var ok = false
 
-	for _, id := range oid {
-		lookup += fmt.Sprintf(".%d", id)
+	for _, x := range oid {
+		key += fmt.Sprintf(".%d", x)
 
-		if id, ok := registry.byOID[lookup]; ok {
-			return id, true
+		if getID, getOK := registry.byOID[key]; getOK {
+			id = getID
+			ok = true
 		}
 	}
 
-	return ID{OID: oid}, false
+	return id, ok
 }
