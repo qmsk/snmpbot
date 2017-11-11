@@ -13,6 +13,24 @@ func ParseOID(arg string) (snmp.OID, error) {
 	return mibs.ParseOID(arg)
 }
 
+func (options Options) ResolveID(name string) (mibs.ID, error) {
+	return mibs.Resolve(name)
+}
+
+func (options Options) ResolveIDs(names []string) ([]mibs.ID, error) {
+	var ids = make([]mibs.ID, len(names))
+
+	for i, name := range names {
+		if id, err := options.ResolveID(name); err != nil {
+			return nil, fmt.Errorf("Invalid ID %v: %v", name, err)
+		} else {
+			ids[i] = id
+		}
+	}
+
+	return ids, nil
+}
+
 func (options Options) FormatOID(oid snmp.OID) string {
 	return mibs.FormatOID(oid)
 }

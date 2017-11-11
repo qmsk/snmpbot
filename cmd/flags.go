@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/qmsk/snmpbot/client"
 	"github.com/qmsk/snmpbot/snmp"
+	"github.com/qmsk/snmpbot/mibs"
 	"log"
 	"os"
 )
@@ -45,41 +46,68 @@ func (options Options) ClientConfig() client.Config {
 	return config
 }
 
-func (options Options) ParseClientOIDs(args []string) (*client.Client, []snmp.OID, error) {
+func (options Options) ParseClientIDs(args []string) (*client.Client, []mibs.ID, error) {
 	if len(args) < 1 {
 		return nil, nil, fmt.Errorf("Usage: [options] <addr> <oid...>")
 	}
 
 	var clientConfig = options.ClientConfig()
-	var oids = make([]snmp.OID, len(args)-1)
 
 	if err := clientConfig.Parse(args[0]); err != nil {
 		return nil, nil, fmt.Errorf("Invalid addr %v: %v", args[0], err)
 	}
 
-	for i, arg := range args[1:] {
-		if oid, err := ParseOID(arg); err != nil {
-			return nil, nil, fmt.Errorf("Invalid OID %v: %v", arg, err)
-		} else {
-			oids[i] = oid
-		}
-	}
-
-	if client, err := clientConfig.Client(); err != nil {
+	if ids, err := options.ResolveIDs(args[1:]); err != nil {
+		return nil, nil, err
+	} else	if client, err := clientConfig.Client(); err != nil {
 		return nil, nil, fmt.Errorf("Client: %v", err)
 	} else {
-		return client, oids, nil
+		return client, ids, nil
 	}
 }
 
 func (options Options) WithClientOIDs(args []string, f func(*client.Client, ...snmp.OID) error) error {
-	if client, oids, err := options.ParseClientOIDs(args); err != nil {
+	if client, ids, err := options.ParseClientIDs(args); err != nil {
+		return err
+	} else {
+		var oids = make([]snmp.OID, len(ids))
+
+		for i, id := range ids {
+			oids[i] = id.OID
+		}
+
+		go client.Run()
+		defer client.Close()
+
+		return f(client, oids...)
+	}
+}
+
+func (options Options) WithClientIDs(args []string, f func(*client.Client, ...mibs.ID) error) error {
+	if client, ids, err := options.ParseClientIDs(args); err != nil {
 		return err
 	} else {
 		go client.Run()
 		defer client.Close()
 
-		return f(client, oids...)
+		return f(client, ids...)
+	}
+}
+
+func (options Options) WithClientID(args []string, f func(*client.Client, mibs.ID) error) error {
+	if client, ids, err := options.ParseClientIDs(args); err != nil {
+		return err
+	} else {
+		go client.Run()
+		defer client.Close()
+
+		for _, id := range ids {
+			if err := f(client, id); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
 }
 

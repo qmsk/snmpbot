@@ -48,6 +48,14 @@ func TestParseOIDNameNotFoundError(t *testing.T) {
 	})
 }
 
+
+func TestOIDMIBIndexInvalid(t *testing.T) {
+	testParseOID(t, oidTest{
+		name: "TEST-MIB::.0",
+		err:  "Invalid syntax: TEST-MIB::.0",
+	})
+}
+
 func TestOIDEmpty(t *testing.T) {
 	testParseFormatOID(t, oidTest{
 		name: "",
@@ -71,7 +79,7 @@ func TestOIDMIB(t *testing.T) {
 
 func TestOIDMIBIndex(t *testing.T) {
 	testParseFormatOID(t, oidTest{
-		name: "TEST-MIB::.0",
+		name: "TEST-MIB.0",
 		oid:  snmp.OID{1, 0, 1, 0},
 	})
 }

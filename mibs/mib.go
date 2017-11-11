@@ -50,16 +50,24 @@ func (mib *MIB) RegisterTable(id ID, table Table) *Table {
 	return &table
 }
 
-func (mib *MIB) Resolve(name string) *ID {
-	return mib.registry.getName(name)
+func (mib *MIB) ResolveName(name string) (ID, error) {
+	if id := mib.registry.getName(name); id == nil {
+		return ID{MIB: mib, Name: name}, fmt.Errorf("%v name not found: %v", mib.Name, name)
+	} else {
+		return *id, nil
+	}
 }
 
-func (mib *MIB) Lookup(oid snmp.OID) *ID {
-	return mib.registry.getOID(oid)
+func (mib *MIB) Lookup(oid snmp.OID) ID {
+	if id := mib.registry.getOID(oid); id == nil {
+		return ID{MIB: mib, OID: oid}
+	} else {
+		return *id
+	}
 }
 
 func (mib *MIB) LookupObject(oid snmp.OID) *Object {
-	if id := mib.Lookup(oid); id == nil {
+	if id := mib.registry.getOID(oid); id == nil {
 		return nil
 	} else if object, ok := mib.objects[id]; !ok {
 		return nil
@@ -74,6 +82,6 @@ func (mib *MIB) FormatOID(oid snmp.OID) string {
 	} else if len(index) == 0 {
 		return mib.Name
 	} else {
-		return fmt.Sprintf("%s::%s", mib.Name, snmp.OID(index).String())
+		return fmt.Sprintf("%s%s", mib.Name, snmp.OID(index).String())
 	}
 }

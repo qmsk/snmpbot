@@ -25,7 +25,7 @@ func (object *Object) Format(varBind snmp.VarBind) (string, interface{}, error) 
 
 func (object *Object) FormatIndex(oid snmp.OID) string {
 	if object.IndexSyntax == nil {
-		return object.FormatOID(oid)
+		return object.ID.FormatOID(oid)
 	}
 
 	if index := object.OID.Index(oid); index == nil {
