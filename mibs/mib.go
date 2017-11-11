@@ -66,11 +66,19 @@ func (mib *MIB) Lookup(oid snmp.OID) ID {
 	}
 }
 
-func (mib *MIB) GetObject(id ID) *Object {
+func (mib *MIB) Object(id ID) *Object {
 	if object, ok := mib.objects[id.Key()]; !ok {
 		return nil
 	} else {
 		return object
+	}
+}
+
+func (mib *MIB) Table(id ID) *Table {
+	if table, ok := mib.tables[id.Key()]; !ok {
+		return nil
+	} else {
+		return table
 	}
 }
 

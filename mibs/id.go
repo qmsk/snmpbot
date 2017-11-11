@@ -40,3 +40,19 @@ func (id ID) FormatOID(oid snmp.OID) string {
 		return fmt.Sprintf("%s::%s%s", id.MIB.Name, id.Name, snmp.OID(index).String())
 	}
 }
+
+func (id ID) Object() *Object {
+	if id.MIB == nil {
+		return nil
+	} else {
+		return id.MIB.Object(id)
+	}
+}
+
+func (id ID) Table() *Table {
+	if id.MIB == nil {
+		return nil
+	} else {
+		return id.MIB.Table(id)
+	}
+}

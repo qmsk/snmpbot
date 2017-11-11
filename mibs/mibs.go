@@ -101,7 +101,7 @@ func LookupObject(oid snmp.OID) *Object {
 	if id := Lookup(oid); id.MIB == nil {
 		return nil
 	} else {
-		return id.MIB.GetObject(id)
+		return id.MIB.Object(id)
 	}
 }
 
