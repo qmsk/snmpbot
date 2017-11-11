@@ -6,7 +6,7 @@ import (
 )
 
 type Client struct {
-  *client.Client
+	*client.Client
 }
 
 func (client *Client) WalkTable(table *Table, f func(IndexMap, EntryMap) error) error {
