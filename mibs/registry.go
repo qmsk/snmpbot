@@ -5,28 +5,43 @@ import (
 	"github.com/qmsk/snmpbot/snmp"
 )
 
-type Registry struct {
-	lookup  map[string]*MIB
-	resolve map[string]*MIB
+func makeRegistry() registry {
+	return registry{
+		byOID: make(map[string]*ID),
+		byName: make(map[string]*ID),
+	}
 }
 
-func (registry *Registry) Register(mib *MIB) {
-	registry.lookup[mib.OID.String()] = mib
-	registry.resolve[mib.Name] = mib
+type registry struct {
+	byOID  map[string]*ID
+	byName map[string]*ID
 }
 
-func (registry *Registry) Resolve(name string) *MIB {
-	return registry.resolve[name]
+func (registry *registry) registerOID(id *ID) {
+	registry.byOID[id.OID.String()] = id
 }
 
-func (registry *Registry) Lookup(oid snmp.OID) *MIB {
+func (registry *registry) registerName(id *ID) {
+	registry.byName[id.Name] = id
+}
+
+func (registry *registry) register(id *ID) {
+	registry.registerOID(id)
+	registry.registerName(id)
+}
+
+func (registry *registry) getName(name string) *ID {
+	return registry.byName[name]
+}
+
+func (registry *registry) getOID(oid snmp.OID) *ID {
 	var lookup = ""
 
 	for _, id := range oid {
 		lookup += fmt.Sprintf(".%d", id)
 
-		if mib := registry.lookup[lookup]; mib != nil {
-			return mib
+		if id := registry.byOID[lookup]; id != nil {
+			return id
 		}
 	}
 

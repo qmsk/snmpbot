@@ -6,17 +6,63 @@ import (
 	"strings"
 )
 
-var registry = Registry{
-	lookup:  make(map[string]*MIB),
-	resolve: make(map[string]*MIB),
-}
+var mibRegistry = makeRegistry()
 
 func RegisterMIB(name string, oid snmp.OID) *MIB {
-	var mib = newMIB(name, oid)
+	var id = ID{Name: name, OID: oid}
+	var mib = makeMIB(&id)
 
-	registry.Register(mib)
+	id.MIB = &mib
 
-	return mib
+	mibRegistry.register(mib.ID)
+
+	return &mib
+}
+
+func ResolveMIB(name string) *MIB {
+	if id := mibRegistry.getName(name); id == nil {
+		return nil
+	} else {
+		return id.MIB
+	}
+}
+
+func LookupMIB(oid snmp.OID) *MIB {
+	if id := mibRegistry.getOID(oid); id == nil {
+		return nil
+	} else {
+		return id.MIB
+	}
+}
+
+// Lookup machine-readable object ID with optional index
+func Lookup(oid snmp.OID) (*MIB, *ID) {
+	if mib := LookupMIB(oid); mib == nil {
+		return nil, nil
+	} else {
+		return mib, mib.Lookup(oid)
+	}
+}
+
+// Lookup machine-readable object ID with optional index
+func LookupObject(oid snmp.OID) *Object {
+	if mib := LookupMIB(oid); mib == nil {
+		return nil
+	} else {
+		return mib.LookupObject(oid)
+	}
+}
+
+func FormatOID(oid snmp.OID) string {
+	mib, id := Lookup(oid)
+
+	if mib == nil {
+		return oid.String()
+	} else if id == nil {
+		return mib.FormatOID(oid)
+	} else {
+		return id.FormatOID(oid)
+	}
 }
 
 // Lookup human-readable object name with optional index
@@ -31,7 +77,7 @@ func ParseOID(name string) (snmp.OID, error) {
 
 	if parts := strings.SplitN(name, "::", 2); len(parts) == 1 && name[0] == '.' {
 		// .X.Y.Z
-	} else if resolveMIB := registry.Resolve(parts[0]); resolveMIB == nil {
+	} else if resolveMIB := ResolveMIB(parts[0]); resolveMIB == nil {
 		return nil, fmt.Errorf("MIB not found: %v", parts[0])
 	} else {
 		mib = resolveMIB
@@ -81,35 +127,5 @@ func ParseOID(name string) (snmp.OID, error) {
 		return id.OID.Extend(index...), nil
 	} else {
 		return id.OID, nil
-	}
-}
-
-// Lookup machine-readable object ID with optional index
-func Lookup(oid snmp.OID) (*MIB, *ID) {
-	if mib := registry.Lookup(oid); mib == nil {
-		return nil, nil
-	} else {
-		return mib, mib.Lookup(oid)
-	}
-}
-
-// Lookup machine-readable object ID with optional index
-func LookupObject(oid snmp.OID) *Object {
-	if mib := registry.Lookup(oid); mib == nil {
-		return nil
-	} else {
-		return mib.LookupObject(oid)
-	}
-}
-
-func FormatOID(oid snmp.OID) string {
-	mib, id := Lookup(oid)
-
-	if mib == nil {
-		return oid.String()
-	} else if id == nil {
-		return mib.FormatOID(oid)
-	} else {
-		return id.FormatOID(oid)
 	}
 }

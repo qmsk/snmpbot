@@ -5,23 +5,19 @@ import (
 	"github.com/qmsk/snmpbot/snmp"
 )
 
-func newMIB(name string, oid snmp.OID) *MIB {
-	return &MIB{
-		OID:     oid,
-		Name:    name,
-		lookup:  make(map[string]*ID),
-		resolve: make(map[string]*ID),
+func makeMIB(id *ID) MIB {
+	return MIB{
+		ID: id,
+		registry: makeRegistry(),
 		objects: make(map[*ID]*Object),
 		tables:  make(map[*ID]*Table),
 	}
 }
 
 type MIB struct {
-	OID  snmp.OID
-	Name string
+	*ID
+	registry
 
-	lookup  map[string]*ID
-	resolve map[string]*ID
 	objects map[*ID]*Object
 	tables  map[*ID]*Table
 }
@@ -34,19 +30,12 @@ func (mib *MIB) MakeID(name string, ids ...int) ID {
 	return ID{mib, name, mib.OID.Extend(ids...)}
 }
 
-func (mib *MIB) registerLookup(id *ID) {
-	mib.lookup[id.OID.String()] = id
-}
-
-func (mib *MIB) registerResolve(id *ID) {
-	mib.resolve[id.Name] = id
-}
-
 func (mib *MIB) RegisterObject(id ID, object Object) *Object {
 	object.ID = &id
 
-	mib.registerLookup(&id)
-	mib.registerResolve(&id)
+	mib.registry.registerOID(&id)
+	mib.registry.registerName(&id)
+
 	mib.objects[&id] = &object
 
 	return &object
@@ -55,28 +44,18 @@ func (mib *MIB) RegisterObject(id ID, object Object) *Object {
 func (mib *MIB) RegisterTable(id ID, table Table) *Table {
 	table.ID = &id
 
-	mib.registerResolve(&id)
+	mib.registry.registerName(&id)
 	mib.tables[&id] = &table
 
 	return &table
 }
 
 func (mib *MIB) Resolve(name string) *ID {
-	return mib.resolve[name]
+	return mib.registry.getName(name)
 }
 
 func (mib *MIB) Lookup(oid snmp.OID) *ID {
-	var lookup = ""
-
-	for _, id := range oid {
-		lookup += fmt.Sprintf(".%d", id)
-
-		if id := mib.lookup[lookup]; id != nil {
-			return id
-		}
-	}
-
-	return nil
+	return mib.registry.getOID(oid)
 }
 
 func (mib *MIB) LookupObject(oid snmp.OID) *Object {
