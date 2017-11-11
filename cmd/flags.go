@@ -83,23 +83,27 @@ func (options Options) WithClientOIDs(args []string, f func(*client.Client, ...s
 	}
 }
 
-func (options Options) WithClientIDs(args []string, f func(*client.Client, ...mibs.ID) error) error {
-	if client, ids, err := options.ParseClientIDs(args); err != nil {
+func (options Options) WithClientIDs(args []string, f func(*mibs.Client, ...mibs.ID) error) error {
+	if snmpClient, ids, err := options.ParseClientIDs(args); err != nil {
 		return err
 	} else {
-		go client.Run()
-		defer client.Close()
+		go snmpClient.Run()
+		defer snmpClient.Close()
+
+		var client = &mibs.Client{snmpClient}
 
 		return f(client, ids...)
 	}
 }
 
-func (options Options) WithClientID(args []string, f func(*client.Client, mibs.ID) error) error {
-	if client, ids, err := options.ParseClientIDs(args); err != nil {
+func (options Options) WithClientID(args []string, f func(*mibs.Client, mibs.ID) error) error {
+	if snmpClient, ids, err := options.ParseClientIDs(args); err != nil {
 		return err
 	} else {
-		go client.Run()
-		defer client.Close()
+		go snmpClient.Run()
+		defer snmpClient.Close()
+
+		var client = &mibs.Client{snmpClient}
 
 		for _, id := range ids {
 			if err := f(client, id); err != nil {
