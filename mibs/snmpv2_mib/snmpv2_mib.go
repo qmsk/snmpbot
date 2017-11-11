@@ -2,12 +2,11 @@ package snmpv2_mib
 
 import (
 	"github.com/qmsk/snmpbot/mibs"
-	"github.com/qmsk/snmpbot/snmp"
 )
 
 var (
-	MIB       = mibs.RegisterMIB("SNMPv2-MIB", snmp.OID{1, 3, 6, 1, 6, 3, 1})
-	SystemMIB = mibs.RegisterMIB("system", snmp.OID{1, 3, 6, 1, 2, 1, 1})
+	MIB       = mibs.RegisterMIB("SNMPv2-MIB", 1, 3, 6, 1, 6, 3, 1)
+	SystemMIB = mibs.RegisterMIB("system", 1, 3, 6, 1, 2, 1, 1)
 
 	SysDescr = SystemMIB.RegisterObject(SystemMIB.MakeID("sysDescr", 1), mibs.Object{
 		Syntax: mibs.DisplayStringSyntax{},

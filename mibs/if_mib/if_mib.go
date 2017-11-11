@@ -1,14 +1,12 @@
+// SNMP IF-MIB implementation
 package if_mib
 
 import (
 	"github.com/qmsk/snmpbot/mibs"
-	"github.com/qmsk/snmpbot/snmp"
 )
 
-// SNMP IF-MIB implementation
-
-var MIB = mibs.RegisterMIB("IF-MIB", snmp.OID{1, 3, 6, 1, 2, 1, 31})
-var InterfacesMIB = mibs.RegisterMIB("interfaces", snmp.OID{1, 3, 6, 1, 2, 1, 2})
+var MIB = mibs.RegisterMIB("IF-MIB", 1, 3, 6, 1, 2, 1, 31)
+var InterfacesMIB = mibs.RegisterMIB("interfaces", 1, 3, 6, 1, 2, 1, 2)
 
 var (
 	Number = InterfacesMIB.RegisterObject(InterfacesMIB.MakeID("ifNumber", 1), mibs.Object{
