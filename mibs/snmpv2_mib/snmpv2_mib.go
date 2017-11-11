@@ -1,4 +1,4 @@
-package snmpv2
+package snmpv2_mib
 
 import (
 	"github.com/qmsk/snmpbot/mibs"
