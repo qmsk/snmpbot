@@ -2,9 +2,20 @@ package mibs
 
 import (
 	"github.com/qmsk/snmpbot/snmp"
+	"strings"
+	"fmt"
 )
 
 type OctetString []byte
+
+func (value OctetString) String() string {
+	var hex = make([]string, len(value))
+
+	for i, b := range value {
+		hex[i] = fmt.Sprintf("%02x", b)
+	}
+	return strings.Join(hex, " ")
+}
 
 type OctetStringSyntax struct{}
 
