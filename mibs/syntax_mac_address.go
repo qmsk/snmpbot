@@ -1,6 +1,7 @@
 package mibs
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
 )
@@ -16,6 +17,10 @@ func (value MACAddress) String() string {
 		value[4],
 		value[5],
 	)
+}
+
+func (value MACAddress) MarshalJSON() ([]byte, error) {
+	return json.Marshal(value.String())
 }
 
 type MACAddressSyntax struct{}

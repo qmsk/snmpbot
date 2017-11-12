@@ -1,6 +1,7 @@
 package mibs
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
 )
@@ -9,6 +10,10 @@ type OID snmp.OID
 
 func (value OID) String() string {
 	return fmt.Sprintf("%v", snmp.OID(value))
+}
+
+func (value OID) MarshalJSON() ([]byte, error) {
+	return json.Marshal(value.String())
 }
 
 type ObjectIdentifierSyntax struct{}

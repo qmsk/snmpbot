@@ -1,6 +1,7 @@
 package mibs
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
 	"time"
@@ -18,6 +19,10 @@ func (value TimeTicks) Seconds() float64 {
 
 func (value TimeTicks) String() string {
 	return fmt.Sprintf("%v", time.Duration(value))
+}
+
+func (value TimeTicks) MarshalJSON() ([]byte, error) {
+	return json.Marshal(value.Seconds())
 }
 
 type TimeTicksSyntax struct{}

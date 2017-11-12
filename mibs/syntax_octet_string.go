@@ -1,6 +1,7 @@
 package mibs
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
 	"strings"
@@ -15,6 +16,10 @@ func (value OctetString) String() string {
 		hex[i] = fmt.Sprintf("%02x", b)
 	}
 	return strings.Join(hex, " ")
+}
+
+func (value OctetString) MarshalJSON() ([]byte, error) {
+	return json.Marshal(value.String())
 }
 
 type OctetStringSyntax struct{}

@@ -1,6 +1,7 @@
 package mibs
 
 import (
+	"encoding/json"
 	"github.com/qmsk/snmpbot/snmp"
 	"net"
 )
@@ -9,6 +10,10 @@ type IPAddress net.IP
 
 func (value IPAddress) String() string {
 	return net.IP(value).String()
+}
+
+func (value IPAddress) MarshalJSON() ([]byte, error) {
+	return json.Marshal(value.String())
 }
 
 type IPAddressSyntax struct{}
