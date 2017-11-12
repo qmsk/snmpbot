@@ -21,8 +21,21 @@ func (value MACAddress) String() string {
 type MACAddressSyntax struct{}
 
 func (syntax MACAddressSyntax) UnpackIndex(index []int) (Value, []int, error) {
-	// TODO
-	return nil, index, SyntaxIndexError{syntax, index}
+	if len(index) < 6 {
+		return nil, index, SyntaxIndexError{syntax, index}
+	}
+
+	var value MACAddress
+
+	for i := 0; i < 6; i++ {
+		if index[i] < 0 || index[i] >= 256 {
+			return nil, index, SyntaxIndexError{syntax, index[0:6]}
+		}
+
+		value[i] = byte(index[i])
+	}
+
+	return value, index[6:], nil
 }
 
 func (syntax MACAddressSyntax) Unpack(varBind snmp.VarBind) (Value, error) {

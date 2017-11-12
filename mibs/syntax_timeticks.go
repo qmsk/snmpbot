@@ -15,8 +15,11 @@ func (value TimeTicks) String() string {
 type TimeTicksSyntax struct{}
 
 func (syntax TimeTicksSyntax) UnpackIndex(index []int) (Value, []int, error) {
-	// TODO
-	return nil, index, SyntaxIndexError{syntax, index}
+	if len(index) < 1 || index[0] < 0 {
+		return nil, index, SyntaxIndexError{syntax, index}
+	}
+
+	return TimeTicks(index[0]), index[1:], nil
 }
 
 func (syntax TimeTicksSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
