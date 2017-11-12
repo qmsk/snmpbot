@@ -43,7 +43,13 @@ func (syntax IPAddressSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 	}
 	switch value := snmpValue.(type) {
 	case snmp.IPAddress:
-		return IPAddress(value), nil
+		var ipAddress = make(IPAddress, 4)
+
+		for i := 0; i < 4; i++ {
+			ipAddress[i] = value[i]
+		}
+
+		return ipAddress, nil
 	default:
 		return nil, SyntaxError{syntax, value}
 	}

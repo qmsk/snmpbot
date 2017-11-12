@@ -3,10 +3,9 @@ package snmp
 import (
 	"encoding/asn1"
 	"fmt"
-	"net"
 )
 
-type IPAddress net.IP
+type IPAddress [4]uint8
 type Counter32 uint32
 type Gauge32 uint32
 type TimeTicks32 uint32 // duration of 1/100 s
@@ -68,9 +67,21 @@ func (varBind VarBind) Value() (interface{}, error) {
 	case asn1.ClassApplication:
 		switch ApplicationValueType(varBind.RawValue.Tag) {
 		case IPAddressType:
-			var value IPAddress
+			var value []byte
 
-			return value, unpack(varBind.RawValue, &value)
+			if err := unpack(varBind.RawValue, &value); err != nil {
+				return nil, err
+			} else if len(value) != 4 {
+				return nil, fmt.Errorf("Invalid IPAddress value: %#v", value)
+			} else {
+				var ipAddress IPAddress
+
+				for i := 0; i < 4; i++ {
+					ipAddress[i] = uint8(value[i])
+				}
+
+				return ipAddress, nil
+			}
 
 		case Counter32Type:
 			var value int
