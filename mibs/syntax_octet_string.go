@@ -1,9 +1,9 @@
 package mibs
 
 import (
+	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
 	"strings"
-	"fmt"
 )
 
 type OctetString []byte

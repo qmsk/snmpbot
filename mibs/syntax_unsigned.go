@@ -28,9 +28,9 @@ func (syntax UnsignedSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 	}
 	switch value := snmpValue.(type) {
 	case int:
-    if value <= 0 {
-      return nil, SyntaxError{syntax, value}
-    }
+		if value <= 0 {
+			return nil, SyntaxError{syntax, value}
+		}
 		return Unsigned(value), nil
 	case snmp.Gauge32:
 		return Unsigned(value), nil

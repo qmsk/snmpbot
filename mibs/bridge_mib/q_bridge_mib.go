@@ -147,23 +147,23 @@ var (
 		EntrySyntax: mibs.EntrySyntax{
 			QMIB.RegisterObject(dot1qVlanStaticEntry.MakeID("dot1qVlanStaticName", 1), mibs.Object{
 				IndexSyntax: dot1qVlanStaticIndexSyntax,
-				Syntax: mibs.DisplayStringSyntax{},
+				Syntax:      mibs.DisplayStringSyntax{},
 			}),
 			QMIB.RegisterObject(dot1qVlanStaticEntry.MakeID("dot1qVlanStaticEgressPorts", 2), mibs.Object{
 				IndexSyntax: dot1qVlanStaticIndexSyntax,
-				Syntax: PortListSyntax{},
+				Syntax:      PortListSyntax{},
 			}),
 			QMIB.RegisterObject(dot1qVlanStaticEntry.MakeID("dot1qVlanForbiddenEgressPorts", 3), mibs.Object{
 				IndexSyntax: dot1qVlanStaticIndexSyntax,
-				Syntax: PortListSyntax{},
+				Syntax:      PortListSyntax{},
 			}),
 			QMIB.RegisterObject(dot1qVlanStaticEntry.MakeID("dot1qVlanStaticUntaggedPorts", 4), mibs.Object{
 				IndexSyntax: dot1qVlanStaticIndexSyntax,
-				Syntax: PortListSyntax{},
+				Syntax:      PortListSyntax{},
 			}),
 			QMIB.RegisterObject(dot1qVlanStaticEntry.MakeID("dot1qVlanStaticRowStatus", 5), mibs.Object{
 				IndexSyntax: dot1qVlanStaticIndexSyntax,
-				Syntax: mibs.IntegerSyntax{}, // TODO: RowStatus
+				Syntax:      mibs.IntegerSyntax{}, // TODO: RowStatus
 			}),
 		},
 	})

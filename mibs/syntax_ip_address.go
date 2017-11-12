@@ -2,7 +2,7 @@ package mibs
 
 import (
 	"github.com/qmsk/snmpbot/snmp"
-  "net"
+	"net"
 )
 
 type IPAddress net.IP
@@ -38,7 +38,7 @@ func (syntax IPAddressSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 	}
 	switch value := snmpValue.(type) {
 	case snmp.IPAddress:
-    return IPAddress(value), nil
+		return IPAddress(value), nil
 	default:
 		return nil, SyntaxError{syntax, value}
 	}
