@@ -57,9 +57,13 @@ func (varBind VarBind) ErrorValue() error {
 func (varBind VarBind) Value() (interface{}, error) {
 	switch varBind.RawValue.Class {
 	case asn1.ClassUniversal:
-		var value interface{}
+		if varBind.RawValue.Tag == asn1.TagNull {
+			return nil, nil
+		} else {
+			var value interface{}
 
-		return value, unpack(varBind.RawValue, &value)
+			return value, unpack(varBind.RawValue, &value)
+		}
 
 	case asn1.ClassApplication:
 		switch ApplicationValueType(varBind.RawValue.Tag) {

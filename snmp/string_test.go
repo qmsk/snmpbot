@@ -17,6 +17,14 @@ func testVarBindString(t *testing.T, test varBindStringTest) {
 	assert.Equal(t, test.str, varBind.String())
 }
 
+func TestVarBindStringNull(t *testing.T) {
+	testVarBindString(t, varBindStringTest{
+		oid:   OID{1, 3, 6, 1, 2, 1, 1, 5, 0},
+		value: nil,
+		str:   "1.3.6.1.2.1.1.5.0",
+	})
+}
+
 func TestVarBindString(t *testing.T) {
 	testVarBindString(t, varBindStringTest{
 		oid:   OID{1, 3, 6, 1, 2, 1, 1, 5, 0},
