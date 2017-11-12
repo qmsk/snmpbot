@@ -23,7 +23,7 @@ type MIB struct {
 }
 
 func (mib *MIB) String() string {
-	return mib.OID.String()
+	return mib.Name
 }
 
 func (mib *MIB) MakeID(name string, ids ...int) ID {

@@ -61,6 +61,7 @@ func Resolve(name string) (ID, error) {
 		return id, err
 	} else {
 		id = mib.ID
+		id.Name = "" // fixup MIB.ID re-use of Name
 	}
 
 	if nameID == "" {
