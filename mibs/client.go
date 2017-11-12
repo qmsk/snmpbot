@@ -9,6 +9,17 @@ type Client struct {
 	*client.Client
 }
 
+// Probe the MIB at id
+func (client *Client) Probe(id ID) (bool, error) {
+	if varBinds, err := client.GetNext(id.OID); err != nil {
+		return false, err
+	} else if index := id.OID.Index(varBinds[0].OID()); index == nil {
+		return false, err
+	} else {
+		return true, err
+	}
+}
+
 // Read the value at object index .0
 func (client *Client) GetObject(object *Object) (Value, error) {
 	if varBinds, err := client.Get(object.OID.Extend(0)); err != nil {
