@@ -6,10 +6,18 @@ import (
 	"time"
 )
 
-type TimeTicks snmp.TimeTicks32
+type TimeTicks time.Duration
+
+func unpackTimeTicks(value int) TimeTicks {
+	return TimeTicks(time.Duration(value) * 10 * time.Millisecond)
+}
+
+func (value TimeTicks) Seconds() float64 {
+	return time.Duration(value).Seconds()
+}
 
 func (value TimeTicks) String() string {
-	return fmt.Sprintf("%v", time.Duration(value)*10*time.Millisecond)
+	return fmt.Sprintf("%v", time.Duration(value))
 }
 
 type TimeTicksSyntax struct{}
@@ -19,7 +27,7 @@ func (syntax TimeTicksSyntax) UnpackIndex(index []int) (Value, []int, error) {
 		return nil, index, SyntaxIndexError{syntax, index}
 	}
 
-	return TimeTicks(index[0]), index[1:], nil
+	return unpackTimeTicks(index[0]), index[1:], nil
 }
 
 func (syntax TimeTicksSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
@@ -29,7 +37,7 @@ func (syntax TimeTicksSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 	}
 	switch value := snmpValue.(type) {
 	case snmp.TimeTicks32:
-		return TimeTicks(value), nil
+		return unpackTimeTicks(int(value)), nil
 	default:
 		return nil, SyntaxError{syntax, value}
 	}
