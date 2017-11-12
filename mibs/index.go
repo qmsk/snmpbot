@@ -13,7 +13,7 @@ func (indexSyntax IndexSyntax) UnpackIndex(index []int) ([]Value, error) {
 
 	for i, indexObject := range indexSyntax {
 		if indexValue, indexRemaining, err := indexObject.Syntax.UnpackIndex(index); err != nil {
-			return nil, fmt.Errorf("Invalid index for %v: %v", indexValue, err)
+			return nil, fmt.Errorf("Invalid index for %v: %v", indexObject, err)
 		} else {
 			values[i] = indexValue
 			index = indexRemaining
@@ -32,7 +32,7 @@ func (indexSyntax IndexSyntax) MapIndex(index []int) (IndexMap, error) {
 
 	for _, indexObject := range indexSyntax {
 		if indexValue, indexRemaining, err := indexObject.Syntax.UnpackIndex(index); err != nil {
-			return nil, fmt.Errorf("Invalid index for %v: %v", indexValue, err)
+			return nil, fmt.Errorf("Invalid index for %v: %v", indexObject, err)
 		} else {
 			indexMap[indexObject.ID.Key()] = indexValue
 			index = indexRemaining

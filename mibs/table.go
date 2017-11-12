@@ -22,10 +22,14 @@ func (entrySyntax EntrySyntax) Map(varBinds []snmp.VarBind) (EntryMap, error) {
 	var entryMap = make(EntryMap)
 
 	for i, entryObject := range entrySyntax {
+		if i >= len(varBinds) {
+			return nil, fmt.Errorf("Missing VarBind for %v", entryObject)
+		}
+
 		var varBind = varBinds[i]
 
 		if index := entryObject.OID.Index(varBind.OID()); index == nil {
-			return nil, fmt.Errorf("Invalid VarBind[%v] OID for %v", varBind.OID(), entryObject)
+			return nil, fmt.Errorf("Invalid VarBind[%v] OID for %v: %v", varBind.OID(), entryObject, entryObject.OID)
 		}
 
 		if value, err := entryObject.Unpack(varBind); err != nil {
@@ -49,9 +53,9 @@ func (table Table) Map(varBinds []snmp.VarBind) (IndexMap, EntryMap, error) {
 	// XXX: assuming all entry objects have the same index...
 	var index = table.EntrySyntax[0].OID.Index(varBinds[0].OID())
 
-	if indexMap, err := table.IndexSyntax.MapIndex(index); err != nil {
+	if entryMap, err := table.EntrySyntax.Map(varBinds); err != nil {
 		return nil, nil, err
-	} else if entryMap, err := table.EntrySyntax.Map(varBinds); err != nil {
+	} else if indexMap, err := table.IndexSyntax.MapIndex(index); err != nil {
 		return nil, nil, err
 	} else {
 		return indexMap, entryMap, nil
