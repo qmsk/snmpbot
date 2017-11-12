@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
+	"time"
 )
 
 type testLogger struct {
@@ -30,6 +31,7 @@ func makeTestClient(t *testing.T) (*testTransport, *Client) {
 
 	client.version = SNMPVersion
 	client.community = []byte("public")
+	client.timeout = 10 * time.Millisecond
 	client.transport = &testTransport
 
 	return &testTransport, &client
@@ -53,6 +55,10 @@ type testTransport struct {
 	recvErrorChan chan error
 }
 
+func (transport *testTransport) String() string {
+	return "<test>"
+}
+
 func (transport *testTransport) Send(io IO) error {
 	var requestID = io.PDU.RequestID
 
@@ -60,11 +66,14 @@ func (transport *testTransport) Send(io IO) error {
 
 	args := transport.MethodCalled(io.PDUType.String(), io)
 
-	var recv = args.Get(1).(IO)
+	if ret := args.Get(1); ret == nil {
+		// no response
+	} else {
+		recv := ret.(IO)
+		recv.PDU.RequestID = requestID
 
-	recv.PDU.RequestID = requestID
-
-	transport.recvChan <- recv
+		transport.recvChan <- recv
+	}
 
 	return args.Error(0)
 }
@@ -86,6 +95,21 @@ func (transport *testTransport) Close() error {
 	close(transport.recvChan)
 
 	return nil
+}
+
+func (transport *testTransport) mockGetTimeout(oid snmp.OID) {
+	transport.On("GetRequest", IO{
+		Packet: snmp.Packet{
+			Version:   snmp.SNMPv2c,
+			Community: []byte("public"),
+		},
+		PDUType: snmp.GetRequestType,
+		PDU: snmp.PDU{
+			VarBinds: []snmp.VarBind{
+				snmp.MakeVarBind(oid, nil),
+			},
+		},
+	}).Return(error(nil), nil)
 }
 
 func (transport *testTransport) mockGet(oid snmp.OID, varBind snmp.VarBind) {
@@ -189,6 +213,22 @@ func TestGetRequest(t *testing.T) {
 			t.Fatalf("Get(%v): %v", oid, err)
 		} else {
 			assertVarBind(t, varBinds, 0, oid, value)
+		}
+	})
+}
+
+func TestGetTimeout(t *testing.T) {
+	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0}
+
+	withTestClient(t, func(transport *testTransport, client *Client) {
+		transport.mockGetTimeout(oid)
+
+		if varBinds, err := client.Get(oid); err == nil {
+			t.Errorf("Get(%v): %v", oid, varBinds)
+		} else if timeoutErr, ok := err.(TimeoutError); !ok {
+			t.Errorf("Get(%v): %v", oid, err)
+		} else {
+			assert.EqualError(t, err, fmt.Sprintf("SNMP <test> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@1 after %v", timeoutErr.Duration))
 		}
 	})
 }

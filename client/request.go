@@ -3,18 +3,29 @@ package client
 import (
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
+	"time"
 )
 
 type requestID uint32
 
 type request struct {
-	send     IO
-	waitChan chan error
-	recv     IO
+	send      IO
+	id        requestID
+	timeout   time.Duration
+	retry     int
+	startTime time.Time
+	timer     *time.Timer
+	waitChan  chan error
+	recv      IO
+	recvOK    bool
 }
 
 func (request request) String() string {
-	return fmt.Sprintf("%s<%s>: %s", request.send.PDUType.String(), request.send.PDU.String(), request.recv.PDU.String())
+	if request.recvOK {
+		return fmt.Sprintf("%s<%s>@%d: %s", request.send.PDUType.String(), request.send.PDU.String(), request.id, request.recv.PDU.String())
+	} else {
+		return fmt.Sprintf("%s<%s>@%d", request.send.PDUType.String(), request.send.PDU.String(), request.id)
+	}
 }
 
 func (request *request) wait() (IO, error) {
@@ -25,17 +36,45 @@ func (request *request) wait() (IO, error) {
 	}
 }
 
-func (request *request) cancel() {
+func (request *request) start(timeout time.Duration, timeoutChan chan requestID) {
+	request.timer = time.AfterFunc(timeout, func() {
+		timeoutChan <- request.id
+	})
+}
+
+func (request *request) close() {
+	request.timer.Stop()
 	close(request.waitChan)
 }
 
 func (request *request) fail(err error) {
 	request.waitChan <- err
+	request.close()
 }
 
 func (request *request) done(recv IO) {
 	request.recv = recv
+	request.recvOK = true
 	request.waitChan <- nil
+	request.close()
+}
+
+func (request *request) failTimeout(transport Transport) {
+	request.fail(TimeoutError{
+		transport: transport,
+		request:   request,
+		Duration:  time.Now().Sub(request.startTime),
+	})
+}
+
+type TimeoutError struct {
+	transport Transport
+	request   *request
+	Duration  time.Duration
+}
+
+func (err TimeoutError) Error() string {
+	return fmt.Sprintf("SNMP %v timeout for %v after %v", err.transport, err.request, err.Duration)
 }
 
 type SNMPError struct {
@@ -51,8 +90,11 @@ func (err SNMPError) Error() string {
 
 func (client *Client) request(send IO) (IO, error) {
 	var request = request{
-		send:     send,
-		waitChan: make(chan error, 1),
+		send:      send,
+		timeout:   client.timeout,
+		retry:     client.retry,
+		startTime: time.Now(),
+		waitChan:  make(chan error, 1),
 	}
 
 	client.requestChan <- &request

@@ -22,6 +22,8 @@ func (options *Options) InitFlags() {
 	flag.BoolVar(&options.LogQuiet, "quiet", false, "Do not log warnings")
 
 	flag.StringVar(&options.SNMP.Community, "snmp-community", "public", "Default SNMP community")
+	flag.DurationVar(&options.SNMP.Timeout, "snmp-timeout", client.DefaultTimeout, "SNMP request timeout")
+	flag.IntVar(&options.SNMP.Retry, "snmp-retry", 0, "SNMP request retry")
 }
 
 func (options *Options) Parse() []string {

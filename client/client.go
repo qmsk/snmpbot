@@ -3,10 +3,12 @@ package client
 import (
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
+	"time"
 )
 
 const (
-	SNMPVersion = snmp.SNMPv2c
+	SNMPVersion    = snmp.SNMPv2c
+	DefaultTimeout = 1 * time.Second
 )
 
 func (config Config) Client() (*Client, error) {
@@ -26,6 +28,7 @@ func makeClient(logging Logging) Client {
 		requestID:   1, // TODO: randomize
 		requests:    make(map[requestID]*request),
 		requestChan: make(chan *request),
+		timeoutChan: make(chan requestID),
 	}
 }
 
@@ -34,12 +37,15 @@ type Client struct {
 
 	version   snmp.Version
 	community []byte
+	timeout   time.Duration
+	retry     int
 
 	transport Transport
 
 	requestID   requestID
 	requests    map[requestID]*request
 	requestChan chan *request
+	timeoutChan chan requestID
 }
 
 func (client *Client) String() string {
@@ -53,6 +59,13 @@ func (client *Client) String() string {
 func (client *Client) connectUDP(config Config) error {
 	client.version = SNMPVersion
 	client.community = []byte(config.Community)
+
+	if config.Timeout == 0 {
+		client.timeout = DefaultTimeout
+	} else {
+		client.timeout = config.Timeout
+	}
+	client.retry = config.Retry
 
 	if udp, err := DialUDP(config.Addr, UDPOptions{}); err != nil {
 		return fmt.Errorf("DialUDP %v: %v", config.Addr, err)
@@ -78,8 +91,26 @@ func (client *Client) teardown() {
 
 	close(client.requestChan)
 	for _, request := range client.requests {
-		request.cancel()
+		request.close()
 	}
+}
+
+func (client *Client) startRequest(request *request) error {
+	request.send.PDU.RequestID = int(request.id)
+
+	if err := client.transport.Send(request.send); err != nil {
+		client.log.Debugf("request %d fail: %v", request.id, err)
+
+		request.fail(err)
+
+		return err
+	} else {
+		client.log.Debugf("request %d...", request.id)
+	}
+
+	request.start(request.timeout, client.timeoutChan)
+
+	return nil
 }
 
 func (client *Client) run() error {
@@ -109,19 +140,12 @@ func (client *Client) run() error {
 	for {
 		select {
 		case request := <-client.requestChan:
-			requestID := client.nextRequestID()
+			request.id = client.nextRequestID()
 
-			request.send.PDU.RequestID = int(requestID)
+			client.log.Debugf("request %d send: %#v", request.id, request.send)
 
-			client.log.Debugf("send: %#v", request.send)
-
-			if err := client.transport.Send(request.send); err != nil {
-				client.log.Debugf("request %d fail: %v", requestID, err)
-				request.fail(err)
-			} else {
-				client.log.Debugf("request %d...", requestID)
-
-				client.requests[requestID] = request
+			if err := client.startRequest(request); err == nil {
+				client.requests[request.id] = request
 			}
 
 		case recv, ok := <-recvChan:
@@ -137,6 +161,25 @@ func (client *Client) run() error {
 				client.log.Debugf("request %d done", requestID)
 				request.done(recv)
 				delete(client.requests, requestID)
+			}
+
+		case requestID := <-client.timeoutChan:
+			if request, ok := client.requests[requestID]; !ok {
+				client.log.Debugf("timeout with expired requestID=%d", requestID)
+			} else if request.retry <= 0 {
+				client.log.Debugf("request %d timeout", request.id)
+
+				request.failTimeout(client.transport)
+				delete(client.requests, requestID)
+			} else {
+				client.log.Debugf("request %d retry %d...", request.id, request.retry)
+
+				request.retry--
+
+				if err := client.startRequest(request); err != nil {
+					// cleanup
+					delete(client.requests, requestID)
+				}
 			}
 		}
 	}

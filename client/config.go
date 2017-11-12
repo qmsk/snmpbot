@@ -2,13 +2,16 @@ package client
 
 import (
 	"net/url"
+	"time"
 )
 
 type Config struct {
 	Logging   Logging
-	Community string `json:"community"`
-	Addr      string `json:"addr"` // host or host:port
-	OID       string `json:"oid"`
+	Community string
+	Addr      string // host or host:port
+	OID       string
+	Timeout   time.Duration
+	Retry     int
 }
 
 // Parse a pseudo-URL config string:
