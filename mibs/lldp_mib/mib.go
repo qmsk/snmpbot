@@ -1,13 +1,17 @@
-package snmp
+package lldp_mib
+
+import (
+	"github.com/qmsk/snmpbot/mibs"
+)
+
+var MIB = mibs.RegisterMIB("LLDP-MIB", 1, 0, 8802, 1, 1, 2)
 
 var (
-	LLDP_MIB = registerMIB("LLDP-MIB", OID{1, 0, 8802, 1, 1, 2})
+	lldpObjects           = MIB.MakeID("lldpObjects", 1)
+	lldpLocalSystemData   = lldpObjects.MakeID("lldpLocalSystemData", 3)
+	lldpRemoteSystemsData = lldpObjects.MakeID("lldpRemoteSystemsData", 4)
 
-	LLDP_lldpObjects           = LLDP_MIB.define(1)
-	LLDP_lldpLocalSystemData   = LLDP_lldpObjects.define(3)
-	LLDP_lldpRemoteSystemsData = LLDP_lldpObjects.define(4)
-
-	LLDP_LldpChassisIdSubtypeSyntax = EnumSyntax{
+	lldpChassisIdSubtypeSyntax = mibs.EnumSyntax{
 		{1, "chassisComponent"},
 		{2, "interfaceAlias"},
 		{3, "portComponent"},
@@ -16,7 +20,7 @@ var (
 		{6, "interfaceName"},
 		{7, "local"},
 	}
-	LLDP_LldpPortIdSubtypeSyntax = EnumSyntax{
+	lldpPortIdSubtypeSyntax = mibs.EnumSyntax{
 		{1, "interfaceAlias"},
 		{2, "portComponent"},
 		{3, "macAddress"},
@@ -25,47 +29,101 @@ var (
 		{6, "agentCircuitId"},
 		{7, "local"},
 	}
+	lldpPortIdSyntax = mibs.OctetStringSyntax{}
 
-	LLDP_lldpLocChassisIdSubtype = LLDP_MIB.registerObject("lldpLocChassisIdSubtype", LLDP_LldpChassisIdSubtypeSyntax, LLDP_lldpLocalSystemData.define(1))
-	LLDP_lldpLocChassisId        = LLDP_MIB.registerObject("lldpLocChassisId", BinarySyntax, LLDP_lldpLocalSystemData.define(2))
-	LLDP_lldpLocSysName          = LLDP_MIB.registerObject("lldpLocSysName", StringSyntax, LLDP_lldpLocalSystemData.define(3))
-	LLDP_lldpLocSysDesc          = LLDP_MIB.registerObject("lldpLocSysDesc", StringSyntax, LLDP_lldpLocalSystemData.define(4))
-	// LLDP_lldpLocSysCapSupported  // TODO: .5 BitsSyntax
-	// LLDP_lldpLocSysCapEnabled    // TODO: .6 BitsSyntax
+	lldpChassisIdSyntax  = mibs.OctetStringSyntax{}
+	lldpPortNumberSyntax = mibs.IntegerSyntax{}
+)
 
-	LLDP_lldpLocPortEntry   = LLDP_lldpLocalSystemData.define(7, 1)
-	LLDP_lldpLocalPortTable = LLDP_MIB.registerTable(&Table{Node: Node{OID: LLDP_lldpLocalSystemData.define(7), Name: "lldpLocPortTable"},
-		Index: []TableIndex{
-			{"lldpLocPortNum", IntegerSyntax},
-		},
-		Entry: []*Object{
+var (
+	lldpLocChassisIdSubtype = MIB.RegisterObject(lldpLocalSystemData.MakeID("lldpLocChassisIdSubtype", 1), mibs.Object{
+		Syntax: lldpChassisIdSubtypeSyntax,
+	})
+	lldpLocChassisId = MIB.RegisterObject(lldpLocalSystemData.MakeID("lldpLocChassisId", 2), mibs.Object{
+		Syntax: lldpChassisIdSyntax,
+	})
+	lldpLocSysName = MIB.RegisterObject(lldpLocalSystemData.MakeID("lldpLocSysName", 3), mibs.Object{
+		Syntax: mibs.DisplayStringSyntax{},
+	})
+	lldpLocSysDesc = MIB.RegisterObject(lldpLocalSystemData.MakeID("lldpLocSysDesc", 4), mibs.Object{
+		Syntax: mibs.DisplayStringSyntax{},
+	})
+	// lldpLocSysCapSupported  // TODO: .5 BitsSyntax
+	// lldpLocSysCapEnabled    // TODO: .6 BitsSyntax
+)
+
+var (
+	lldpLocPortEntry = lldpLocalSystemData.MakeID("lldpLocPortEntry", 7, 1)
+	lldpLocPortNum   = MIB.RegisterObject(lldpLocPortEntry.MakeID("lldpLocPortNum", 1), mibs.Object{
+		Syntax: lldpPortNumberSyntax,
+	})
+	lldpLocPortIndexSyntax = mibs.IndexSyntax{
+		lldpLocPortNum,
+	}
+
+	lldpLocPortTable = MIB.RegisterTable(lldpLocalSystemData.MakeID("lldpLocPortTable", 7), mibs.Table{
+		IndexSyntax: lldpLocPortIndexSyntax,
+		EntrySyntax: mibs.EntrySyntax{
 			// lldpLocPortNum       .1  not-accessible
-			LLDP_MIB.registerObject("lldpLocPortIdSubtype", LLDP_LldpPortIdSubtypeSyntax, LLDP_lldpLocPortEntry.define(2)),
-			LLDP_MIB.registerObject("lldpLocPortId", BinarySyntax, LLDP_lldpLocPortEntry.define(3)),
-			LLDP_MIB.registerObject("lldpLocPortDesc", StringSyntax, LLDP_lldpLocPortEntry.define(4)),
+			MIB.RegisterObject(lldpLocPortEntry.MakeID("lldpLocPortIdSubtype", 2), mibs.Object{
+				IndexSyntax: lldpLocPortIndexSyntax,
+				Syntax:      lldpPortIdSubtypeSyntax,
+			}),
+			MIB.RegisterObject(lldpLocPortEntry.MakeID("lldpLocPortId", 3), mibs.Object{
+				IndexSyntax: lldpLocPortIndexSyntax,
+				Syntax:      lldpPortIdSyntax,
+			}),
+			MIB.RegisterObject(lldpLocPortEntry.MakeID("lldpLocPortDesc", 4), mibs.Object{
+				IndexSyntax: lldpLocPortIndexSyntax,
+				Syntax:      mibs.DisplayStringSyntax{},
+			}),
 		},
 	})
+)
 
-	LLDP_lldpRemEntry = LLDP_lldpRemoteSystemsData.define(1, 1)
-	LLDP_lldpRemTable = LLDP_MIB.registerTable(&Table{Node: Node{OID: LLDP_lldpRemoteSystemsData.define(1), Name: "lldpRemTable"},
-		Index: []TableIndex{
-			{"lldpRemTimeMark", TimeTicksSyntax},
-			{"lldpRemLocalPortNum", IntegerSyntax},
-			{"lldpRemIndex", IntegerSyntax},
-		},
-		Entry: []*Object{
-			// lldpRemTimeMark      .1  not-accessible
-			// lldpRemLocalPortNum  .2  not-accessible
-			// lldpRemIndex         .3  not-accessible
-			LLDP_MIB.registerObject("lldpRemChassisIdSubtype", LLDP_LldpChassisIdSubtypeSyntax, LLDP_lldpRemEntry.define(4)),
-			LLDP_MIB.registerObject("lldpRemChassisId", BinarySyntax, LLDP_lldpRemEntry.define(5)),
-			LLDP_MIB.registerObject("lldpRemPortIdSubtype", LLDP_LldpPortIdSubtypeSyntax, LLDP_lldpRemEntry.define(6)),
-			LLDP_MIB.registerObject("lldpRemPortId", BinarySyntax, LLDP_lldpRemEntry.define(7)),
-			LLDP_MIB.registerObject("lldpRemPortDesc", StringSyntax, LLDP_lldpRemEntry.define(8)),
-			LLDP_MIB.registerObject("lldpRemSysName", StringSyntax, LLDP_lldpRemEntry.define(9)),
-			LLDP_MIB.registerObject("lldpRemSysDesc", StringSyntax, LLDP_lldpRemEntry.define(10)),
-			//LLDP_MIB.registerObject("lldpRemSysCapSupported",   BitsSyntax,                         LLDP_lldpRemEntry.define(11)),  // TODO: BER + Syntax
-			//LLDP_MIB.registerObject("lldpRemSysCapEnabled",     BitsSyntax,                         LLDP_lldpRemEntry.define(12)),  // TODO: BER + Syntax
+var (
+	lldpRemEntry    = lldpRemoteSystemsData.MakeID("lldpRemEntry", 1, 1)
+	lldpRemTimeMark = MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemTimeMark", 1), mibs.Object{
+		Syntax: mibs.TimeTicksSyntax{},
+	})
+	lldpRemLocalPortNum = MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemLocalPortNum", 2), mibs.Object{
+		Syntax: lldpPortNumberSyntax,
+	})
+	lldpRemIndex = MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemIndex", 3), mibs.Object{
+		Syntax: mibs.IntegerSyntax{},
+	})
+	lldpRemIndexSyntax = mibs.IndexSyntax{
+		lldpRemTimeMark,
+		lldpRemLocalPortNum,
+		lldpRemIndex,
+	}
+
+	lldpRemTable = MIB.RegisterTable(lldpRemoteSystemsData.MakeID("lldpRemTable", 1), mibs.Table{
+		IndexSyntax: lldpRemIndexSyntax,
+		EntrySyntax: mibs.EntrySyntax{
+			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemChassisIdSubtype", 4), mibs.Object{
+				Syntax: lldpChassisIdSubtypeSyntax,
+			}),
+			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemChassisId", 5), mibs.Object{
+				Syntax: mibs.OctetStringSyntax{},
+			}),
+			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemPortIdSubtype", 6), mibs.Object{
+				Syntax: lldpPortIdSubtypeSyntax,
+			}),
+			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemPortId", 7), mibs.Object{
+				Syntax: mibs.OctetStringSyntax{},
+			}),
+			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemPortDesc", 8), mibs.Object{
+				Syntax: mibs.DisplayStringSyntax{},
+			}),
+			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemSysName", 9), mibs.Object{
+				Syntax: mibs.DisplayStringSyntax{},
+			}),
+			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemSysDesc", 10), mibs.Object{
+				Syntax: mibs.DisplayStringSyntax{},
+			}),
+			// lldpRemSysCapSupported TODO: BitsSyntax
+			// lldpRemSysCapEnabled TODO: BitsSyntax
 		},
 	})
 )
