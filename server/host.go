@@ -43,7 +43,7 @@ func (host *Host) init(config HostConfig) error {
 	host.config = config
 	host.config.SNMP = &snmpConfig
 
-	log.Printf("Host<%v>: Config SNMP: %v", host, host.config.SNMP)
+	log.Printf("Host<%v>: Config SNMP: %#v", host, host.config.SNMP)
 
 	if snmpClient, err := snmpConfig.Client(); err != nil {
 		return fmt.Errorf("SNMP client for %v: %v", host, err)
