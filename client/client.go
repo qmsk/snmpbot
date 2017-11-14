@@ -90,6 +90,13 @@ func (client *Client) teardown() {
 	client.log.Debugf("teardown...")
 
 	close(client.requestChan)
+
+	// cancel any queued requests
+	for request := range client.requestChan {
+		request.close()
+	}
+
+	// cancel any active requests
 	for _, request := range client.requests {
 		request.close()
 	}
@@ -191,6 +198,7 @@ func (client *Client) Run() error {
 	return client.run()
 }
 
+// Closing the client will cancel any requests, and cause Run() to return
 func (client *Client) Close() error {
 	client.log.Debugf("Close...")
 
