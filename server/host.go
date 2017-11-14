@@ -2,11 +2,24 @@ package server
 
 import (
 	"fmt"
+	"github.com/qmsk/snmpbot/api"
 	"github.com/qmsk/snmpbot/client"
 	"log"
 )
 
 type HostID string
+
+type hosts map[HostID]*Host
+
+func (hosts hosts) makeAPIIndex() []api.HostIndex {
+	var items = make([]api.HostIndex, 0, len(hosts))
+
+	for _, host := range hosts {
+		items = append(items, host.makeAPIIndex())
+	}
+
+	return items
+}
 
 type HostConfig struct {
 	Host string
@@ -54,4 +67,11 @@ func (host *Host) init(config HostConfig) error {
 	}
 
 	return nil
+}
+
+func (host *Host) makeAPIIndex() api.HostIndex {
+	return api.HostIndex{
+		ID:   string(host.id),
+		SNMP: host.snmpClient.String(),
+	}
 }
