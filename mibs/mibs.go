@@ -34,6 +34,12 @@ func LookupMIB(oid snmp.OID) *MIB {
 	}
 }
 
+func WalkMIBs(f func(mib *MIB)) {
+	mibRegistry.walk(func(id ID) {
+		f(id.MIB)
+	})
+}
+
 /* Resolve ID by human-readable name:
  		".1.3.6"
 		"SNMPv2-MIB"

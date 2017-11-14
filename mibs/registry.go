@@ -17,17 +17,9 @@ type registry struct {
 	byName map[string]ID
 }
 
-func (registry *registry) registerOID(id ID) {
-	registry.byOID[id.OID.String()] = id
-}
-
-func (registry *registry) registerName(id ID) {
-	registry.byName[id.Name] = id
-}
-
 func (registry *registry) register(id ID) {
-	registry.registerOID(id)
-	registry.registerName(id)
+	registry.byOID[id.OID.String()] = id
+	registry.byName[id.Name] = id
 }
 
 func (registry *registry) getName(name string) (ID, bool) {
@@ -53,4 +45,10 @@ func (registry *registry) getOID(oid snmp.OID) (ID, bool) {
 	}
 
 	return id, ok
+}
+
+func (registry *registry) walk(f func(ID)) {
+	for _, id := range registry.byOID {
+		f(id)
+	}
 }

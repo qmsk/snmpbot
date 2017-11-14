@@ -33,9 +33,7 @@ func (mib *MIB) MakeID(name string, ids ...int) ID {
 func (mib *MIB) RegisterObject(id ID, object Object) *Object {
 	object.ID = id
 
-	mib.registry.registerOID(id)
-	mib.registry.registerName(id)
-
+	mib.registry.register(id)
 	mib.objects[id.Key()] = &object
 
 	return &object
@@ -44,7 +42,7 @@ func (mib *MIB) RegisterObject(id ID, object Object) *Object {
 func (mib *MIB) RegisterTable(id ID, table Table) *Table {
 	table.ID = id
 
-	mib.registry.registerName(id)
+	mib.registry.register(id)
 	mib.tables[id.Key()] = &table
 
 	return &table
@@ -64,6 +62,10 @@ func (mib *MIB) Lookup(oid snmp.OID) ID {
 	} else {
 		return id
 	}
+}
+
+func (mib *MIB) Walk(f func(ID)) {
+	mib.registry.walk(f)
 }
 
 func (mib *MIB) Object(id ID) *Object {
