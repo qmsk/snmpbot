@@ -11,7 +11,8 @@ func newEngine() *Engine {
 }
 
 type Engine struct {
-	hosts hosts
+	hosts       hosts
+	mibRegistry mibRegistry
 }
 
 func (engine *Engine) init(config Config) error {
