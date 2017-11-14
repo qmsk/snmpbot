@@ -20,6 +20,29 @@ func (client Client) Probe(id ID) (bool, error) {
 	}
 }
 
+func (client Client) ProbeMany(ids []ID) (map[IDKey]bool, error) {
+	var oids = make([]snmp.OID, len(ids))
+	var probed = make(map[IDKey]bool)
+
+	for i, id := range ids {
+		oids[i] = id.OID
+	}
+
+	// XXX: limit on the number of var-binds per request?
+	if varBinds, err := client.GetNext(oids...); err != nil {
+		return probed, err
+	} else {
+		for i, varBind := range varBinds {
+			id := ids[i]
+			index := id.OID.Index(varBind.OID())
+
+			probed[id.Key()] = (index != nil)
+		}
+	}
+
+	return probed, nil
+}
+
 // Read the value at object index .0
 func (client Client) GetObject(object *Object) (Value, error) {
 	if varBinds, err := client.Get(object.OID.Extend(0)); err != nil {

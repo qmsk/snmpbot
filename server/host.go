@@ -21,6 +21,7 @@ func newHost(id hostID) *Host {
 type Host struct {
 	id         hostID
 	config     HostConfig
+	mibs       []mibWrapper
 	snmpClient *client.Client
 }
 
@@ -55,9 +56,50 @@ func (host *Host) init(config HostConfig) error {
 	return nil
 }
 
+func (host *Host) probe(mibs mibsWrapper) error {
+	return mibs.probeHost(host.snmpClient, func(mib mibWrapper) {
+		log.Printf("Host<%v>: Probed MIB: %v", host, mib)
+		host.mibs = append(host.mibs, mib)
+	})
+}
+
+func (host *Host) start() {
+	log.Printf("Host<%v>: Starting...", host)
+
+	go host.run()
+}
+
+func (host *Host) run() {
+	log.Printf("Host<%v>: Running...", host)
+
+	if err := host.snmpClient.Run(); err != nil {
+		// XXX: handle restarts?
+		log.Printf("Host<%v>: SNMP client failed: %v", host, err)
+	}
+
+	log.Printf("Host<%v>: Stopped", host)
+}
+
+func (host *Host) stop() {
+	log.Printf("Host<%v>: Stopping...", host)
+
+	host.snmpClient.Close()
+}
+
+func (host *Host) makeAPIProbedMIBs() []string {
+	var probedMIBs = make([]string, len(host.mibs))
+
+	for i, mib := range host.mibs {
+		probedMIBs[i] = mib.String()
+	}
+
+	return probedMIBs
+}
+
 func (host *Host) makeAPIIndex() api.HostIndex {
 	return api.HostIndex{
-		ID:   string(host.id),
-		SNMP: host.snmpClient.String(),
+		ID:         string(host.id),
+		SNMP:       host.snmpClient.String(),
+		ProbedMIBs: host.makeAPIProbedMIBs(),
 	}
 }

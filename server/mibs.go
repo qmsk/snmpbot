@@ -2,10 +2,16 @@ package server
 
 import (
 	"github.com/qmsk/snmpbot/api"
+	"github.com/qmsk/snmpbot/client"
 	"github.com/qmsk/snmpbot/mibs"
+	"log"
 )
 
-type mibRegistry struct{}
+type mibsWrapper struct{}
+
+type mibWrapper struct {
+	*mibs.MIB
+}
 
 type tableWrapper struct {
 	*mibs.Table
@@ -28,7 +34,32 @@ func (table tableWrapper) makeAPIIndex() api.TableIndex {
 	return index
 }
 
-func (registry mibRegistry) makeAPIIndex() []api.MIBIndex {
+func (_ mibsWrapper) probeHost(client *client.Client, f func(mib mibWrapper)) error {
+	var mibsClient = mibs.Client{client}
+	var ids []mibs.ID
+
+	mibs.WalkMIBs(func(mib *mibs.MIB) {
+		ids = append(ids, mib.ID)
+	})
+
+	log.Printf("Probing MIBs: %v", ids)
+
+	if probed, err := mibsClient.ProbeMany(ids); err != nil {
+		return err
+	} else {
+		for _, id := range ids {
+			log.Printf("Probed %v = %v", id, probed[id.Key()])
+
+			if probed[id.Key()] {
+				f(mibWrapper{id.MIB})
+			}
+		}
+
+		return nil
+	}
+}
+
+func (_ mibsWrapper) makeAPIIndex() []api.MIBIndex {
 	var index []api.MIBIndex
 
 	mibs.WalkMIBs(func(mib *mibs.MIB) {

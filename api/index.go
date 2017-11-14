@@ -26,4 +26,6 @@ type TableIndex struct {
 type HostIndex struct {
 	ID   string
 	SNMP string
+
+	ProbedMIBs []string
 }

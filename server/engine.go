@@ -11,8 +11,8 @@ func newEngine() *Engine {
 }
 
 type Engine struct {
-	hosts       hosts
-	mibRegistry mibRegistry
+	hosts hosts
+	mibs  mibsWrapper
 }
 
 func (engine *Engine) init(config Config) error {
@@ -23,7 +23,14 @@ func (engine *Engine) init(config Config) error {
 			return fmt.Errorf("Failed to load host %v: %v", hostName, err)
 		}
 
+		host.start()
+
 		engine.hosts[host.id] = host
+
+		// XXX: failures?
+		if err := host.probe(engine.mibs); err != nil {
+			return fmt.Errorf("Failed to probe host %v: %v", host, err)
+		}
 	}
 
 	return nil

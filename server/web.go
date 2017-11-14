@@ -22,7 +22,7 @@ func (engine *Engine) Index(name string) (web.Resource, error) {
 
 func (engine *Engine) GetREST() (web.Resource, error) {
 	var index = api.Index{
-		MIBs:  engine.mibRegistry.makeAPIIndex(),
+		MIBs:  engine.mibs.makeAPIIndex(),
 		Hosts: engine.hosts.makeAPIIndex(),
 	}
 
