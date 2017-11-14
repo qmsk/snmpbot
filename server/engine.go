@@ -17,7 +17,7 @@ type Engine struct {
 
 func (engine *Engine) init(config Config) error {
 	for hostName, hostConfig := range config.Hosts {
-		var host = newHost(HostID(hostName))
+		var host = newHost(hostID(hostName))
 
 		if err := host.init(hostConfig); err != nil {
 			return fmt.Errorf("Failed to load host %v: %v", hostName, err)

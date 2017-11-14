@@ -7,20 +7,6 @@ import (
 	"log"
 )
 
-type HostID string
-
-type hosts map[HostID]*Host
-
-func (hosts hosts) makeAPIIndex() []api.HostIndex {
-	var items = make([]api.HostIndex, 0, len(hosts))
-
-	for _, host := range hosts {
-		items = append(items, host.makeAPIIndex())
-	}
-
-	return items
-}
-
 type HostConfig struct {
 	Host string
 
@@ -28,12 +14,12 @@ type HostConfig struct {
 	SNMP *client.Config
 }
 
-func newHost(id HostID) *Host {
+func newHost(id hostID) *Host {
 	return &Host{id: id}
 }
 
 type Host struct {
-	id         HostID
+	id         hostID
 	config     HostConfig
 	snmpClient *client.Client
 }

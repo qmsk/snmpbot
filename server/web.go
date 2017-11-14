@@ -13,6 +13,8 @@ func (engine *Engine) Index(name string) (web.Resource, error) {
 	switch name {
 	case "":
 		return engine, nil
+	case "hosts":
+		return engine.hosts, nil
 	default:
 		return nil, nil
 	}
