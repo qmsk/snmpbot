@@ -26,8 +26,8 @@ func snmpobject(client *mibs.Client, id mibs.ID) error {
 	if value, err := client.GetObject(object); err != nil {
 		return err
 	} else {
-    fmt.Printf("%v = %v\n", object, value)
-  }
+		fmt.Printf("%v = %v\n", object, value)
+	}
 
 	return nil
 }

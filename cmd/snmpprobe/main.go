@@ -17,13 +17,13 @@ func init() {
 }
 
 func snmpprobe(client *mibs.Client, ids ...mibs.ID) error {
-  for _, id := range ids {
-    if ok, err := client.Probe(id); err != nil {
-      return err
-    } else {
-      fmt.Printf("%v = %v\n", id, ok)
-    }
-  }
+	for _, id := range ids {
+		if ok, err := client.Probe(id); err != nil {
+			return err
+		} else {
+			fmt.Printf("%v = %v\n", id, ok)
+		}
+	}
 
 	return nil
 }
