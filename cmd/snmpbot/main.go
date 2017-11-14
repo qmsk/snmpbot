@@ -41,7 +41,7 @@ func run(engine *server.Engine) error {
 
 func main() {
 	options.Main(func(args []string) error {
-		options.Server.SNMP = options.SNMP
+		options.Server.SNMP = options.ClientConfig()
 
 		if engine, err := options.Server.Engine(); err != nil {
 			return fmt.Errorf("Failed to load server: %v", err)
