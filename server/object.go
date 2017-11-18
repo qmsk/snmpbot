@@ -6,18 +6,6 @@ import (
 	"github.com/qmsk/snmpbot/mibs"
 )
 
-type hostObjectsRoute hostView
-
-func (route hostObjectsRoute) Index(name string) (web.Resource, error) {
-	if name == "" {
-		return hostObjectsView{route.host}, nil
-	} else if object, err := route.host.resolveObject(name); err != nil {
-		return nil, web.Errorf(404, "%v", err)
-	} else {
-		return hostObjectView{route.host, object}, nil
-	}
-}
-
 type objectView struct {
 	*mibs.Object
 }
@@ -28,6 +16,36 @@ func (view objectView) makeAPIIndex() api.ObjectIndex {
 	}
 
 	return index
+}
+
+type objectsView struct{}
+
+func (view objectsView) makeAPIIndex() []api.ObjectIndex {
+	var objects []api.ObjectIndex
+
+	mibs.Walk(func(id mibs.ID) {
+		if object := id.MIB.Object(id); object != nil {
+			objects = append(objects, objectView{object}.makeAPIIndex())
+		}
+	})
+
+	return objects
+}
+
+type mibObjectsView struct {
+	mib *mibs.MIB
+}
+
+func (view mibObjectsView) makeAPIIndex() []api.ObjectIndex {
+	var objects []api.ObjectIndex
+
+	view.mib.Walk(func(id mibs.ID) {
+		if object := view.mib.Object(id); object != nil {
+			objects = append(objects, objectView{object}.makeAPIIndex())
+		}
+	})
+
+	return objects
 }
 
 type hostObjectView struct {

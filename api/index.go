@@ -1,13 +1,8 @@
 package api
 
 type Index struct {
-	Hosts []HostIndex
-	MIBs  []MIBIndex
-}
-
-type MIBIndex struct {
-	ID string
-
+	Hosts   []HostIndex
+	MIBs    []MIBIndex
 	Objects []ObjectIndex
 	Tables  []TableIndex
 }

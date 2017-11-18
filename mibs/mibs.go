@@ -136,6 +136,12 @@ func LookupObject(oid snmp.OID) *Object {
 	}
 }
 
+func Walk(f func(i ID)) {
+	mibRegistry.walk(func(id ID) {
+		id.MIB.Walk(f)
+	})
+}
+
 // Lookup human-readable object name with optional index
 func ParseOID(name string) (snmp.OID, error) {
 	if id, err := Resolve(name); err != nil {

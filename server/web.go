@@ -32,8 +32,10 @@ type indexView struct {
 
 func (view indexView) makeAPIIndex() api.Index {
 	return api.Index{
-		MIBs:  mibsView{}.makeAPIIndex(),
-		Hosts: hostsView{view.engine.hosts}.makeAPIIndex(),
+		MIBs:    mibsView{}.makeAPIIndex(),
+		Objects: objectsView{}.makeAPIIndex(),
+		Tables:  tablesView{}.makeAPIIndex(),
+		Hosts:   hostsView{view.engine.hosts}.makeAPIIndex(),
 	}
 }
 

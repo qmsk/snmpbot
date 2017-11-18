@@ -173,11 +173,11 @@ type hostView struct {
 	host *Host
 }
 
-func (view hostView) makeMIBs() []string {
-	var mibs = make([]string, len(view.host.probedMIBs))
+func (view hostView) makeMIBs() []api.MIBIndex {
+	var mibs = make([]api.MIBIndex, len(view.host.probedMIBs))
 
 	for i, mib := range view.host.probedMIBs {
-		mibs[i] = mib.String()
+		mibs[i] = mibView{mib}.makeAPIIndex()
 	}
 
 	return mibs
@@ -221,4 +221,28 @@ func (view hostView) makeAPI() api.Host {
 
 func (view hostView) GetREST() (web.Resource, error) {
 	return view.makeAPI(), nil
+}
+
+type hostObjectsRoute hostView
+
+func (route hostObjectsRoute) Index(name string) (web.Resource, error) {
+	if name == "" {
+		return hostObjectsView{route.host}, nil
+	} else if object, err := route.host.resolveObject(name); err != nil {
+		return nil, web.Errorf(404, "%v", err)
+	} else {
+		return hostObjectView{route.host, object}, nil
+	}
+}
+
+type hostTablesRoute hostView
+
+func (route hostTablesRoute) Index(name string) (web.Resource, error) {
+	if name == "" {
+		return hostTablesView{route.host}, nil
+	} else if table, err := route.host.resolveTable(name); err != nil {
+		return nil, web.Errorf(404, "%v", err)
+	} else {
+		return hostTableView{route.host, table}, nil
+	}
 }

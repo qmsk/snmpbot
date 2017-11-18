@@ -4,7 +4,7 @@ type HostIndex struct {
 	ID   string
 	SNMP string
 
-	MIBs []string
+	MIBs []MIBIndex
 }
 
 type Host struct {

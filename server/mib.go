@@ -24,27 +24,23 @@ type mibView struct {
 }
 
 func (view mibView) makeAPIIndex() api.MIBIndex {
-	var index = api.MIBIndex{
-		ID:      view.mib.String(),
-		Objects: []api.ObjectIndex{},
-		Tables:  []api.TableIndex{},
+	return api.MIBIndex{
+		ID: view.mib.String(),
+	}
+}
+
+func (view mibView) makeAPI() api.MIB {
+	var mib = api.MIB{
+		MIBIndex: view.makeAPIIndex(),
+		Objects:  mibObjectsView{view.mib}.makeAPIIndex(),
+		Tables:   mibTablesView{view.mib}.makeAPIIndex(),
 	}
 
-	view.mib.Walk(func(id mibs.ID) {
-		if object := view.mib.Object(id); object != nil {
-			index.Objects = append(index.Objects, objectView{object}.makeAPIIndex())
-		}
-
-		if table := view.mib.Table(id); table != nil {
-			index.Tables = append(index.Tables, tableView{table}.makeAPIIndex())
-		}
-	})
-
-	return index
+	return mib
 }
 
 func (view mibView) GetREST() (web.Resource, error) {
-	return view.makeAPIIndex(), nil
+	return view.makeAPI(), nil
 }
 
 type mibsView struct {
@@ -60,6 +56,16 @@ func (_ mibsView) makeAPIIndex() []api.MIBIndex {
 	return index
 }
 
+func (_ mibsView) makeAPI() []api.MIB {
+	var rets []api.MIB
+
+	mibs.WalkMIBs(func(mib *mibs.MIB) {
+		rets = append(rets, mibView{mib}.makeAPI())
+	})
+
+	return rets
+}
+
 func (view mibsView) GetREST() (web.Resource, error) {
-	return view.makeAPIIndex(), nil
+	return view.makeAPI(), nil
 }
