@@ -6,10 +6,19 @@ import (
 )
 
 type IndexSyntax []*Object
+type IndexValues []Value
 type IndexMap map[IDKey]Value
 
-func (indexSyntax IndexSyntax) UnpackIndex(index []int) ([]Value, error) {
-	var values = make([]Value, len(indexSyntax))
+func (indexSyntax IndexSyntax) UnpackIndex(index []int) (IndexValues, error) {
+	if indexSyntax == nil {
+		if len(index) == 1 && index[0] == 0 {
+			return nil, nil
+		} else {
+			return nil, fmt.Errorf("Unexpected leaf index: %v", index)
+		}
+	}
+
+	var values = make(IndexValues, len(indexSyntax))
 
 	for i, indexObject := range indexSyntax {
 		if indexValue, indexRemaining, err := indexObject.Syntax.UnpackIndex(index); err != nil {
@@ -43,16 +52,19 @@ func (indexSyntax IndexSyntax) MapIndex(index []int) (IndexMap, error) {
 }
 
 func (indexSyntax IndexSyntax) FormatIndex(index []int) (string, error) {
-	var indexStrings = make([]string, len(indexSyntax))
-
-	indexValues, err := indexSyntax.UnpackIndex(index)
-	if err != nil {
+	if indexValues, err := indexSyntax.UnpackIndex(index); err != nil {
 		return "", err
+	} else {
+		return indexSyntax.FormatValues(indexValues), nil
 	}
+}
+
+func (indexSyntax IndexSyntax) FormatValues(indexValues IndexValues) string {
+	var indexStrings = make([]string, len(indexSyntax))
 
 	for i, indexValue := range indexValues {
 		indexStrings[i] = fmt.Sprintf("[%v]", indexValue)
 	}
 
-	return strings.Join(indexStrings, ""), nil
+	return strings.Join(indexStrings, "")
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/qmsk/snmpbot/cmd"
 	"github.com/qmsk/snmpbot/mibs"
+	"log"
 )
 
 type Options struct {
@@ -23,13 +24,15 @@ func snmpobject(client *mibs.Client, id mibs.ID) error {
 		return fmt.Errorf("Not an object: %v", id)
 	}
 
-	if value, err := client.GetObject(object); err != nil {
-		return err
-	} else {
-		fmt.Printf("%v = %v\n", object, value)
-	}
+	return client.WalkObjects(func(object *mibs.Object, indexValues mibs.IndexValues, value mibs.Value, err error) error {
+		if err != nil {
+			log.Printf("%v: %v", object, err)
+		} else {
+			fmt.Printf("%v%v = %v\n", object, object.IndexSyntax.FormatValues(indexValues), value)
+		}
 
-	return nil
+		return nil
+	}, object)
 }
 
 func main() {

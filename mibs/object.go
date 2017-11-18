@@ -12,7 +12,7 @@ type Object struct {
 	Syntax
 }
 
-func (object *Object) Unpack(varBind snmp.VarBind) (interface{}, error) {
+func (object *Object) Unpack(varBind snmp.VarBind) (Value, error) {
 	if err := varBind.ErrorValue(); err != nil {
 		return nil, err
 	} else {
@@ -20,7 +20,15 @@ func (object *Object) Unpack(varBind snmp.VarBind) (interface{}, error) {
 	}
 }
 
-func (object *Object) Format(varBind snmp.VarBind) (string, interface{}, error) {
+func (object *Object) UnpackIndex(oid snmp.OID) (IndexValues, error) {
+	if oidIndex := object.OID.Index(oid); oidIndex == nil {
+		return nil, fmt.Errorf("Invalid OID for Object<%v>: %v", oid, object)
+	} else {
+		return object.IndexSyntax.UnpackIndex(oidIndex)
+	}
+}
+
+func (object *Object) Format(varBind snmp.VarBind) (string, Value, error) {
 	name := object.FormatOID(varBind.OID())
 	value, err := object.Unpack(varBind)
 

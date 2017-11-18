@@ -142,6 +142,22 @@ func Walk(f func(i ID)) {
 	})
 }
 
+func WalkObjects(f func(object *Object)) {
+	Walk(func(id ID) {
+		if object := id.MIB.Object(id); object != nil {
+			f(object)
+		}
+	})
+}
+
+func WalkTables(f func(table *Table)) {
+	Walk(func(id ID) {
+		if table := id.MIB.Table(id); table != nil {
+			f(table)
+		}
+	})
+}
+
 // Lookup human-readable object name with optional index
 func ParseOID(name string) (snmp.OID, error) {
 	if id, err := Resolve(name); err != nil {

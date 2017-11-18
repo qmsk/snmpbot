@@ -22,11 +22,11 @@ func (entrySyntax EntrySyntax) Map(varBinds []snmp.VarBind) (EntryMap, error) {
 	var entryMap = make(EntryMap)
 
 	for i, entryObject := range entrySyntax {
-		if i >= len(varBinds) {
-			return nil, fmt.Errorf("Missing VarBind for %v", entryObject)
-		}
-
 		var varBind = varBinds[i]
+
+		if err := varBind.ErrorValue(); err != nil {
+			// XXX: skip unsupported columns?
+		}
 
 		if index := entryObject.OID.Index(varBind.OID()); index == nil {
 			return nil, fmt.Errorf("Invalid VarBind[%v] OID for %v: %v", varBind.OID(), entryObject, entryObject.OID)
@@ -50,6 +50,10 @@ type Table struct {
 }
 
 func (table Table) Map(varBinds []snmp.VarBind) (IndexMap, EntryMap, error) {
+	if len(varBinds) != len(table.EntrySyntax) {
+		return nil, nil, fmt.Errorf("Incorrect count of colums for Table<%v>: %d", table, len(varBinds))
+	}
+
 	// XXX: assuming all entry objects have the same index...
 	var index = table.EntrySyntax[0].OID.Index(varBinds[0].OID())
 
