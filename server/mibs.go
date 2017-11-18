@@ -13,6 +13,32 @@ type mibWrapper struct {
 	*mibs.MIB
 }
 
+type objectWrapper struct {
+	*mibs.Object
+}
+
+func (wrapper objectWrapper) makeAPIIndex() api.ObjectIndex {
+	var index = api.ObjectIndex{
+		ID: wrapper.Object.String(),
+	}
+
+	return index
+}
+
+func (wrapper objectWrapper) makeAPI(value mibs.Value) api.Object {
+	return api.Object{
+		ObjectIndex: wrapper.makeAPIIndex(),
+		Value:       value,
+	}
+}
+
+func (wrapper objectWrapper) makeAPIError(err error) api.Object {
+	return api.Object{
+		ObjectIndex: wrapper.makeAPIIndex(),
+		Error:       &api.Error{err},
+	}
+}
+
 type tableWrapper struct {
 	*mibs.Table
 }
@@ -59,6 +85,14 @@ func (_ mibsWrapper) probeHost(client *client.Client, f func(mib mibWrapper)) er
 	}
 }
 
+func (_ mibsWrapper) getObject(name string) (objectWrapper, error) {
+	if object, err := mibs.ResolveObject(name); err != nil {
+		return objectWrapper{}, err
+	} else {
+		return objectWrapper{object}, nil
+	}
+}
+
 func (_ mibsWrapper) makeAPIIndex() []api.MIBIndex {
 	var index []api.MIBIndex
 
@@ -71,9 +105,7 @@ func (_ mibsWrapper) makeAPIIndex() []api.MIBIndex {
 
 		mib.Walk(func(id mibs.ID) {
 			if object := mib.Object(id); object != nil {
-				mibIndex.Objects = append(mibIndex.Objects, api.ObjectIndex{
-					ID: object.String(),
-				})
+				mibIndex.Objects = append(mibIndex.Objects, objectWrapper{object}.makeAPIIndex())
 			}
 
 			if table := mib.Table(id); table != nil {

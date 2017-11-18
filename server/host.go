@@ -2,8 +2,10 @@ package server
 
 import (
 	"fmt"
+	"github.com/qmsk/go-web"
 	"github.com/qmsk/snmpbot/api"
 	"github.com/qmsk/snmpbot/client"
+	"github.com/qmsk/snmpbot/mibs"
 	"log"
 )
 
@@ -21,7 +23,7 @@ func newHost(id hostID) *Host {
 type Host struct {
 	id         hostID
 	config     HostConfig
-	mibs       []mibWrapper
+	probedMIBs []mibWrapper
 	snmpClient *client.Client
 }
 
@@ -59,7 +61,7 @@ func (host *Host) init(config HostConfig) error {
 func (host *Host) probe(mibs mibsWrapper) error {
 	return mibs.probeHost(host.snmpClient, func(mib mibWrapper) {
 		log.Printf("Host<%v>: Probed MIB: %v", host, mib)
-		host.mibs = append(host.mibs, mib)
+		host.probedMIBs = append(host.probedMIBs, mib)
 	})
 }
 
@@ -86,10 +88,28 @@ func (host *Host) stop() {
 	host.snmpClient.Close()
 }
 
-func (host *Host) makeAPIProbedMIBs() []string {
-	var probedMIBs = make([]string, len(host.mibs))
+func (host *Host) walkObjects(f func(*mibs.Object)) {
+	for _, mib := range host.probedMIBs {
+		mib.Walk(func(id mibs.ID) {
+			if object := mib.Object(id); object != nil {
+				f(object)
+			}
+		})
+	}
+}
 
-	for i, mib := range host.mibs {
+func (host *Host) resolveObject(name string) (*mibs.Object, error) {
+	return mibs.ResolveObject(name)
+}
+
+func (host *Host) getObject(object *mibs.Object) (mibs.Value, error) {
+	return mibs.Client{host.snmpClient}.GetObject(object)
+}
+
+func (host *Host) makeAPIProbedMIBs() []string {
+	var probedMIBs = make([]string, len(host.probedMIBs))
+
+	for i, mib := range host.probedMIBs {
 		probedMIBs[i] = mib.String()
 	}
 
@@ -101,5 +121,67 @@ func (host *Host) makeAPIIndex() api.HostIndex {
 		ID:         string(host.id),
 		SNMP:       host.snmpClient.String(),
 		ProbedMIBs: host.makeAPIProbedMIBs(),
+	}
+}
+
+func (host *Host) makeAPI() api.Host {
+	return api.Host{
+		HostIndex: host.makeAPIIndex(),
+	}
+}
+
+func (host *Host) GetREST() (web.Resource, error) {
+	return host.makeAPIIndex(), nil
+}
+
+func (host *Host) Index(name string) (web.Resource, error) {
+	switch name {
+	case "objects":
+		return hostObjectsView{host}, nil
+	default:
+		return nil, nil
+	}
+}
+
+type hostObjectsView struct {
+	host *Host
+}
+
+func (view hostObjectsView) Index(name string) (web.Resource, error) {
+	if name == "" {
+		return view, nil
+	} else if object, err := view.host.resolveObject(name); err != nil {
+		return nil, web.Errorf(400, "%v", err)
+	} else {
+		return objectView{view.host, object}, nil
+	}
+}
+
+func (view hostObjectsView) GetREST() (web.Resource, error) {
+	var ret = api.HostObjects{
+		HostID: string(view.host.id),
+	}
+
+	view.host.walkObjects(func(object *mibs.Object) {
+		if value, err := view.host.getObject(object); err != nil {
+			ret.Objects = append(ret.Objects, objectWrapper{object}.makeAPIError(err))
+		} else {
+			ret.Objects = append(ret.Objects, objectWrapper{object}.makeAPI(value))
+		}
+	})
+
+	return ret, nil
+}
+
+type objectView struct {
+	host   *Host
+	object *mibs.Object
+}
+
+func (view objectView) GetREST() (web.Resource, error) {
+	if value, err := view.host.getObject(view.object); err != nil {
+		return objectWrapper{view.object}.makeAPIError(err), nil
+	} else {
+		return objectWrapper{view.object}.makeAPI(value), nil
 	}
 }
