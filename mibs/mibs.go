@@ -95,6 +95,30 @@ func Resolve(name string) (ID, error) {
 	return id, nil
 }
 
+func ResolveObject(name string) (*Object, error) {
+	if id, err := Resolve(name); err != nil {
+		return nil, err
+	} else if id.MIB == nil {
+		return nil, fmt.Errorf("No MIB for name: %v", name)
+	} else if object := id.MIB.Object(id); object == nil {
+		return nil, fmt.Errorf("Not an object: %v", name)
+	} else {
+		return object, nil
+	}
+}
+
+func ResolveTable(name string) (*Table, error) {
+	if id, err := Resolve(name); err != nil {
+		return nil, err
+	} else if id.MIB == nil {
+		return nil, fmt.Errorf("No MIB for name: %v", name)
+	} else if table := id.MIB.Table(id); table == nil {
+		return nil, fmt.Errorf("Not a table: %v", name)
+	} else {
+		return table, nil
+	}
+}
+
 // Lookup ID by OID
 func Lookup(oid snmp.OID) ID {
 	if mib := LookupMIB(oid); mib == nil {
