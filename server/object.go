@@ -4,6 +4,8 @@ import (
 	"github.com/qmsk/go-web"
 	"github.com/qmsk/snmpbot/api"
 	"github.com/qmsk/snmpbot/mibs"
+	"log"
+	"path"
 )
 
 type ObjectID string
@@ -34,13 +36,34 @@ func (objects Objects) List() []*mibs.Object {
 	return list
 }
 
+func (objects Objects) Filter(filters ...string) Objects {
+	var filtered = make(Objects)
+
+	for objectID, object := range objects {
+		var match = false
+		var name = object.String()
+
+		for _, filter := range filters {
+			if matched, _ := path.Match(filter, name); matched {
+				match = true
+			}
+		}
+
+		if match {
+			filtered[objectID] = object
+		}
+	}
+
+	return filtered
+}
+
 type objectsRoute struct {
 	engine *Engine
 }
 
 func (route objectsRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
-		return objectsHandler{
+		return &objectsHandler{
 			engine:  route.engine,
 			hosts:   route.engine.hosts,
 			objects: route.engine.Objects(),
@@ -138,6 +161,10 @@ func (view objectsView) makeAPIIndex() []api.ObjectIndex {
 	return objects
 }
 
+type objectParams struct {
+	Object []string `schema:"object"`
+}
+
 type objectHandler struct {
 	engine *Engine
 	hosts  Hosts
@@ -168,9 +195,10 @@ type objectsHandler struct {
 	engine  *Engine
 	hosts   Hosts
 	objects Objects
+	params  objectParams
 }
 
-func (handler objectsHandler) query() ([]*api.Object, error) {
+func (handler *objectsHandler) query() ([]*api.Object, error) {
 	var objectMap = make(map[ObjectID]*api.Object, len(handler.objects))
 	var objects = make([]*api.Object, 0, len(handler.objects))
 	var err error
@@ -201,7 +229,17 @@ func (handler objectsHandler) query() ([]*api.Object, error) {
 	return objects, err
 }
 
-func (handler objectsHandler) GetREST() (web.Resource, error) {
+func (handler *objectsHandler) QuerySchema() interface{} {
+	return &handler.params
+}
+
+func (handler *objectsHandler) GetREST() (web.Resource, error) {
+	log.Printf("Get objects with params: %#v", handler.params)
+
+	if handler.params.Object != nil {
+		handler.objects = handler.objects.Filter(handler.params.Object...)
+	}
+
 	return handler.query()
 }
 

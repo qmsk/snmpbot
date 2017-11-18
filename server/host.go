@@ -244,7 +244,7 @@ type hostObjectsRoute hostRoute
 
 func (route hostObjectsRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
-		return objectsHandler{
+		return &objectsHandler{
 			engine:  route.engine,
 			hosts:   MakeHosts(route.host),
 			objects: route.host.Objects(),
