@@ -91,3 +91,8 @@ var (
 	Interfaces_linkUp   = SNMPv2MIB.registerNotificationType("linkUp", Interfaces.define(1, 5, 4))
 */
 )
+
+func init() {
+	// setup circular references
+	Index.IndexSyntax = IndexSyntax
+}

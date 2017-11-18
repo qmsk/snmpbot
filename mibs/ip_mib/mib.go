@@ -73,3 +73,10 @@ var (
 		},
 	})
 )
+
+func init() {
+	ipAdEntAddr.IndexSyntax = ipAddrIndexSyntax
+
+	ipNetToMediaIfIndex.IndexSyntax = ipNetToMediaIndexSyntax
+	ipNetToMediaNetAddress.IndexSyntax = ipNetToMediaIndexSyntax
+}
