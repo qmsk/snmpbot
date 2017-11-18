@@ -55,7 +55,9 @@ func (client *Client) Get(oids ...snmp.OID) ([]snmp.VarBind, error) {
 		requestVars[i] = snmp.MakeVarBind(oid, nil)
 	}
 
-	if responseType, responseVars, err := client.requestRead(snmp.GetRequestType, requestVars); err != nil {
+	if len(oids) == 0 {
+		return nil, nil
+	} else if responseType, responseVars, err := client.requestRead(snmp.GetRequestType, requestVars); err != nil {
 		return responseVars, err
 	} else if responseType != snmp.GetResponseType {
 		return responseVars, fmt.Errorf("Unexpected response type %v for GetRequest", responseType)
@@ -73,7 +75,9 @@ func (client *Client) GetNext(oids ...snmp.OID) ([]snmp.VarBind, error) {
 		requestVars[i] = snmp.MakeVarBind(oid, nil)
 	}
 
-	if responseType, responseVars, err := client.requestRead(snmp.GetNextRequestType, requestVars); err != nil {
+	if len(oids) == 0 {
+		return nil, nil
+	} else if responseType, responseVars, err := client.requestRead(snmp.GetNextRequestType, requestVars); err != nil {
 		return responseVars, err
 	} else if responseType != snmp.GetResponseType {
 		return responseVars, fmt.Errorf("Unexpected response type %v for GetNextRequest", responseType)

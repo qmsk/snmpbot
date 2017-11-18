@@ -317,6 +317,16 @@ func TestGetRequestBig(t *testing.T) {
 	})
 }
 
+func TestGetNothing(t *testing.T) {
+	withTestClient(t, func(transport *testTransport, client *Client) {
+		if varBinds, err := client.Get(); err != nil {
+			t.Fatalf("Get(): %v", err)
+		} else {
+			assert.Equal(t, []snmp.VarBind(nil), varBinds)
+		}
+	})
+}
+
 func TestWalk(t *testing.T) {
 	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1} // IF-MIB::ifName
 	var varBinds = []snmp.VarBind{
