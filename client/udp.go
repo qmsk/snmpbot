@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"syscall"
 )
 
 const UDPPort = "161"
@@ -119,10 +120,12 @@ func (udp *UDP) Recv() (recv IO, err error) {
 	var buf = make([]byte, udp.size)
 
 	// recv
-	if size, addr, err := udp.conn.ReadFrom(buf); err != nil {
+	if size, _, flags, addr, err := udp.conn.ReadMsgUDP(buf, nil); err != nil {
 		return recv, err
 	} else if size == 0 {
 		return recv, io.EOF
+	} else if flags&syscall.MSG_TRUNC != 0 {
+		return recv, fmt.Errorf("Packet truncated (>%d bytes)", udp.size)
 	} else {
 		recv.Addr = addr
 		buf = buf[:size]
