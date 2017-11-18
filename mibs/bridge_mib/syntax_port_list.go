@@ -1,6 +1,7 @@
 package bridge_mib
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/qmsk/snmpbot/mibs"
 	"github.com/qmsk/snmpbot/snmp"
@@ -44,6 +45,10 @@ func (value PortList) Map() map[uint]bool {
 
 func (value PortList) String() string {
 	return fmt.Sprintf("%v", value.List())
+}
+
+func (value PortList) MarshalJSON() ([]byte, error) {
+	return json.Marshal(value.List())
 }
 
 type PortListSyntax struct{}
