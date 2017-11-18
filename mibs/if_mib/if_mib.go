@@ -13,7 +13,7 @@ var (
 		Syntax: mibs.IntegerSyntax{},
 	})
 	TableLastChange = MIB.RegisterObject(MIB.MakeID("ifTableLastChange", 1, 5), mibs.Object{
-		Syntax: mibs.IntegerSyntax{},
+		Syntax: mibs.TimeTicksSyntax{},
 	})
 	TableID = InterfacesMIB.MakeID("ifTable", 2)
 	EntryID = TableID.MakeID("ifEntry", 1)
