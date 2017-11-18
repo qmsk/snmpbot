@@ -102,25 +102,32 @@ var (
 		IndexSyntax: lldpRemIndexSyntax,
 		EntrySyntax: mibs.EntrySyntax{
 			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemChassisIdSubtype", 4), mibs.Object{
-				Syntax: lldpChassisIdSubtypeSyntax,
+				IndexSyntax: lldpRemIndexSyntax,
+				Syntax:      lldpChassisIdSubtypeSyntax,
 			}),
 			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemChassisId", 5), mibs.Object{
-				Syntax: mibs.OctetStringSyntax{},
+				IndexSyntax: lldpRemIndexSyntax,
+				Syntax:      mibs.OctetStringSyntax{},
 			}),
 			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemPortIdSubtype", 6), mibs.Object{
-				Syntax: lldpPortIdSubtypeSyntax,
+				IndexSyntax: lldpRemIndexSyntax,
+				Syntax:      lldpPortIdSubtypeSyntax,
 			}),
 			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemPortId", 7), mibs.Object{
-				Syntax: mibs.OctetStringSyntax{},
+				IndexSyntax: lldpRemIndexSyntax,
+				Syntax:      mibs.OctetStringSyntax{},
 			}),
 			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemPortDesc", 8), mibs.Object{
-				Syntax: mibs.DisplayStringSyntax{},
+				IndexSyntax: lldpRemIndexSyntax,
+				Syntax:      mibs.DisplayStringSyntax{},
 			}),
 			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemSysName", 9), mibs.Object{
-				Syntax: mibs.DisplayStringSyntax{},
+				IndexSyntax: lldpRemIndexSyntax,
+				Syntax:      mibs.DisplayStringSyntax{},
 			}),
 			MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemSysDesc", 10), mibs.Object{
-				Syntax: mibs.DisplayStringSyntax{},
+				IndexSyntax: lldpRemIndexSyntax,
+				Syntax:      mibs.DisplayStringSyntax{},
 			}),
 			// lldpRemSysCapSupported TODO: BitsSyntax
 			// lldpRemSysCapEnabled TODO: BitsSyntax
