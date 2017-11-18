@@ -9,6 +9,7 @@ import (
 const (
 	SNMPVersion    = snmp.SNMPv2c
 	DefaultTimeout = 1 * time.Second
+	DefaultMaxVars = 10
 )
 
 func (config Config) Client() (*Client, error) {
@@ -39,6 +40,7 @@ type Client struct {
 	community []byte
 	timeout   time.Duration
 	retry     int
+	maxVars   int
 
 	transport Transport
 
@@ -65,7 +67,14 @@ func (client *Client) connectUDP(config Config) error {
 	} else {
 		client.timeout = config.Timeout
 	}
+
 	client.retry = config.Retry
+
+	if config.MaxVars == 0 {
+		client.maxVars = DefaultMaxVars
+	} else {
+		client.maxVars = int(config.MaxVars)
+	}
 
 	if udp, err := DialUDP(config.Addr, config.UDP); err != nil {
 		return fmt.Errorf("DialUDP %v: %v", config.Addr, err)

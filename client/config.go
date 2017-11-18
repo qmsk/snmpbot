@@ -13,6 +13,7 @@ type Config struct {
 	Timeout   time.Duration
 	Retry     int
 	UDP       UDPOptions
+	MaxVars   uint
 }
 
 // Parse a pseudo-URL config string:

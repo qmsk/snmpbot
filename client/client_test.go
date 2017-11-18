@@ -33,6 +33,7 @@ func makeTestClient(t *testing.T) (*testTransport, *Client) {
 	client.community = []byte("public")
 	client.timeout = 10 * time.Millisecond
 	client.transport = &testTransport
+	client.maxVars = DefaultMaxVars
 
 	return &testTransport, &client
 }
@@ -134,6 +135,33 @@ func (transport *testTransport) mockGet(oid snmp.OID, varBind snmp.VarBind) {
 			VarBinds: []snmp.VarBind{
 				varBind,
 			},
+		},
+	})
+}
+
+func (transport *testTransport) mockGetMany(oids []snmp.OID, varBinds []snmp.VarBind) {
+	var reqVars = make([]snmp.VarBind, len(oids))
+	for i, oid := range oids {
+		reqVars[i] = snmp.MakeVarBind(oid, nil)
+	}
+
+	transport.On("GetRequest", IO{
+		Packet: snmp.Packet{
+			Version:   snmp.SNMPv2c,
+			Community: []byte("public"),
+		},
+		PDUType: snmp.GetRequestType,
+		PDU: snmp.PDU{
+			VarBinds: reqVars,
+		},
+	}).Return(error(nil), IO{
+		Packet: snmp.Packet{
+			Version:   snmp.SNMPv2c,
+			Community: []byte("public"),
+		},
+		PDUType: snmp.GetResponseType,
+		PDU: snmp.PDU{
+			VarBinds: varBinds,
 		},
 	})
 }
@@ -244,6 +272,47 @@ func TestGetRequestErrorValue(t *testing.T) {
 			t.Fatalf("Get(%v): %v", oid, err)
 		} else {
 			assertVarBind(t, varBinds, 0, oid, value)
+		}
+	})
+}
+
+func TestGetRequestBig(t *testing.T) {
+	var oids = []snmp.OID{
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0},
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 2},
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 3},
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 4},
+	}
+	var values = [][]byte{
+		[]byte("qmsk-snmp test 0"),
+		[]byte("qmsk-snmp test 1"),
+		[]byte("qmsk-snmp test 2"),
+		[]byte("qmsk-snmp test 3"),
+		[]byte("qmsk-snmp test 4"),
+	}
+
+	withTestClient(t, func(transport *testTransport, client *Client) {
+		client.maxVars = 2
+
+		transport.mockGetMany([]snmp.OID{oids[0], oids[1]}, []snmp.VarBind{
+			snmp.MakeVarBind(oids[0], values[0]),
+			snmp.MakeVarBind(oids[1], values[1]),
+		})
+		transport.mockGetMany([]snmp.OID{oids[2], oids[3]}, []snmp.VarBind{
+			snmp.MakeVarBind(oids[2], values[2]),
+			snmp.MakeVarBind(oids[3], values[3]),
+		})
+		transport.mockGetMany([]snmp.OID{oids[4]}, []snmp.VarBind{
+			snmp.MakeVarBind(oids[4], values[4]),
+		})
+
+		if varBinds, err := client.Get(oids...); err != nil {
+			t.Fatalf("Get(%v): %v", oids, err)
+		} else {
+			for i, oid := range oids {
+				assertVarBind(t, varBinds, i, oid, values[i])
+			}
 		}
 	})
 }

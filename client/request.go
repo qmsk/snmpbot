@@ -119,22 +119,3 @@ func (client *Client) request(send IO) (IO, error) {
 		return recv, nil
 	}
 }
-
-func (client *Client) requestRead(requestType snmp.PDUType, varBinds []snmp.VarBind) (snmp.PDUType, []snmp.VarBind, error) {
-	var send = IO{
-		Packet: snmp.Packet{
-			Version:   client.version,
-			Community: client.community,
-		},
-		PDUType: requestType,
-		PDU: snmp.PDU{
-			VarBinds: varBinds,
-		},
-	}
-
-	if recv, err := client.request(send); err != nil {
-		return recv.PDUType, recv.PDU.VarBinds, err
-	} else {
-		return recv.PDUType, recv.PDU.VarBinds, nil
-	}
-}
