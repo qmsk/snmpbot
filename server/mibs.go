@@ -13,27 +13,6 @@ type mibWrapper struct {
 	*mibs.MIB
 }
 
-type tableWrapper struct {
-	*mibs.Table
-}
-
-func (table tableWrapper) makeAPIIndex() api.TableIndex {
-	var index = api.TableIndex{
-		ID:        table.Table.String(),
-		IndexKeys: make([]string, len(table.IndexSyntax)),
-		EntryKeys: make([]string, len(table.EntrySyntax)),
-	}
-
-	for i, indexObject := range table.IndexSyntax {
-		index.IndexKeys[i] = indexObject.String()
-	}
-	for i, entryObject := range table.EntrySyntax {
-		index.EntryKeys[i] = entryObject.String()
-	}
-
-	return index
-}
-
 func (_ mibsWrapper) probeHost(client *client.Client, f func(mib mibWrapper)) error {
 	var mibsClient = mibs.Client{client}
 	var ids []mibs.ID
@@ -75,7 +54,7 @@ func (_ mibsWrapper) makeAPIIndex() []api.MIBIndex {
 			}
 
 			if table := mib.Table(id); table != nil {
-				mibIndex.Tables = append(mibIndex.Tables, tableWrapper{table}.makeAPIIndex())
+				mibIndex.Tables = append(mibIndex.Tables, tableView{table}.makeAPIIndex())
 			}
 		})
 

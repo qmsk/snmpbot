@@ -12,17 +12,6 @@ type MIBIndex struct {
 	Tables  []TableIndex
 }
 
-type ObjectIndex struct {
-	ID string
-}
-
-type TableIndex struct {
-	ID string
-
-	IndexKeys []string
-	EntryKeys []string
-}
-
 type HostIndex struct {
 	ID   string
 	SNMP string

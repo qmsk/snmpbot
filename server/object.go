@@ -18,35 +18,27 @@ func (view objectView) makeAPIIndex() api.ObjectIndex {
 	return index
 }
 
-func (view objectView) makeAPI(value mibs.Value) api.Object {
-	return api.Object{
-		ObjectIndex: view.makeAPIIndex(),
-		Value:       value,
-	}
-}
-
-func (view objectView) makeAPIError(err error) api.Object {
-	return api.Object{
-		ObjectIndex: view.makeAPIIndex(),
-		Error:       &api.Error{err},
-	}
-}
-
 type hostObjectView struct {
 	host   *Host
 	object *mibs.Object
 }
 
-func (view hostObjectView) getAPI() api.Object {
-	if value, err := view.host.getObject(view.object); err != nil {
-		return objectView{view.object}.makeAPIError(err)
-	} else {
-		return objectView{view.object}.makeAPI(value)
+func (view hostObjectView) query() api.Object {
+	var object = api.Object{
+		ObjectIndex: objectView{view.object}.makeAPIIndex(),
 	}
+
+	if value, err := view.host.getObject(view.object); err != nil {
+		object.Error = &api.Error{err}
+	} else {
+		object.Value = value
+	}
+
+	return object
 }
 
 func (view hostObjectView) GetREST() (web.Resource, error) {
-	return view.getAPI(), nil
+	return view.query(), nil
 }
 
 type hostObjectsView struct {
@@ -64,14 +56,12 @@ func (view hostObjectsView) Index(name string) (web.Resource, error) {
 }
 
 func (view hostObjectsView) GetREST() (web.Resource, error) {
-	var apiObjects = api.HostObjects{
-		HostID: string(view.host.id),
-	}
+	var apiObjects []api.Object
 
 	view.host.walkObjects(func(object *mibs.Object) {
-		apiObject := hostObjectView{view.host, object}.getAPI()
+		apiObject := hostObjectView{view.host, object}.query()
 
-		apiObjects.Objects = append(apiObjects.Objects, apiObject)
+		apiObjects = append(apiObjects, apiObject)
 	})
 
 	return apiObjects, nil

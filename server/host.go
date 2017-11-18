@@ -98,12 +98,30 @@ func (host *Host) walkObjects(f func(*mibs.Object)) {
 	}
 }
 
+func (host *Host) walkTables(f func(*mibs.Table)) {
+	for _, mib := range host.probedMIBs {
+		mib.Walk(func(id mibs.ID) {
+			if table := mib.Table(id); table != nil {
+				f(table)
+			}
+		})
+	}
+}
+
 func (host *Host) resolveObject(name string) (*mibs.Object, error) {
 	return mibs.ResolveObject(name)
 }
 
+func (host *Host) resolveTable(name string) (*mibs.Table, error) {
+	return mibs.ResolveTable(name)
+}
+
 func (host *Host) getObject(object *mibs.Object) (mibs.Value, error) {
 	return mibs.Client{host.snmpClient}.GetObject(object)
+}
+
+func (host *Host) walkTable(table *mibs.Table, f func(mibs.IndexMap, mibs.EntryMap) error) error {
+	return mibs.Client{host.snmpClient}.WalkTable(table, f)
 }
 
 func (host *Host) makeAPIProbedMIBs() []string {
@@ -138,6 +156,8 @@ func (host *Host) Index(name string) (web.Resource, error) {
 	switch name {
 	case "objects":
 		return hostObjectsView{host}, nil
+	case "tables":
+		return hostTablesView{host}, nil
 	default:
 		return nil, nil
 	}
