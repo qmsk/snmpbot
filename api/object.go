@@ -9,12 +9,16 @@ type ObjectIndex struct {
 	IndexKeys []string `json:",omitempty"`
 }
 
-type Object struct {
+type ObjectInstance struct {
 	HostID string
+	Index  ObjectIndexMap `json:",omitempty"`
+	Value  interface{}    `json:",omitempty"`
+	Error  *Error         `json:",omitempty"`
+}
+
+type Object struct {
 	ObjectIndex
-	Index ObjectIndexMap `json:",omitempty"`
-	Value interface{}    `json:",omitempty"`
-	Error *Error         `json:",omitempty"`
+	Instances []ObjectInstance
 }
 
 type ObjectIndexMap map[string]interface{}

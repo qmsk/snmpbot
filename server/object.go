@@ -40,7 +40,7 @@ type objectsRoute struct {
 
 func (route objectsRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
-		return objectsView{
+		return objectsHandler{
 			engine:  route.engine,
 			hosts:   route.engine.hosts,
 			objects: route.engine.Objects(),
@@ -48,11 +48,10 @@ func (route objectsRoute) Index(name string) (web.Resource, error) {
 	} else if object, err := mibs.ResolveObject(name); err != nil {
 		return nil, web.Errorf(404, "%v", err)
 	} else {
-		// XXX: should not return array for node
-		return objectsView{
-			engine:  route.engine,
-			hosts:   route.engine.hosts,
-			objects: MakeObjects(object),
+		return objectHandler{
+			engine: route.engine,
+			hosts:  route.engine.hosts,
+			object: object,
 		}, nil
 	}
 }
@@ -68,17 +67,17 @@ func (route objectsRoute) GetREST() (web.Resource, error) {
 }
 
 type objectView struct {
-	*mibs.Object
+	object *mibs.Object
 }
 
 func (view objectView) makeIndexKeys() []string {
-	if view.Object.IndexSyntax == nil {
+	if view.object.IndexSyntax == nil {
 		return nil
 	}
 
-	var keys = make([]string, len(view.Object.IndexSyntax))
+	var keys = make([]string, len(view.object.IndexSyntax))
 
-	for i, indexObject := range view.Object.IndexSyntax {
+	for i, indexObject := range view.object.IndexSyntax {
 		keys[i] = indexObject.String()
 	}
 
@@ -87,7 +86,7 @@ func (view objectView) makeIndexKeys() []string {
 
 func (view objectView) makeAPIIndex() api.ObjectIndex {
 	var index = api.ObjectIndex{
-		ID:        view.Object.String(),
+		ID:        view.object.String(),
 		IndexKeys: view.makeIndexKeys(),
 	}
 
@@ -100,21 +99,21 @@ func (view objectView) makeObjectIndex(indexValues mibs.IndexValues) api.ObjectI
 	}
 	var indexMap = make(api.ObjectIndexMap)
 
-	for i, indexObject := range view.Object.IndexSyntax {
+	for i, indexObject := range view.object.IndexSyntax {
 		indexMap[indexObject.String()] = indexValues[i]
 	}
 
 	return indexMap
 }
 
-func (view objectView) fromResult(result ObjectResult) api.Object {
-	var object = api.Object{
-		HostID:      string(result.Host.id),
-		ObjectIndex: view.makeAPIIndex(),
-		Value:       result.Value,
+func (view objectView) instanceFromResult(result ObjectResult) api.ObjectInstance {
+	var object = api.ObjectInstance{
+		HostID: string(result.Host.id),
+		Value:  result.Value,
 	}
 
-	if result.Object == view.Object {
+	// XXX: should always match...?
+	if result.Object == view.object {
 		object.Index = view.makeObjectIndex(result.IndexValues)
 	}
 
@@ -126,8 +125,6 @@ func (view objectView) fromResult(result ObjectResult) api.Object {
 }
 
 type objectsView struct {
-	engine  *Engine
-	hosts   Hosts
 	objects Objects
 }
 
@@ -141,25 +138,70 @@ func (view objectsView) makeAPIIndex() []api.ObjectIndex {
 	return objects
 }
 
-func (view objectsView) query() []api.Object {
-	var objects = []api.Object{}
+type objectHandler struct {
+	engine *Engine
+	hosts  Hosts
+	object *mibs.Object
+}
 
-	for result := range view.engine.QueryObjects(ObjectQuery{
-		Hosts:   view.hosts,
-		Objects: view.objects,
+func (handler objectHandler) query() api.Object {
+	var object = api.Object{
+		ObjectIndex: objectView{handler.object}.makeAPIIndex(),
+		Instances:   []api.ObjectInstance{},
+	}
+
+	for result := range handler.engine.QueryObjects(ObjectQuery{
+		Hosts:   handler.hosts,
+		Objects: MakeObjects(handler.object),
+	}) {
+		object.Instances = append(object.Instances, objectView{result.Object}.instanceFromResult(result))
+	}
+
+	return object
+}
+
+func (handler objectHandler) GetREST() (web.Resource, error) {
+	return handler.query(), nil
+}
+
+type objectsHandler struct {
+	engine  *Engine
+	hosts   Hosts
+	objects Objects
+}
+
+func (handler objectsHandler) query() []*api.Object {
+	var objectMap = make(map[ObjectID]*api.Object, len(handler.objects))
+	var objects = make([]*api.Object, 0, len(handler.objects))
+
+	for objectID, o := range handler.objects {
+		var object = api.Object{
+			ObjectIndex: objectView{o}.makeAPIIndex(),
+			Instances:   []api.ObjectInstance{},
+		}
+
+		objectMap[objectID] = &object
+		objects = append(objects, &object)
+	}
+
+	for result := range handler.engine.QueryObjects(ObjectQuery{
+		Hosts:   handler.hosts,
+		Objects: handler.objects,
 	}) {
 		if result.Object != nil {
-			objects = append(objects, objectView{result.Object}.fromResult(result))
+			var object = objectMap[ObjectID(result.Object.Key())]
+
+			object.Instances = append(object.Instances, objectView{result.Object}.instanceFromResult(result))
 		} else {
-			// TODO: API errors?
+			// XXX: API errors?
 		}
 	}
 
 	return objects
 }
 
-func (view objectsView) GetREST() (web.Resource, error) {
-	return view.query(), nil
+func (handler objectsHandler) GetREST() (web.Resource, error) {
+	return handler.query(), nil
 }
 
 type mibObjectsView struct {

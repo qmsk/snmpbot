@@ -173,9 +173,9 @@ func (handler tablesHandler) query() []*api.Table {
 	var tableMap = make(map[TableID]*api.Table, len(handler.tables))
 	var tables = make([]*api.Table, 0, len(handler.tables))
 
-	for tableID, table := range handler.tables {
+	for tableID, t := range handler.tables {
 		var table = &api.Table{
-			TableIndex: tableView{table}.makeAPIIndex(),
+			TableIndex: tableView{t}.makeAPIIndex(),
 			Entries:    []api.TableEntry{},
 		}
 
