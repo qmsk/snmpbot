@@ -619,19 +619,70 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 ]
 ```
 
-#### `/api/objects/system::sysDescr`
+#### `/api/objects/interfaces::ifDescr`
+```json
+{
+   "IndexKeys" : [
+      "interfaces::ifIndex"
+   ],
+   "ID" : "interfaces::ifDescr",
+   "Instances" : [
+      {
+         "HostID" : "erx-home",
+         "Value" : "lo",
+         "Index" : {
+            "interfaces::ifIndex" : 1
+         }
+      },
+      {
+         "Index" : {
+            "interfaces::ifIndex" : 1
+         },
+         "Value" : "Slot: 0 Port: 1 Gigabit - Level",
+         "HostID" : "edgeswitch-098730"
+      },
+      ...
+   ]
+}
+```
+
+#### `/api/objects/interfaces::ifDescr?host=edgeswitch-*`
 ```json
 {
    "Instances" : [
       {
-         "Value" : "EdgeOS v1.9.1.1.4977602.170427.0113",
-         "HostID" : "erx-home"
+         "Index" : {
+            "interfaces::ifIndex" : 1
+         },
+         "HostID" : "edgeswitch-098730",
+         "Value" : "Slot: 0 Port: 1 Gigabit - Level"
       },
       {
          "HostID" : "edgeswitch-098730",
-         "Value" : "EdgeSwitch 24-Port Lite, 1.7.0.4922887, Linux 3.6.5-f4a26ed5, 0.0.0.0000000"
+         "Index" : {
+            "interfaces::ifIndex" : 2
+         },
+         "Value" : "Slot: 0 Port: 2 Gigabit - Level"
+      },
+      {
+         "Value" : "Slot: 0 Port: 3 Gigabit - Level",
+         "HostID" : "edgeswitch-098730",
+         "Index" : {
+            "interfaces::ifIndex" : 3
+         }
+      },
+      ...
+      {
+         "HostID" : "edgeswitch-098730",
+         "Index" : {
+            "interfaces::ifIndex" : 71
+         },
+         "Value" : " Link Aggregate 6"
       }
    ],
-   "ID" : "system::sysDescr"
+   "ID" : "interfaces::ifDescr",
+   "IndexKeys" : [
+      "interfaces::ifIndex"
+   ]
 }
 ```
