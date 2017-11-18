@@ -6,6 +6,29 @@ import (
 	"github.com/qmsk/snmpbot/mibs"
 )
 
+type tablesRoute struct {
+}
+
+func (route tablesRoute) Index(name string) (web.Resource, error) {
+	if name == "" {
+		return tablesView{}, nil
+	} else if table, err := mibs.ResolveTable(name); err != nil {
+		return nil, web.Errorf(404, "%v", err)
+	} else {
+		return tableView{table}, nil
+	}
+}
+
+func (route tablesRoute) makeIndex() api.IndexTables {
+	return api.IndexTables{
+		Tables: tablesView{}.makeAPIIndex(),
+	}
+}
+
+func (route tablesRoute) GetREST() (web.Resource, error) {
+	return route.makeIndex(), nil
+}
+
 type tableView struct {
 	*mibs.Table
 }
@@ -102,14 +125,16 @@ type hostTablesView struct {
 	host *Host
 }
 
-func (view hostTablesView) GetREST() (web.Resource, error) {
-	var apiTables []api.Table
+func (view hostTablesView) query() []api.Table {
+	var tables []api.Table
 
 	view.host.walkTables(func(table *mibs.Table) {
-		apiTable := hostTableView{view.host, table}.query()
-
-		apiTables = append(apiTables, apiTable)
+		tables = append(tables, hostTableView{view.host, table}.query())
 	})
 
-	return apiTables, nil
+	return tables
+}
+
+func (view hostTablesView) GetREST() (web.Resource, error) {
+	return view.query(), nil
 }

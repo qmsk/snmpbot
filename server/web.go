@@ -19,6 +19,10 @@ func (route indexRoute) Index(name string) (web.Resource, error) {
 		return indexView{route.engine}, nil
 	case "mibs":
 		return mibsRoute{}, nil
+	case "objects":
+		return objectsRoute{}, nil
+	case "tables":
+		return tablesRoute{}, nil
 	case "hosts":
 		return hostsRoute{route.engine.hosts}, nil
 	default:
@@ -32,10 +36,10 @@ type indexView struct {
 
 func (view indexView) makeAPIIndex() api.Index {
 	return api.Index{
-		MIBs:    mibsView{}.makeAPIIndex(),
-		Objects: objectsView{}.makeAPIIndex(),
-		Tables:  tablesView{}.makeAPIIndex(),
-		Hosts:   hostsView{view.engine.hosts}.makeAPIIndex(),
+		MIBs:         mibsView{}.makeAPIIndex(),
+		IndexObjects: objectsRoute{}.makeIndex(),
+		IndexTables:  tablesRoute{}.makeIndex(),
+		Hosts:        hostsView{view.engine.hosts}.makeAPIIndex(),
 	}
 }
 

@@ -1,5 +1,9 @@
 package api
 
+type IndexTables struct {
+	Tables []TableIndex
+}
+
 type TableIndex struct {
 	ID string
 

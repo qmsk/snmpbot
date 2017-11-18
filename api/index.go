@@ -1,8 +1,9 @@
 package api
 
 type Index struct {
-	Hosts   []HostIndex
-	MIBs    []MIBIndex
-	Objects []ObjectIndex
-	Tables  []TableIndex
+	Hosts []HostIndex
+	MIBs  []MIBIndex
+
+	IndexObjects
+	IndexTables
 }

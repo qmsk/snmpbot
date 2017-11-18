@@ -1,5 +1,9 @@
 package api
 
+type IndexObjects struct {
+	Objects []ObjectIndex
+}
+
 type ObjectIndex struct {
 	ID string
 }

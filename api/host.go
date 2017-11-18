@@ -1,5 +1,9 @@
 package api
 
+type IndexHosts struct {
+	Hosts []HostIndex
+}
+
 type HostIndex struct {
 	ID   string
 	SNMP string
