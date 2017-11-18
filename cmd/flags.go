@@ -24,6 +24,7 @@ func (options *Options) InitFlags() {
 	flag.StringVar(&options.SNMP.Community, "snmp-community", "public", "Default SNMP community")
 	flag.DurationVar(&options.SNMP.Timeout, "snmp-timeout", client.DefaultTimeout, "SNMP request timeout")
 	flag.IntVar(&options.SNMP.Retry, "snmp-retry", 0, "SNMP request retry")
+	flag.UintVar(&options.SNMP.UDP.Size, "snmp-udp-size", client.UDPSize, "Maximum UDP recv size")
 }
 
 func (options *Options) Parse() []string {

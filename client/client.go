@@ -67,7 +67,7 @@ func (client *Client) connectUDP(config Config) error {
 	}
 	client.retry = config.Retry
 
-	if udp, err := DialUDP(config.Addr, UDPOptions{}); err != nil {
+	if udp, err := DialUDP(config.Addr, config.UDP); err != nil {
 		return fmt.Errorf("DialUDP %v: %v", config.Addr, err)
 	} else {
 		client.log.Infof("Connect UDP %v: %v", config.Addr, udp)
