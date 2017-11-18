@@ -43,10 +43,9 @@ var (
 		dot1qFdbId,
 	}
 
-	dot1qFdbTable = QMIB.RegisterTable(dot1qTp.MakeID("dot1qFdbTable", 2), mibs.Table{
+	dot1qFdbTable = QMIB.RegisterTable(dot1qTp.MakeID("dot1qFdbTable", 1), mibs.Table{
 		IndexSyntax: dot1qFdbIndexSyntax,
 		EntrySyntax: mibs.EntrySyntax{
-			dot1qFdbId,
 			QMIB.RegisterObject(dot1qFdbEntry.MakeID("dot1qFdbDynamicCount", 2), mibs.Object{
 				IndexSyntax: dot1qFdbIndexSyntax,
 				Syntax:      mibs.CounterSyntax{},
