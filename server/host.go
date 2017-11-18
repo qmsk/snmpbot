@@ -264,7 +264,7 @@ type hostTablesRoute hostRoute
 
 func (route hostTablesRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
-		return tablesHandler{
+		return &tablesHandler{
 			engine: route.engine,
 			hosts:  MakeHosts(route.host),
 			tables: route.host.Tables(),
@@ -272,7 +272,7 @@ func (route hostTablesRoute) Index(name string) (web.Resource, error) {
 	} else if table, err := route.host.resolveTable(name); err != nil {
 		return nil, web.Errorf(404, "%v", err)
 	} else {
-		return tableHandler{
+		return &tableHandler{
 			engine: route.engine,
 			hosts:  MakeHosts(route.host),
 			table:  table,

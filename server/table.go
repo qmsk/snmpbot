@@ -4,6 +4,7 @@ import (
 	"github.com/qmsk/go-web"
 	"github.com/qmsk/snmpbot/api"
 	"github.com/qmsk/snmpbot/mibs"
+	"path"
 )
 
 type TableID string
@@ -34,13 +35,34 @@ func (tables Tables) IDs() []mibs.ID {
 	return ids
 }
 
+func (tables Tables) Filter(filters ...string) Tables {
+	var filtered = make(Tables)
+
+	for tableID, table := range tables {
+		var match = false
+		var name = table.String()
+
+		for _, filter := range filters {
+			if matched, _ := path.Match(filter, name); matched {
+				match = true
+			}
+		}
+
+		if match {
+			filtered[tableID] = table
+		}
+	}
+
+	return filtered
+}
+
 type tablesRoute struct {
 	engine *Engine
 }
 
 func (route tablesRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
-		return tablesHandler{
+		return &tablesHandler{
 			engine: route.engine,
 			hosts:  route.engine.hosts,
 			tables: route.engine.Tables(),
@@ -48,7 +70,7 @@ func (route tablesRoute) Index(name string) (web.Resource, error) {
 	} else if table, err := mibs.ResolveTable(name); err != nil {
 		return nil, web.Errorf(404, "%v", err)
 	} else {
-		return tableHandler{
+		return &tableHandler{
 			engine: route.engine,
 			hosts:  route.engine.hosts,
 			table:  table,
@@ -138,9 +160,12 @@ type tableHandler struct {
 	engine *Engine
 	hosts  Hosts
 	table  *mibs.Table
+	params struct {
+		Hosts []string `schema:"host"`
+	}
 }
 
-func (handler tableHandler) query() api.Table {
+func (handler *tableHandler) query() api.Table {
 	var table = api.Table{
 		TableIndex: tableView{handler.table}.makeAPIIndex(),
 	}
@@ -159,7 +184,15 @@ func (handler tableHandler) query() api.Table {
 	return table
 }
 
-func (handler tableHandler) GetREST() (web.Resource, error) {
+func (handler *tableHandler) QuerySchema() interface{} {
+	return &handler.params
+}
+
+func (handler *tableHandler) GetREST() (web.Resource, error) {
+	if handler.params.Hosts != nil {
+		handler.hosts = handler.hosts.Filter(handler.params.Hosts...)
+	}
+
 	return handler.query(), nil
 }
 
@@ -167,9 +200,13 @@ type tablesHandler struct {
 	engine *Engine
 	hosts  Hosts
 	tables Tables
+	params struct {
+		Hosts  []string `schema:"host"`
+		Tables []string `schema:"table"`
+	}
 }
 
-func (handler tablesHandler) query() []*api.Table {
+func (handler *tablesHandler) query() []*api.Table {
 	var tableMap = make(map[TableID]*api.Table, len(handler.tables))
 	var tables = make([]*api.Table, 0, len(handler.tables))
 
@@ -199,6 +236,17 @@ func (handler tablesHandler) query() []*api.Table {
 	return tables
 }
 
-func (handler tablesHandler) GetREST() (web.Resource, error) {
+func (handler *tablesHandler) QuerySchema() interface{} {
+	return &handler.params
+}
+
+func (handler *tablesHandler) GetREST() (web.Resource, error) {
+	if handler.params.Hosts != nil {
+		handler.hosts = handler.hosts.Filter(handler.params.Hosts...)
+	}
+	if handler.params.Tables != nil {
+		handler.tables = handler.tables.Filter(handler.params.Tables...)
+	}
+
 	return handler.query(), nil
 }
