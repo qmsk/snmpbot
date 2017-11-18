@@ -170,9 +170,10 @@ type objectsHandler struct {
 	objects Objects
 }
 
-func (handler objectsHandler) query() []*api.Object {
+func (handler objectsHandler) query() ([]*api.Object, error) {
 	var objectMap = make(map[ObjectID]*api.Object, len(handler.objects))
 	var objects = make([]*api.Object, 0, len(handler.objects))
+	var err error
 
 	for objectID, o := range handler.objects {
 		var object = api.Object{
@@ -193,15 +194,15 @@ func (handler objectsHandler) query() []*api.Object {
 
 			object.Instances = append(object.Instances, objectView{result.Object}.instanceFromResult(result))
 		} else {
-			// XXX: API errors?
+			err = result.Error
 		}
 	}
 
-	return objects
+	return objects, err
 }
 
 func (handler objectsHandler) GetREST() (web.Resource, error) {
-	return handler.query(), nil
+	return handler.query()
 }
 
 type mibObjectsView struct {
