@@ -85,14 +85,14 @@ func (client Client) WalkObjects(f func(*Object, IndexValues, Value, error) erro
 	}, oids...)
 }
 
-func (client Client) WalkTable(table *Table, f func(IndexMap, EntryMap) error) error {
+func (client Client) WalkTable(table *Table, f func(IndexValues, EntryValues) error) error {
 	return client.Walk(func(varBinds ...snmp.VarBind) error {
-		if indexMap, entryMap, err := table.Map(varBinds); err != nil {
+		if indexValues, entryValues, err := table.Unpack(varBinds); err != nil {
 			return err
-		} else if err := f(indexMap, entryMap); err != nil {
+		} else if err := f(indexValues, entryValues); err != nil {
 			return err
 		} else {
 			return nil
 		}
-	}, table.EntrySyntax.OIDs()...)
+	}, table.EntryOIDs()...)
 }

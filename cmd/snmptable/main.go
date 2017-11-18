@@ -44,13 +44,13 @@ func snmptable(client *mibs.Client, id mibs.ID) error {
 	}
 	fmt.Fprintf(writer, "\n")
 
-	walkRow := func(indexMap mibs.IndexMap, entryMap mibs.EntryMap) error {
-		for _, indexObject := range table.IndexSyntax {
-			fmt.Fprintf(writer, "%v\t", indexMap[indexObject.ID.Key()])
+	walkRow := func(indexValues mibs.IndexValues, entryValues mibs.EntryValues) error {
+		for i, _ := range table.IndexSyntax {
+			fmt.Fprintf(writer, "%v\t", indexValues[i])
 		}
 		fmt.Fprintf(writer, "|")
-		for _, entryObject := range table.EntrySyntax {
-			fmt.Fprintf(writer, "\t%v", entryMap[entryObject.ID.Key()])
+		for i, _ := range table.EntrySyntax {
+			fmt.Fprintf(writer, "\t%v", entryValues[i])
 		}
 		fmt.Fprintf(writer, "\n")
 
