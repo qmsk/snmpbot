@@ -16,5 +16,5 @@ type HostIndex struct {
 	ID   string
 	SNMP string
 
-	ProbedMIBs []string
+	MIBs []string
 }

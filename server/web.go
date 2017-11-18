@@ -6,25 +6,37 @@ import (
 )
 
 func (engine *Engine) WebAPI() web.API {
-	return web.MakeAPI(engine)
+	return web.MakeAPI(indexRoute{engine})
 }
 
-func (engine *Engine) Index(name string) (web.Resource, error) {
+type indexRoute struct {
+	engine *Engine
+}
+
+func (route indexRoute) Index(name string) (web.Resource, error) {
 	switch name {
 	case "":
-		return engine, nil
+		return indexView{route.engine}, nil
+	case "mibs":
+		return mibsRoute{}, nil
 	case "hosts":
-		return engine.hosts, nil
+		return hostsRoute{route.engine.hosts}, nil
 	default:
 		return nil, nil
 	}
 }
 
-func (engine *Engine) GetREST() (web.Resource, error) {
-	var index = api.Index{
-		MIBs:  engine.mibs.makeAPIIndex(),
-		Hosts: engine.hosts.makeAPIIndex(),
-	}
+type indexView struct {
+	engine *Engine
+}
 
-	return index, nil
+func (view indexView) makeAPIIndex() api.Index {
+	return api.Index{
+		MIBs:  mibsView{}.makeAPIIndex(),
+		Hosts: hostsView{view.engine.hosts}.makeAPIIndex(),
+	}
+}
+
+func (view indexView) GetREST() (web.Resource, error) {
+	return view.makeAPIIndex(), nil
 }

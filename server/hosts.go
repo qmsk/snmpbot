@@ -9,24 +9,34 @@ type hostID string
 
 type hosts map[hostID]*Host
 
-func (hosts hosts) makeAPIIndex() []api.HostIndex {
-	var items = make([]api.HostIndex, 0, len(hosts))
+type hostsRoute struct {
+	hosts hosts
+}
 
-	for _, host := range hosts {
-		items = append(items, host.makeAPIIndex())
+func (route hostsRoute) Index(name string) (web.Resource, error) {
+	if name == "" {
+		return hostsView{route.hosts}, nil
+	} else if host, ok := route.hosts[hostID(name)]; !ok {
+		return nil, nil
+	} else {
+		return hostRoute{host}, nil
+	}
+}
+
+type hostsView struct {
+	hosts hosts
+}
+
+func (view hostsView) makeAPIIndex() []api.HostIndex {
+	var items = make([]api.HostIndex, 0, len(view.hosts))
+
+	for _, host := range view.hosts {
+		items = append(items, hostView{host}.makeAPIIndex())
 	}
 
 	return items
 }
 
-func (hosts hosts) Index(name string) (web.Resource, error) {
-	if host, ok := hosts[hostID(name)]; !ok {
-		return nil, nil
-	} else {
-		return host, nil
-	}
-}
-
-func (hosts hosts) GetREST() (web.Resource, error) {
-	return hosts.makeAPIIndex(), nil
+func (view hostsView) GetREST() (web.Resource, error) {
+	return view.makeAPIIndex(), nil
 }

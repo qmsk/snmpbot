@@ -6,6 +6,18 @@ import (
 	"github.com/qmsk/snmpbot/mibs"
 )
 
+type hostTablesRoute hostView
+
+func (route hostTablesRoute) Index(name string) (web.Resource, error) {
+	if name == "" {
+		return hostTablesView{route.host}, nil
+	} else if table, err := route.host.resolveTable(name); err != nil {
+		return nil, web.Errorf(404, "%v", err)
+	} else {
+		return hostTableView{route.host, table}, nil
+	}
+}
+
 type tableView struct {
 	*mibs.Table
 }
@@ -70,16 +82,6 @@ func (view hostTableView) GetREST() (web.Resource, error) {
 
 type hostTablesView struct {
 	host *Host
-}
-
-func (view hostTablesView) Index(name string) (web.Resource, error) {
-	if name == "" {
-		return view, nil
-	} else if table, err := view.host.resolveTable(name); err != nil {
-		return nil, web.Errorf(400, "%v", err)
-	} else {
-		return hostTableView{view.host, table}, nil
-	}
 }
 
 func (view hostTablesView) GetREST() (web.Resource, error) {
