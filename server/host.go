@@ -183,6 +183,26 @@ func (view hostView) makeMIBs() []string {
 	return mibs
 }
 
+func (view hostView) makeObjects() []api.ObjectIndex {
+	var objects []api.ObjectIndex
+
+	view.host.walkObjects(func(object *mibs.Object) {
+		objects = append(objects, objectView{object}.makeAPIIndex())
+	})
+
+	return objects
+}
+
+func (view hostView) makeTables() []api.TableIndex {
+	var tables []api.TableIndex
+
+	view.host.walkTables(func(table *mibs.Table) {
+		tables = append(tables, tableView{table}.makeAPIIndex())
+	})
+
+	return tables
+}
+
 func (view hostView) makeAPIIndex() api.HostIndex {
 	return api.HostIndex{
 		ID:   string(view.host.id),
@@ -192,11 +212,13 @@ func (view hostView) makeAPIIndex() api.HostIndex {
 }
 
 func (view hostView) makeAPI() api.Host {
-	var host = api.Host{
+	return api.Host{
 		HostIndex: view.makeAPIIndex(),
+		Objects:   view.makeObjects(),
+		Tables:    view.makeTables(),
 	}
+}
 
-	// TODO: objects, tables
-
-	return host
+func (view hostView) GetREST() (web.Resource, error) {
+	return view.makeAPI(), nil
 }

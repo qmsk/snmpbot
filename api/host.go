@@ -1,8 +1,15 @@
 package api
 
+type HostIndex struct {
+	ID   string
+	SNMP string
+
+	MIBs []string
+}
+
 type Host struct {
 	HostIndex
 
-	Objects []Object
-	Tables  []Table
+	Objects []ObjectIndex
+	Tables  []TableIndex
 }

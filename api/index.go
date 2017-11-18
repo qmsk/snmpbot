@@ -11,10 +11,3 @@ type MIBIndex struct {
 	Objects []ObjectIndex
 	Tables  []TableIndex
 }
-
-type HostIndex struct {
-	ID   string
-	SNMP string
-
-	MIBs []string
-}
