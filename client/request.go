@@ -80,12 +80,11 @@ func (err TimeoutError) Error() string {
 type SNMPError struct {
 	RequestType  snmp.PDUType
 	ResponseType snmp.PDUType
-	ErrorStatus  snmp.ErrorStatus
-	VarBind      snmp.VarBind
+	ResponsePDU  snmp.PDU
 }
 
 func (err SNMPError) Error() string {
-	return fmt.Sprintf("SNMP %v error: %v @ %v", err.RequestType, err.ErrorStatus, err.VarBind)
+	return fmt.Sprintf("SNMP %v error: %v @ %v", err.RequestType, err.ResponsePDU.ErrorStatus, err.ResponsePDU.ErrorVarBind())
 }
 
 func (client *Client) request(send IO) (IO, error) {
@@ -105,8 +104,7 @@ func (client *Client) request(send IO) (IO, error) {
 		return recv, SNMPError{
 			RequestType:  send.PDUType,
 			ResponseType: recv.PDUType,
-			ErrorStatus:  recv.PDU.ErrorStatus,
-			VarBind:      recv.PDU.VarBinds[recv.PDU.ErrorIndex], // XXX
+			ResponsePDU:  recv.PDU,
 		}
 	} else {
 		client.log.Infof("Request %v", request)

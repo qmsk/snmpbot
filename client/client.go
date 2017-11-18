@@ -131,7 +131,7 @@ func (client *Client) run() error {
 
 		for {
 			if recv, err := client.transport.Recv(); err != nil {
-				client.log.Errorf("recv: %v", err) // TODO: store
+				client.log.Errorf("recv: %v", err)
 				recvErr = err
 				return
 			} else if string(recv.Packet.Community) != string(client.community) {

@@ -163,6 +163,14 @@ func (pdu PDU) String() string {
 	return strings.Join(varBinds, ", ")
 }
 
+func (pdu PDU) ErrorVarBind() VarBind {
+	if pdu.ErrorIndex < len(pdu.VarBinds) {
+		return pdu.VarBinds[pdu.ErrorIndex]
+	} else {
+		return VarBind{}
+	}
+}
+
 // SNMPv1 Trap-PDU
 type TrapPDU struct {
 	Enterprise   asn1.ObjectIdentifier
