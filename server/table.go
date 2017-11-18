@@ -160,9 +160,7 @@ type tableHandler struct {
 	engine *Engine
 	hosts  Hosts
 	table  *mibs.Table
-	params struct {
-		Hosts []string `schema:"host"`
-	}
+	params api.TableQuery
 }
 
 func (handler *tableHandler) query() api.Table {
@@ -200,10 +198,7 @@ type tablesHandler struct {
 	engine *Engine
 	hosts  Hosts
 	tables Tables
-	params struct {
-		Hosts  []string `schema:"host"`
-		Tables []string `schema:"table"`
-	}
+	params api.TablesQuery
 }
 
 func (handler *tablesHandler) query() []*api.Table {

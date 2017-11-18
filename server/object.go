@@ -165,9 +165,7 @@ type objectHandler struct {
 	engine *Engine
 	hosts  Hosts
 	object *mibs.Object
-	params struct {
-		Hosts []string `schema:"host"`
-	}
+	params api.ObjectQuery
 }
 
 func (handler *objectHandler) query() api.Object {
@@ -202,10 +200,7 @@ type objectsHandler struct {
 	engine  *Engine
 	hosts   Hosts
 	objects Objects
-	params  struct {
-		Hosts   []string `schema:"host"`
-		Objects []string `schema:"object"`
-	}
+	params  api.ObjectsQuery
 }
 
 func (handler *objectsHandler) query() ([]*api.Object, error) {
