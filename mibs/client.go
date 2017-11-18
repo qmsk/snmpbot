@@ -67,10 +67,10 @@ func (client Client) WalkObjects(f func(*Object, IndexValues, Value, error) erro
 			var walkErr error
 
 			if err := varBind.ErrorValue(); err != nil {
-				walkErr = f(object, nil, nil, err)
-			} else if indexValues, err := object.UnpackIndex(varBind.OID()); err != nil {
-				walkErr = f(object, indexValues, nil, err)
+				// just skip unsupported objects...
 			} else if value, err := object.Unpack(varBind); err != nil {
+				walkErr = f(object, nil, value, err)
+			} else if indexValues, err := object.UnpackIndex(varBind.OID()); err != nil {
 				walkErr = f(object, indexValues, value, err)
 			} else {
 				walkErr = f(object, indexValues, value, nil)
