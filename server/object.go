@@ -71,9 +71,24 @@ type objectView struct {
 	*mibs.Object
 }
 
+func (view objectView) makeIndexKeys() []string {
+	if view.Object.IndexSyntax == nil {
+		return nil
+	}
+
+	var keys = make([]string, len(view.Object.IndexSyntax))
+
+	for i, indexObject := range view.Object.IndexSyntax {
+		keys[i] = indexObject.String()
+	}
+
+	return keys
+}
+
 func (view objectView) makeAPIIndex() api.ObjectIndex {
 	var index = api.ObjectIndex{
-		ID: view.Object.String(),
+		ID:        view.Object.String(),
+		IndexKeys: view.makeIndexKeys(),
 	}
 
 	return index

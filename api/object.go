@@ -5,7 +5,8 @@ type IndexObjects struct {
 }
 
 type ObjectIndex struct {
-	ID string
+	ID        string
+	IndexKeys []string `json:",omitempty"`
 }
 
 type Object struct {
