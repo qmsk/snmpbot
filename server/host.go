@@ -142,16 +142,22 @@ func (host *Host) Objects() Objects {
 	return objects
 }
 
+func (host *Host) Tables() Tables {
+	var tables = make(Tables)
+
+	host.walkTables(func(table *mibs.Table) {
+		tables.add(table)
+	})
+
+	return tables
+}
+
 func (host *Host) resolveObject(name string) (*mibs.Object, error) {
 	return mibs.ResolveObject(name)
 }
 
 func (host *Host) resolveTable(name string) (*mibs.Table, error) {
 	return mibs.ResolveTable(name)
-}
-
-func (host *Host) walkTable(table *mibs.Table, f func(mibs.IndexMap, mibs.EntryMap) error) error {
-	return mibs.Client{host.snmpClient}.WalkTable(table, f)
 }
 
 type hostRoute struct {
@@ -254,10 +260,18 @@ type hostTablesRoute hostRoute
 
 func (route hostTablesRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
-		return hostTablesView{route.host}, nil
+		return tablesHandler{
+			engine: route.engine,
+			hosts:  MakeHosts(route.host),
+			tables: route.host.Tables(),
+		}, nil
 	} else if table, err := route.host.resolveTable(name); err != nil {
 		return nil, web.Errorf(404, "%v", err)
 	} else {
-		return hostTableView{route.host, table}, nil
+		return tableHandler{
+			engine: route.engine,
+			hosts:  MakeHosts(route.host),
+			table:  table,
+		}, nil
 	}
 }

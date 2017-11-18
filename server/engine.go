@@ -40,16 +40,34 @@ func (engine *Engine) Objects() Objects {
 	var objects = make(Objects)
 
 	mibs.WalkObjects(func(object *mibs.Object) {
-		objects[ObjectID(object.Key())] = object
+		objects.add(object)
 	})
 
 	return objects
 }
 
-func (engine *Engine) Query(query Query) <-chan Result {
-	var resultChan = make(chan Result)
+func (engine *Engine) Tables() Tables {
+	var tables = make(Tables)
 
-	go query.execute(resultChan)
+	mibs.WalkTables(func(table *mibs.Table) {
+		tables.add(table)
+	})
 
-	return resultChan
+	return tables
+}
+
+func (engine *Engine) QueryObjects(q ObjectQuery) <-chan ObjectResult {
+	q.resultChan = make(chan ObjectResult)
+
+	go q.query()
+
+	return q.resultChan
+}
+
+func (engine *Engine) QueryTables(q TableQuery) <-chan TableResult {
+	q.resultChan = make(chan TableResult)
+
+	go q.query()
+
+	return q.resultChan
 }

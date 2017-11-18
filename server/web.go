@@ -22,7 +22,7 @@ func (route indexRoute) Index(name string) (web.Resource, error) {
 	case "objects":
 		return objectsRoute{route.engine}, nil
 	case "tables":
-		return tablesRoute{}, nil
+		return tablesRoute{route.engine}, nil
 	case "hosts":
 		return hostsRoute{route.engine, route.engine.hosts}, nil
 	default:

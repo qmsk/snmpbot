@@ -12,7 +12,7 @@ func MakeObjects(args ...*mibs.Object) Objects {
 	var objects = make(Objects, len(args))
 
 	for _, object := range args {
-		objects[ObjectID(object.Key())] = object
+		objects.add(object)
 	}
 
 	return objects
@@ -107,7 +107,7 @@ func (view objectView) makeObjectIndex(indexValues mibs.IndexValues) api.ObjectI
 	return indexMap
 }
 
-func (view objectView) fromResult(result Result) api.Object {
+func (view objectView) fromResult(result ObjectResult) api.Object {
 	var object = api.Object{
 		HostID:      string(result.Host.id),
 		ObjectIndex: view.makeAPIIndex(),
@@ -144,7 +144,7 @@ func (view objectsView) makeAPIIndex() []api.ObjectIndex {
 func (view objectsView) query() []api.Object {
 	var objects = []api.Object{}
 
-	for result := range view.engine.Query(Query{
+	for result := range view.engine.QueryObjects(ObjectQuery{
 		Hosts:   view.hosts,
 		Objects: view.objects,
 	}) {

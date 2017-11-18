@@ -6,22 +6,59 @@ import (
 	"github.com/qmsk/snmpbot/mibs"
 )
 
+type TableID string
+
+func MakeTables(args ...*mibs.Table) Tables {
+	var tables = make(Tables)
+
+	for _, arg := range args {
+		tables.add(arg)
+	}
+
+	return tables
+}
+
+type Tables map[TableID]*mibs.Table
+
+func (tables Tables) add(table *mibs.Table) {
+	tables[TableID(table.Key())] = table
+}
+
+func (tables Tables) IDs() []mibs.ID {
+	var ids = make([]mibs.ID, len(tables))
+
+	for _, table := range tables {
+		ids = append(ids, table.ID)
+	}
+
+	return ids
+}
+
 type tablesRoute struct {
+	engine *Engine
 }
 
 func (route tablesRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
-		return tablesView{}, nil
+		return tablesHandler{
+			engine: route.engine,
+			hosts:  route.engine.hosts,
+			tables: route.engine.Tables(),
+		}, nil
 	} else if table, err := mibs.ResolveTable(name); err != nil {
 		return nil, web.Errorf(404, "%v", err)
 	} else {
-		return tableView{table}, nil
+		return tableHandler{
+			engine: route.engine,
+			hosts:  route.engine.hosts,
+			table:  table,
+		}, nil
 	}
 }
 
 func (route tablesRoute) makeIndex() api.IndexTables {
 	return api.IndexTables{
-		Tables: tablesView{}.makeAPIIndex(),
+		Tables: tablesView{tables: route.engine.Tables()}.makeAPIIndex(),
 	}
 }
 
@@ -30,36 +67,53 @@ func (route tablesRoute) GetREST() (web.Resource, error) {
 }
 
 type tableView struct {
-	*mibs.Table
+	table *mibs.Table
 }
 
 func (view tableView) makeAPIIndex() api.TableIndex {
 	var index = api.TableIndex{
-		ID:        view.Table.String(),
-		IndexKeys: make([]string, len(view.Table.IndexSyntax)),
-		EntryKeys: make([]string, len(view.Table.EntrySyntax)),
+		ID:         view.table.String(),
+		IndexKeys:  make([]string, len(view.table.IndexSyntax)),
+		ObjectKeys: make([]string, len(view.table.EntrySyntax)),
 	}
 
-	for i, indexObject := range view.Table.IndexSyntax {
+	for i, indexObject := range view.table.IndexSyntax {
 		index.IndexKeys[i] = indexObject.String()
 	}
-	for i, entryObject := range view.Table.EntrySyntax {
-		index.EntryKeys[i] = entryObject.String()
+	for i, entryObject := range view.table.EntrySyntax {
+		index.ObjectKeys[i] = entryObject.String()
 	}
 
 	return index
 }
 
-type tablesView struct{}
+func (view tableView) entryFromResult(result TableResult) api.TableEntry {
+	var entry = api.TableEntry{
+		HostID:  string(result.Host.id),
+		Index:   make(api.TableIndexMap),
+		Objects: make(api.TableObjectsMap),
+	}
+
+	for i, indexObject := range view.table.IndexSyntax {
+		entry.Index[indexObject.String()] = result.IndexValues[i]
+	}
+	for i, entryObject := range view.table.EntrySyntax {
+		entry.Objects[entryObject.String()] = result.EntryValues[i]
+	}
+
+	return entry
+}
+
+type tablesView struct {
+	tables Tables
+}
 
 func (view tablesView) makeAPIIndex() []api.TableIndex {
-	var tables []api.TableIndex
+	var tables = make([]api.TableIndex, len(view.tables))
 
-	mibs.Walk(func(id mibs.ID) {
-		if table := id.MIB.Table(id); table != nil {
-			tables = append(tables, tableView{table}.makeAPIIndex())
-		}
-	})
+	for _, table := range view.tables {
+		tables = append(tables, tableView{table}.makeAPIIndex())
+	}
 
 	return tables
 }
@@ -80,61 +134,71 @@ func (view mibTablesView) makeAPIIndex() []api.TableIndex {
 	return tables
 }
 
-type hostTableView struct {
-	host  *Host
-	table *mibs.Table
+type tableHandler struct {
+	engine *Engine
+	hosts  Hosts
+	table  *mibs.Table
 }
 
-func (view hostTableView) makeAPIEntry(indexMap mibs.IndexMap, entryMap mibs.EntryMap) api.TableEntry {
-	var entry = api.TableEntry{
-		Index:   make(api.TableIndexMap),
-		Objects: make(api.TableObjectsMap),
-	}
-
-	for _, indexObject := range view.table.IndexSyntax {
-		entry.Index[indexObject.String()] = indexMap[indexObject.Key()]
-	}
-	for _, entryObject := range view.table.EntrySyntax {
-		entry.Objects[entryObject.String()] = entryMap[entryObject.Key()]
-	}
-
-	return entry
-}
-
-func (view hostTableView) query() api.Table {
+func (handler tableHandler) query() api.Table {
 	var table = api.Table{
-		TableIndex: tableView{view.table}.makeAPIIndex(),
+		TableIndex: tableView{handler.table}.makeAPIIndex(),
 	}
 
-	if err := view.host.walkTable(view.table, func(indexMap mibs.IndexMap, entryMap mibs.EntryMap) error {
-		table.Entries = append(table.Entries, view.makeAPIEntry(indexMap, entryMap))
-
-		return nil
-	}); err != nil {
-		table.Error = &api.Error{err}
+	for result := range handler.engine.QueryTables(TableQuery{
+		Hosts:  handler.hosts,
+		Tables: MakeTables(handler.table),
+	}) {
+		if result.Error != nil {
+			table.Error = &api.Error{result.Error} // TODO: multiple errors...
+		} else {
+			table.Entries = append(table.Entries, tableView{result.Table}.entryFromResult(result))
+		}
 	}
 
 	return table
 }
 
-func (view hostTableView) GetREST() (web.Resource, error) {
-	return view.query(), nil
+func (handler tableHandler) GetREST() (web.Resource, error) {
+	return handler.query(), nil
 }
 
-type hostTablesView struct {
-	host *Host
+type tablesHandler struct {
+	engine *Engine
+	hosts  Hosts
+	tables Tables
 }
 
-func (view hostTablesView) query() []api.Table {
-	var tables []api.Table
+func (handler tablesHandler) query() []*api.Table {
+	var tableMap = make(map[TableID]*api.Table, len(handler.tables))
+	var tables = make([]*api.Table, 0, len(handler.tables))
 
-	view.host.walkTables(func(table *mibs.Table) {
-		tables = append(tables, hostTableView{view.host, table}.query())
-	})
+	for tableID, table := range handler.tables {
+		var table = &api.Table{
+			TableIndex: tableView{table}.makeAPIIndex(),
+			Entries:    []api.TableEntry{},
+		}
+
+		tableMap[tableID] = table
+		tables = append(tables, table)
+	}
+
+	for result := range handler.engine.QueryTables(TableQuery{
+		Hosts:  handler.hosts,
+		Tables: handler.tables,
+	}) {
+		var table = tableMap[TableID(result.Table.Key())]
+
+		if result.Error != nil {
+			table.Error = &api.Error{result.Error} // TODO: multiple errors...
+		} else {
+			table.Entries = append(table.Entries, tableView{result.Table}.entryFromResult(result))
+		}
+	}
 
 	return tables
 }
 
-func (view hostTablesView) GetREST() (web.Resource, error) {
-	return view.query(), nil
+func (handler tablesHandler) GetREST() (web.Resource, error) {
+	return handler.query(), nil
 }
