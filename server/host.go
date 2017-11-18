@@ -252,7 +252,7 @@ func (route hostObjectsRoute) Index(name string) (web.Resource, error) {
 	} else if object, err := route.host.resolveObject(name); err != nil {
 		return nil, web.Errorf(404, "%v", err)
 	} else {
-		return objectHandler{
+		return &objectHandler{
 			engine: route.engine,
 			hosts:  MakeHosts(route.host),
 			object: object,

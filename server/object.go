@@ -71,7 +71,7 @@ func (route objectsRoute) Index(name string) (web.Resource, error) {
 	} else if object, err := mibs.ResolveObject(name); err != nil {
 		return nil, web.Errorf(404, "%v", err)
 	} else {
-		return objectHandler{
+		return &objectHandler{
 			engine: route.engine,
 			hosts:  route.engine.hosts,
 			object: object,
@@ -161,17 +161,16 @@ func (view objectsView) makeAPIIndex() []api.ObjectIndex {
 	return objects
 }
 
-type objectParams struct {
-	Object []string `schema:"object"`
-}
-
 type objectHandler struct {
 	engine *Engine
 	hosts  Hosts
 	object *mibs.Object
+	params struct {
+		Hosts []string `schema:"host"`
+	}
 }
 
-func (handler objectHandler) query() api.Object {
+func (handler *objectHandler) query() api.Object {
 	var object = api.Object{
 		ObjectIndex: objectView{handler.object}.makeAPIIndex(),
 		Instances:   []api.ObjectInstance{},
@@ -187,7 +186,15 @@ func (handler objectHandler) query() api.Object {
 	return object
 }
 
-func (handler objectHandler) GetREST() (web.Resource, error) {
+func (handler *objectHandler) QuerySchema() interface{} {
+	return &handler.params
+}
+
+func (handler *objectHandler) GetREST() (web.Resource, error) {
+	if handler.params.Hosts != nil {
+		handler.hosts = handler.hosts.Filter(handler.params.Hosts...)
+	}
+
 	return handler.query(), nil
 }
 
@@ -195,7 +202,10 @@ type objectsHandler struct {
 	engine  *Engine
 	hosts   Hosts
 	objects Objects
-	params  objectParams
+	params  struct {
+		Hosts   []string `schema:"host"`
+		Objects []string `schema:"object"`
+	}
 }
 
 func (handler *objectsHandler) query() ([]*api.Object, error) {
@@ -236,8 +246,12 @@ func (handler *objectsHandler) QuerySchema() interface{} {
 func (handler *objectsHandler) GetREST() (web.Resource, error) {
 	log.Printf("Get objects with params: %#v", handler.params)
 
-	if handler.params.Object != nil {
-		handler.objects = handler.objects.Filter(handler.params.Object...)
+	if handler.params.Hosts != nil {
+		handler.hosts = handler.hosts.Filter(handler.params.Hosts...)
+	}
+
+	if handler.params.Objects != nil {
+		handler.objects = handler.objects.Filter(handler.params.Objects...)
 	}
 
 	return handler.query()

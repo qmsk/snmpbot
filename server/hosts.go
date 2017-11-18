@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/qmsk/go-web"
 	"github.com/qmsk/snmpbot/api"
+	"path"
 )
 
 type HostID string
@@ -18,6 +19,27 @@ func MakeHosts(args ...*Host) Hosts {
 }
 
 type Hosts map[HostID]*Host
+
+func (hosts Hosts) Filter(filters ...string) Hosts {
+	var filtered = make(Hosts)
+
+	for hostID, host := range hosts {
+		var match = false
+		var name = host.String()
+
+		for _, filter := range filters {
+			if matched, _ := path.Match(filter, name); matched {
+				match = true
+			}
+		}
+
+		if match {
+			filtered[hostID] = host
+		}
+	}
+
+	return filtered
+}
 
 type hostsRoute struct {
 	engine *Engine
