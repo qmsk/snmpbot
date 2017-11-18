@@ -5,7 +5,8 @@ import (
 )
 
 // Only walks over VarBinds that are within the requested OID prefix.
-// May walk with fewer VarBinds if some of them do not have any sub-objects.
+// Any response VarBind outside of the requested tree is substituited with a snmp.EndOfMibView error
+// Stops walking once all varbinds are done
 func (client *Client) Walk(walkFunc func(...snmp.VarBind) error, startOIDs ...snmp.OID) error {
 	var oids = make([]snmp.OID, len(startOIDs))
 
@@ -18,7 +19,7 @@ func (client *Client) Walk(walkFunc func(...snmp.VarBind) error, startOIDs ...sn
 			return err
 		} else {
 			// omit vars that walked out of the table
-			var valid = make([]snmp.VarBind, 0, len(varBinds))
+			var count = 0
 
 			for i, varBind := range varBinds {
 				oid := varBind.OID()
@@ -28,16 +29,17 @@ func (client *Client) Walk(walkFunc func(...snmp.VarBind) error, startOIDs ...sn
 					continue
 				} else if oid.Equals(oids[i]) || startOIDs[i].Index(oid) == nil {
 					// not making progress, or walked out of tree
-					continue
+					varBinds[i] = snmp.MakeVarBind(oids[i], snmp.EndOfMibViewValue)
 				} else {
 					oids[i] = oid
-					valid = append(valid, varBind)
+					count++
 				}
 			}
 
-			if len(valid) == 0 {
+			if count == 0 {
+				// no valid responses
 				break
-			} else if err := walkFunc(valid...); err != nil {
+			} else if err := walkFunc(varBinds...); err != nil {
 				return err
 			}
 		}

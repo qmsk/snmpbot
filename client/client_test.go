@@ -296,6 +296,7 @@ func TestWalkPartial(t *testing.T) {
 	var oid1 = snmp.OID{1, 3, 6, 1, 2, 1, 17, 7, 1, 2, 2, 1, 1} // Q-BRIDGE-MIB::dot1qTpFdbAddress (not-accessible)
 	var oid2 = snmp.OID{1, 3, 6, 1, 2, 1, 17, 7, 1, 2, 2, 1, 2} // Q-BRIDGE-MIB::dot1qTpFdbPort
 
+	var errBind = snmp.MakeVarBind(oid1, snmp.EndOfMibViewValue)
 	var varBinds = []snmp.VarBind{
 		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 17, 7, 1, 2, 2, 1, 2, 1, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11}, int(1)),
 		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 17, 7, 1, 2, 2, 1, 2, 1, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22}, int(3)),
@@ -307,9 +308,11 @@ func TestWalkPartial(t *testing.T) {
 		defer walkMock.AssertExpectations(t)
 
 		transport.mockGetNextMulti([]snmp.OID{oid1, oid2}, []snmp.VarBind{varBinds[0], varBinds[0]})
-		walkMock.On("walk[1/1]", varBinds[0])
+		walkMock.On("walk[1/2]", errBind)
+		walkMock.On("walk[2/2]", varBinds[0])
 		transport.mockGetNextMulti([]snmp.OID{oid1, varBinds[0].OID()}, []snmp.VarBind{varBinds[0], varBinds[1]})
-		walkMock.On("walk[1/1]", varBinds[1])
+		walkMock.On("walk[1/2]", errBind)
+		walkMock.On("walk[2/2]", varBinds[1])
 		transport.mockGetNextMulti([]snmp.OID{oid1, varBinds[1].OID()}, []snmp.VarBind{varBinds[0], varBinds[2]})
 
 		if err := client.Walk(func(varBinds ...snmp.VarBind) error {
