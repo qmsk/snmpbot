@@ -55,7 +55,8 @@ var (
 var (
 	lldpLocPortEntry = lldpLocalSystemData.MakeID("lldpLocPortEntry", 7, 1)
 	lldpLocPortNum   = MIB.RegisterObject(lldpLocPortEntry.MakeID("lldpLocPortNum", 1), mibs.Object{
-		Syntax: lldpPortNumberSyntax,
+		Syntax:     lldpPortNumberSyntax,
+		NotAccessible: true,
 	})
 	lldpLocPortIndexSyntax = mibs.IndexSyntax{
 		lldpLocPortNum,
@@ -84,13 +85,16 @@ var (
 var (
 	lldpRemEntry    = lldpRemoteSystemsData.MakeID("lldpRemEntry", 1, 1)
 	lldpRemTimeMark = MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemTimeMark", 1), mibs.Object{
-		Syntax: mibs.TimeTicksSyntax{},
+		Syntax:     mibs.TimeTicksSyntax{},
+		NotAccessible: true,
 	})
 	lldpRemLocalPortNum = MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemLocalPortNum", 2), mibs.Object{
-		Syntax: lldpPortNumberSyntax,
+		Syntax:     lldpPortNumberSyntax,
+		NotAccessible: true,
 	})
 	lldpRemIndex = MIB.RegisterObject(lldpRemEntry.MakeID("lldpRemIndex", 3), mibs.Object{
-		Syntax: mibs.IntegerSyntax{},
+		Syntax:     mibs.IntegerSyntax{},
+		NotAccessible: true,
 	})
 	lldpRemIndexSyntax = mibs.IndexSyntax{
 		lldpRemTimeMark,

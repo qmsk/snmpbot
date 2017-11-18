@@ -136,6 +136,10 @@ func (host *Host) Objects() Objects {
 	var objects = make(Objects)
 
 	host.walkObjects(func(object *mibs.Object) {
+		if object.NotAccessible {
+			return
+		}
+
 		objects.add(object)
 	})
 

@@ -10,6 +10,7 @@ type Object struct {
 
 	IndexSyntax
 	Syntax
+	NotAccessible bool
 }
 
 func (object *Object) Unpack(varBind snmp.VarBind) (Value, error) {

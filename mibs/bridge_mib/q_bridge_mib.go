@@ -37,7 +37,8 @@ var (
 	dot1qFdbEntry = dot1qTp.MakeID("dot1qFdbEntry", 1, 1)
 
 	dot1qFdbId = QMIB.RegisterObject(dot1qFdbEntry.MakeID("dot1qFdbId", 1), mibs.Object{
-		Syntax: mibs.UnsignedSyntax{},
+		Syntax:     mibs.UnsignedSyntax{},
+		NotAccessible: true,
 	})
 	dot1qFdbIndexSyntax = mibs.IndexSyntax{
 		dot1qFdbId,
@@ -58,7 +59,8 @@ var (
 	dot1qTpFdbEntry = dot1qTp.MakeID("dot1qTpFdbEntry", 2, 1)
 
 	dot1qTpFdbAddress = QMIB.RegisterObject(dot1qTpFdbEntry.MakeID("dot1qTpFdbAddress", 1), mibs.Object{
-		Syntax: mibs.MACAddressSyntax{},
+		Syntax:     mibs.MACAddressSyntax{},
+		NotAccessible: true,
 	})
 	dot1qTpFdbIndexSyntax = mibs.IndexSyntax{
 		dot1qFdbId,
@@ -93,10 +95,12 @@ var (
 
 	dot1qVlanCurrentEntry = dot1qVlan.MakeID("dot1qVlanCurrentEntry", 2, 1)
 	dot1qVlanTimeMark     = QMIB.RegisterObject(dot1qVlanCurrentEntry.MakeID("dot1qVlanTimeMark", 1), mibs.Object{
-		Syntax: mibs.TimeTicksSyntax{},
+		Syntax:     mibs.TimeTicksSyntax{},
+		NotAccessible: true,
 	})
 	dot1qVlanIndex = QMIB.RegisterObject(dot1qVlanCurrentEntry.MakeID("dot1qVlanIndex", 2), mibs.Object{
-		Syntax: mibs.UnsignedSyntax{},
+		Syntax:     mibs.UnsignedSyntax{},
+		NotAccessible: true,
 	})
 	dot1qVlanCurrentIndexSyntax = mibs.IndexSyntax{
 		dot1qVlanTimeMark,

@@ -40,6 +40,9 @@ func (engine *Engine) Objects() Objects {
 	var objects = make(Objects)
 
 	mibs.WalkObjects(func(object *mibs.Object) {
+		if object.NotAccessible {
+			return
+		}
 		objects.add(object)
 	})
 
