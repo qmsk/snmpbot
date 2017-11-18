@@ -9,7 +9,11 @@ type ObjectIndex struct {
 }
 
 type Object struct {
+	HostID string
 	ObjectIndex
-	Value interface{} `json:",omitempty"`
-	Error *Error      `json:",omitempty"`
+	Index ObjectIndexMap `json:",omitempty"`
+	Value interface{}    `json:",omitempty"`
+	Error *Error         `json:",omitempty"`
 }
+
+type ObjectIndexMap map[string]interface{}

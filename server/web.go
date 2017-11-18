@@ -20,11 +20,11 @@ func (route indexRoute) Index(name string) (web.Resource, error) {
 	case "mibs":
 		return mibsRoute{}, nil
 	case "objects":
-		return objectsRoute{}, nil
+		return objectsRoute{route.engine}, nil
 	case "tables":
 		return tablesRoute{}, nil
 	case "hosts":
-		return hostsRoute{route.engine.hosts}, nil
+		return hostsRoute{route.engine, route.engine.hosts}, nil
 	default:
 		return nil, nil
 	}

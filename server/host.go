@@ -16,12 +16,12 @@ type HostConfig struct {
 	SNMP *client.Config
 }
 
-func newHost(id hostID) *Host {
+func newHost(id HostID) *Host {
 	return &Host{id: id}
 }
 
 type Host struct {
-	id         hostID
+	id         HostID
 	config     HostConfig
 	probedMIBs []*mibs.MIB
 	snmpClient *client.Client
@@ -132,6 +132,16 @@ func (host *Host) walkTables(f func(*mibs.Table)) {
 	}
 }
 
+func (host *Host) Objects() Objects {
+	var objects = make(Objects)
+
+	host.walkObjects(func(object *mibs.Object) {
+		objects.add(object)
+	})
+
+	return objects
+}
+
 func (host *Host) resolveObject(name string) (*mibs.Object, error) {
 	return mibs.ResolveObject(name)
 }
@@ -140,16 +150,13 @@ func (host *Host) resolveTable(name string) (*mibs.Table, error) {
 	return mibs.ResolveTable(name)
 }
 
-func (host *Host) getObject(object *mibs.Object) (mibs.Value, error) {
-	return mibs.Client{host.snmpClient}.GetObject(object)
-}
-
 func (host *Host) walkTable(table *mibs.Table, f func(mibs.IndexMap, mibs.EntryMap) error) error {
 	return mibs.Client{host.snmpClient}.WalkTable(table, f)
 }
 
 type hostRoute struct {
-	host *Host
+	engine *Engine
+	host   *Host
 }
 
 func (route hostRoute) Index(name string) (web.Resource, error) {
@@ -157,9 +164,9 @@ func (route hostRoute) Index(name string) (web.Resource, error) {
 	case "":
 		return hostView{route.host}, nil
 	case "objects":
-		return hostObjectsRoute{route.host}, nil
+		return hostObjectsRoute(route), nil
 	case "tables":
-		return hostTablesRoute{route.host}, nil
+		return hostTablesRoute(route), nil
 	default:
 		return nil, nil
 	}
@@ -223,19 +230,27 @@ func (view hostView) GetREST() (web.Resource, error) {
 	return view.makeAPI(), nil
 }
 
-type hostObjectsRoute hostView
+type hostObjectsRoute hostRoute
 
 func (route hostObjectsRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
-		return hostObjectsView{route.host}, nil
+		return objectsView{
+			engine:  route.engine,
+			hosts:   MakeHosts(route.host),
+			objects: route.host.Objects(),
+		}, nil
 	} else if object, err := route.host.resolveObject(name); err != nil {
 		return nil, web.Errorf(404, "%v", err)
 	} else {
-		return hostObjectView{route.host, object}, nil
+		return objectsView{
+			engine:  route.engine,
+			hosts:   MakeHosts(route.host),
+			objects: MakeObjects(object),
+		}, nil
 	}
 }
 
-type hostTablesRoute hostView
+type hostTablesRoute hostRoute
 
 func (route hostTablesRoute) Index(name string) (web.Resource, error) {
 	if name == "" {

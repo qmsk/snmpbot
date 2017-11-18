@@ -5,26 +5,37 @@ import (
 	"github.com/qmsk/snmpbot/api"
 )
 
-type hostID string
+type HostID string
 
-type hosts map[hostID]*Host
+func MakeHosts(args ...*Host) Hosts {
+	var hosts = make(Hosts, len(args))
+
+	for _, host := range args {
+		hosts[host.id] = host
+	}
+
+	return hosts
+}
+
+type Hosts map[HostID]*Host
 
 type hostsRoute struct {
-	hosts hosts
+	engine *Engine
+	hosts  Hosts
 }
 
 func (route hostsRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
 		return hostsView{route.hosts}, nil
-	} else if host, ok := route.hosts[hostID(name)]; !ok {
+	} else if host, ok := route.hosts[HostID(name)]; !ok {
 		return nil, nil
 	} else {
-		return hostRoute{host}, nil
+		return hostRoute{route.engine, host}, nil
 	}
 }
 
 type hostsView struct {
-	hosts hosts
+	hosts Hosts
 }
 
 func (view hostsView) makeAPIIndex() []api.HostIndex {
