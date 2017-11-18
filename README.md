@@ -135,6 +135,21 @@ interfaces::ifDescr[3] = Slot: 0 Port: 3 Gigabit - Level
 interfaces::ifDescr[4] = Slot: 0 Port: 4 Gigabit - Level
 ```
 
+#### `snmpobject public@edgeswitch-098730 Q-BRIDGE-MIB::dot1qTpFdbPort`
+```
+Q-BRIDGE-MIB::dot1qTpFdbPort[1][44:xx:xx:xx:xx:19] = 24
+Q-BRIDGE-MIB::dot1qTpFdbPort[1][50:xx:xx:xx:xx:b2] = 2
+Q-BRIDGE-MIB::dot1qTpFdbPort[1][70:xx:xx:xx:xx:e4] = 23
+Q-BRIDGE-MIB::dot1qTpFdbPort[1][ac:xx:xx:xx:xx:c9] = 6
+Q-BRIDGE-MIB::dot1qTpFdbPort[1][f0:xx:xx:xx:xx:30] = 65
+Q-BRIDGE-MIB::dot1qTpFdbPort[1][f0:xx:xx:xx:xx:3f] = 24
+Q-BRIDGE-MIB::dot1qTpFdbPort[1][f0:xx:xx:xx:xx:45] = 24
+Q-BRIDGE-MIB::dot1qTpFdbPort[2][00:xx:xx:xx:xx:27] = 24
+Q-BRIDGE-MIB::dot1qTpFdbPort[2][70:xx:xx:xx:xx:e4] = 23
+Q-BRIDGE-MIB::dot1qTpFdbPort[1002][74:xx:xx:xx:xx:c6] = 24
+Q-BRIDGE-MIB::dot1qTpFdbPort[1002][f0:xx:xx:xx:xx:45] = 24
+```
+
 ### `github.com/qmsk/snmpbot/cmd/snmpprobe`
 
 Use `GetNextRequest` to probe the presence of subtrees, including entire MIBs or objects within MIBs
