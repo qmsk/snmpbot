@@ -87,7 +87,7 @@ func (client *Client) nextRequestID() requestID {
 }
 
 func (client *Client) teardown() {
-	client.log.Debugf("teardown...")
+	client.log.Debugf("%v teardown...", client)
 
 	close(client.requestChan)
 
@@ -106,13 +106,13 @@ func (client *Client) startRequest(request *request) error {
 	request.send.PDU.RequestID = int(request.id)
 
 	if err := client.transport.Send(request.send); err != nil {
-		client.log.Debugf("request %d fail: %v", request.id, err)
+		client.log.Debugf("%v request %d fail: %v", client, request.id, err)
 
 		request.fail(err)
 
 		return err
 	} else {
-		client.log.Debugf("request %d...", request.id)
+		client.log.Debugf("%v request %d...", request.id)
 	}
 
 	request.start(request.timeout, client.timeoutChan)
@@ -131,13 +131,13 @@ func (client *Client) run() error {
 
 		for {
 			if recv, err := client.transport.Recv(); err != nil {
-				client.log.Errorf("recv: %v", err)
+				client.log.Errorf("%v recv: %v", client, err)
 				recvErr = err
 				return
 			} else if string(recv.Packet.Community) != string(client.community) {
-				client.log.Warnf("wrong community=%s", string(recv.Packet.Community))
+				client.log.Warnf("%v, wrong community=%s", client, string(recv.Packet.Community))
 			} else {
-				client.log.Debugf("recv: %#v", recv)
+				client.log.Debugf("%v recv: %#v", client, recv)
 
 				recvChan <- recv
 			}
@@ -149,7 +149,7 @@ func (client *Client) run() error {
 		case request := <-client.requestChan:
 			request.id = client.nextRequestID()
 
-			client.log.Debugf("request %d send: %#v", request.id, request.send)
+			client.log.Debugf("%v request %d send: %#v", client, request.id, request.send)
 
 			if err := client.startRequest(request); err == nil {
 				client.requests[request.id] = request
@@ -163,23 +163,23 @@ func (client *Client) run() error {
 			requestID := requestID(recv.PDU.RequestID)
 
 			if request, ok := client.requests[requestID]; !ok {
-				client.log.Warnf("recv with unknown requestID=%d", requestID)
+				client.log.Warnf("%v recv with unknown requestID=%d", client, requestID)
 			} else {
-				client.log.Debugf("request %d done", requestID)
+				client.log.Debugf("%v request %d done", client, requestID)
 				request.done(recv)
 				delete(client.requests, requestID)
 			}
 
 		case requestID := <-client.timeoutChan:
 			if request, ok := client.requests[requestID]; !ok {
-				client.log.Debugf("timeout with expired requestID=%d", requestID)
+				client.log.Debugf("%v timeout with expired requestID=%d", client, requestID)
 			} else if request.retry <= 0 {
-				client.log.Debugf("request %d timeout", request.id)
+				client.log.Debugf("%v request %d timeout", client, request.id)
 
 				request.failTimeout(client.transport)
 				delete(client.requests, requestID)
 			} else {
-				client.log.Debugf("request %d retry %d...", request.id, request.retry)
+				client.log.Debugf("%v request %d retry %d...", client, request.id, request.retry)
 
 				request.retry--
 
@@ -193,14 +193,14 @@ func (client *Client) run() error {
 }
 
 func (client *Client) Run() error {
-	client.log.Debugf("Run...")
+	client.log.Debugf("%v Run...", client)
 
 	return client.run()
 }
 
 // Closing the client will cancel any requests, and cause Run() to return
 func (client *Client) Close() error {
-	client.log.Debugf("Close...")
+	client.log.Debugf("%v Close...", client)
 
 	return client.transport.Close()
 }

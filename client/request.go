@@ -99,15 +99,22 @@ func (client *Client) request(send IO) (IO, error) {
 	client.requestChan <- &request
 
 	if recv, err := request.wait(); err != nil {
+		client.log.Infof("%v Request %v: %v", client, request, err)
+
 		return recv, err
+
 	} else if recv.PDU.ErrorStatus != 0 {
-		return recv, SNMPError{
+		var err = SNMPError{
 			RequestType:  send.PDUType,
 			ResponseType: recv.PDUType,
 			ResponsePDU:  recv.PDU,
 		}
+
+		client.log.Infof("%v Request %v: %v", client, request, err)
+
+		return recv, err
 	} else {
-		client.log.Infof("Request %v", request)
+		client.log.Infof("%v, Request %v", client, request)
 
 		return recv, nil
 	}
