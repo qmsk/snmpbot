@@ -1,12 +1,16 @@
 package api
 
-// GET /api/ => { "MIBs": [ { ... } ] }
-// GET /api/mibs/ => [ { ... } ]
+// MIB identifier
+//
+// 	* `GET /api/ => { "MIBs": [ { ... } ] }`
+// 	* `GET /api/mibs/ => [ { ... } ]`
 type MIBIndex struct {
 	ID string
 }
 
-// GET /api/mibs/:mib => { ... }
+// MIB metadata
+//
+//	 * `GET /api/mibs/:mib => { ... }`
 type MIB struct {
 	MIBIndex
 

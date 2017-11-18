@@ -4,11 +4,15 @@ type IndexTables struct {
 	Tables []TableIndex
 }
 
-// GET /api/ => { "Tables": [ ... ] }
-// GET /api/mibs/ => [ { "Tables": [ ... ] } ]
-// GET /api/mibs/:mib => { "Tables": [ ... ] }
-// GET /api/hosts/:host/ => { "Tables": [ ... ] }
-// GET /api/tables => { "Tables": [ ... ] }
+// Table metadata
+//
+// Different Hosts can have different `Tables` depending on what MIBs were probed.
+//
+//	* `GET /api/ => { "Tables": [ ... ] }`
+// 	* `GET /api/mibs/ => [ { "Tables": [ ... ] } ]`
+// 	* `GET /api/mibs/:mib => { "Tables": [ ... ] }`
+// 	* `GET /api/hosts/:host/ => { "Tables": [ ... ] }`
+// 	* `GET /api/tables => { "Tables": [ ... ] }`
 type TableIndex struct {
 	ID string
 
@@ -16,11 +20,14 @@ type TableIndex struct {
 	ObjectKeys []string
 }
 
-// GET /api/tables/ => [ { ... }, ... ]
-// GET /api/tables/:table => { ... }
+// Table data
 //
-// GET /api/hosts/:host/tables/ => [ { ... }, ... ]
-// GET /api/hosts/:host/tables/:table => { ... }
+// The same `Table` can contain `Entries` for multiple different `HostID`s!
+//
+// 	* `GET /api/tables/ => [ { ... }, ... ]`
+// 	* `GET /api/tables/:table => { ... }`
+// 	* `GET /api/hosts/:host/tables/ => [ { ... }, ... ]`
+// 	* `GET /api/hosts/:host/tables/:table => { ... }`
 type Table struct {
 	TableIndex
 
@@ -37,14 +44,22 @@ type TableEntry struct {
 	Objects TableObjectsMap
 }
 
-// GET /api/tables/:table
-// GET /api/hosts/:host/tables/:table
+// Optional URL ?query params
+//
+// Multiple values for the same field are OR, multiple fields are AND.
+//
+// 	* `GET /api/tables/:table`
+// 	* `GET /api/hosts/:host/tables/:table`
 type TableQuery struct {
 	Hosts []string `schema:"host"`
 }
 
-// GET /api/tables/
-// GET /api/hosts/:host/tables/
+// Optional URL ?query params
+//
+// Multiple values for the same field are OR, multiple fields are AND.
+//
+// 	* `GET /api/tables/`
+// 	* `GET /api/hosts/:host/tables/`
 type TablesQuery struct {
 	Hosts  []string `schema:"host"`
 	Tables []string `schema:"table"`
