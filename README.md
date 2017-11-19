@@ -4,6 +4,12 @@ SNMP client (manager) library for Go with rudimentary support for SMI MIBs.
 
 REST (HTTP/JSON) API for writing SNMP applications.
 
+## Requirements
+
+### Go version 1.9
+
+* [encoding/asn1: add NullBytes and NullRawValue for working with ASN.1 NULL](https://github.com/golang/go/commit/d9b1f9e85ee097ebc95c5904cee921ba7be4f732)
+
 ## Go Libraries
 
 ### `github.com/qmsk/snmpbot/snmp`
