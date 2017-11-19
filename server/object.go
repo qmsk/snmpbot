@@ -227,7 +227,8 @@ func (handler *objectsHandler) query() ([]*api.Object, error) {
 
 			object.Instances = append(object.Instances, objectView{result.Object}.instanceFromResult(result))
 		} else {
-			err = result.Error
+			// XXX: there is no place in the API to report non-object-specific errors, so we just drop them
+			log.Printf("ERROR: Query objects: Host %v: %v", result.Host, result.Error)
 		}
 	}
 
