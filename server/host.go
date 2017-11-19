@@ -164,6 +164,10 @@ func (host *Host) resolveTable(name string) (*mibs.Table, error) {
 	return mibs.ResolveTable(name)
 }
 
+func (host *Host) getClient() (mibs.Client, error) {
+	return mibs.Client{host.snmpClient}, nil
+}
+
 type hostRoute struct {
 	engine *Engine
 	host   *Host
