@@ -12,6 +12,9 @@ import (
 type HostConfig struct {
 	Host string
 
+	// optiona metadata
+	Location string
+
 	// optional, defaults to global config
 	SNMP *client.Config
 }
@@ -20,12 +23,17 @@ func newHost(id HostID) *Host {
 	return &Host{id: id}
 }
 
+type HostState struct {
+	Online   bool
+	Location string
+}
+
 type Host struct {
 	id         HostID
 	config     HostConfig
 	probedMIBs []*mibs.MIB
 	snmpClient *client.Client
-	up         bool
+	state      HostState
 }
 
 func (host *Host) String() string {
@@ -87,11 +95,15 @@ func (host *Host) probe() {
 		}
 	}
 
-	host.up = true
+	host.state = HostState{
+		Online: true,
+		// TODO: probe system::sysLocation?
+		Location: host.config.Location,
+	}
 }
 
 func (host *Host) IsUp() bool {
-	return host.up
+	return host.state.Online
 }
 
 func (host *Host) start() {
@@ -234,9 +246,11 @@ func (view hostView) makeTables() []api.TableIndex {
 
 func (view hostView) makeAPIIndex() api.HostIndex {
 	return api.HostIndex{
-		ID:   string(view.host.id),
-		SNMP: view.host.snmpClient.String(),
-		MIBs: view.makeMIBs(),
+		ID:       string(view.host.id),
+		SNMP:     view.host.snmpClient.String(),
+		Online:   view.host.state.Online,
+		Location: view.host.state.Location,
+		MIBs:     view.makeMIBs(),
 	}
 }
 

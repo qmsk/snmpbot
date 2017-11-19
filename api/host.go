@@ -10,8 +10,10 @@ type IndexHosts struct {
 // 	* `GET /api/hosts => { "Hosts": [ { ... } ] }`
 // 	* `GET /api/hosts/ => [ { ... } ]`
 type HostIndex struct {
-	ID   string
-	SNMP string
+	ID       string
+	SNMP     string
+	Online   bool
+	Location string
 
 	MIBs []MIBIndex
 }
