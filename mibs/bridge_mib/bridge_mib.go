@@ -112,7 +112,7 @@ var (
 			}),
 			MIB.RegisterObject(dot1dStpPortEntry.MakeID("dot1dStpPortDesignatedPort", 9), mibs.Object{
 				IndexSyntax: dot1dStpPortIndexSyntax,
-				Syntax:      mibs.OctetStringSyntax{},
+				Syntax:      PortIDSyntax{},
 			}),
 			MIB.RegisterObject(dot1dStpPortEntry.MakeID("dot1dStpPortForwardTransitions", 10), mibs.Object{
 				IndexSyntax: dot1dStpPortIndexSyntax,
