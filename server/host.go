@@ -25,6 +25,7 @@ type Host struct {
 	config     HostConfig
 	probedMIBs []*mibs.MIB
 	snmpClient *client.Client
+	up         bool
 }
 
 func (host *Host) String() string {
@@ -68,14 +69,14 @@ func (host *Host) makeMIBIDs() []mibs.ID {
 	return ids
 }
 
-func (host *Host) probe() error {
+func (host *Host) probe() {
 	var client = mibs.Client{host.snmpClient}
 	var ids = host.makeMIBIDs()
 
 	log.Printf("Host<%v>: Probing MIBs: %v", host, ids)
 
 	if probed, err := client.ProbeMany(ids); err != nil {
-		return err
+		log.Printf("Host<%v>: Failed to probe: %v", host, err)
 	} else {
 		for _, id := range ids {
 			log.Printf("Host<%v>: Probed %v = %v", host, id, probed[id.Key()])
@@ -86,13 +87,20 @@ func (host *Host) probe() error {
 		}
 	}
 
-	return nil
+	host.up = true
+}
+
+func (host *Host) IsUp() bool {
+	return host.up
 }
 
 func (host *Host) start() {
 	log.Printf("Host<%v>: Starting...", host)
 
 	go host.run()
+
+	// TODO: period re-probing in case host was offline when starting?
+	go host.probe()
 }
 
 func (host *Host) run() {

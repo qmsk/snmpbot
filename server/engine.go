@@ -26,11 +26,6 @@ func (engine *Engine) init(config Config) error {
 		host.start()
 
 		engine.hosts[host.id] = host
-
-		// XXX: failures?
-		if err := host.probe(); err != nil {
-			return fmt.Errorf("Failed to probe host %v: %v", host, err)
-		}
 	}
 
 	return nil
