@@ -65,7 +65,7 @@ func (route objectsRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
 		return &objectsHandler{
 			engine:  route.engine,
-			hosts:   route.engine.hosts,
+			hosts:   route.engine.Hosts(),
 			objects: route.engine.Objects(),
 		}, nil
 	} else if object, err := mibs.ResolveObject(name); err != nil {
@@ -73,7 +73,7 @@ func (route objectsRoute) Index(name string) (web.Resource, error) {
 	} else {
 		return &objectHandler{
 			engine: route.engine,
-			hosts:  route.engine.hosts,
+			hosts:  route.engine.Hosts(),
 			object: object,
 		}, nil
 	}

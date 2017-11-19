@@ -64,7 +64,7 @@ func (route tablesRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
 		return &tablesHandler{
 			engine: route.engine,
-			hosts:  route.engine.hosts,
+			hosts:  route.engine.Hosts(),
 			tables: route.engine.Tables(),
 		}, nil
 	} else if table, err := mibs.ResolveTable(name); err != nil {
@@ -72,7 +72,7 @@ func (route tablesRoute) Index(name string) (web.Resource, error) {
 	} else {
 		return &tableHandler{
 			engine: route.engine,
-			hosts:  route.engine.hosts,
+			hosts:  route.engine.Hosts(),
 			table:  table,
 		}, nil
 	}

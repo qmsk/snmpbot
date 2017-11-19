@@ -31,6 +31,19 @@ func (engine *Engine) init(config Config) error {
 	return nil
 }
 
+func (engine *Engine) Hosts() Hosts {
+	var hosts = make(Hosts)
+
+	for hostID, host := range engine.hosts {
+		if !host.IsUp() {
+			continue
+		}
+		hosts[hostID] = host
+	}
+
+	return hosts
+}
+
 func (engine *Engine) Objects() Objects {
 	var objects = make(Objects)
 
