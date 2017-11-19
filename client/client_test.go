@@ -261,6 +261,32 @@ func TestGetTimeout(t *testing.T) {
 	})
 }
 
+func TestGetSendError(t *testing.T) {
+	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0}
+	var err = fmt.Errorf("Send error")
+
+	withTestClient(t, func(transport *testTransport, client *Client) {
+		transport.On("GetRequest", IO{
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetRequestType,
+			PDU: snmp.PDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(oid, nil),
+				},
+			},
+		}).Return(err, nil)
+
+		if varBinds, err := client.Get(oid); err == nil {
+			t.Errorf("Get(%v): %v", oid, varBinds)
+		} else {
+			assert.EqualError(t, err, "SNMP <test> send failed: Send error")
+		}
+	})
+}
+
 func TestGetRequestErrorValue(t *testing.T) {
 	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0}
 	var value = snmp.NoSuchObjectValue

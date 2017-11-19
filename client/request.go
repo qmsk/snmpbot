@@ -43,7 +43,9 @@ func (request *request) start(timeout time.Duration, timeoutChan chan requestID)
 }
 
 func (request *request) close() {
-	request.timer.Stop()
+	if request.timer != nil {
+		request.timer.Stop()
+	}
 	close(request.waitChan)
 }
 

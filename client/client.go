@@ -115,6 +115,8 @@ func (client *Client) startRequest(request *request) error {
 	request.send.PDU.RequestID = int(request.id)
 
 	if err := client.transport.Send(request.send); err != nil {
+		err = fmt.Errorf("SNMP %v send failed: %v", client.transport, err)
+
 		client.log.Debugf("%v request %d fail: %v", client, request.id, err)
 
 		request.fail(err)
