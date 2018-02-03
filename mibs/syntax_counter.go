@@ -5,10 +5,10 @@ import (
 	"github.com/qmsk/snmpbot/snmp"
 )
 
-type Counter snmp.Counter32
+type Counter uint
 
 func (value Counter) String() string {
-	return fmt.Sprintf("%v", snmp.Counter32(value))
+	return fmt.Sprintf("%v", uint(value))
 }
 
 type CounterSyntax struct{}
@@ -20,6 +20,8 @@ func (syntax CounterSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 	}
 	switch value := snmpValue.(type) {
 	case snmp.Counter32:
+		return Counter(value), nil
+	case snmp.Counter64:
 		return Counter(value), nil
 	default:
 		return nil, SyntaxError{syntax, value}
@@ -33,4 +35,5 @@ func (syntax CounterSyntax) UnpackIndex(index []int) (Value, []int, error) {
 
 func init() {
 	RegisterSyntax("Counter32", CounterSyntax{})
+	RegisterSyntax("Counter64", CounterSyntax{})
 }
