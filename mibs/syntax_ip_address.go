@@ -54,3 +54,7 @@ func (syntax IPAddressSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 		return nil, SyntaxError{syntax, value}
 	}
 }
+
+func init() {
+	RegisterSyntax("IpAddress", IPAddressSyntax{})
+}

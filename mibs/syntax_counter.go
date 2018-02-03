@@ -30,3 +30,7 @@ func (syntax CounterSyntax) UnpackIndex(index []int) (Value, []int, error) {
 	// TODO
 	return nil, index, SyntaxIndexError{syntax, index}
 }
+
+func init() {
+	RegisterSyntax("Counter32", CounterSyntax{})
+}

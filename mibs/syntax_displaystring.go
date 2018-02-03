@@ -25,3 +25,7 @@ func (syntax DisplayStringSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 		return nil, SyntaxError{syntax, value}
 	}
 }
+
+func init() {
+	RegisterSyntax("DisplayString", DisplayStringSyntax{})
+}

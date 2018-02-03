@@ -29,3 +29,20 @@ type SyntaxIndexError struct {
 func (err SyntaxIndexError) Error() string {
 	return fmt.Sprintf("Invalid index for Syntax %T: %#v", err.Syntax, err.Index)
 }
+
+// Used for config loading
+type SyntaxMap map[string]Syntax
+
+var syntaxMap = make(SyntaxMap)
+
+func RegisterSyntax(name string, syntax Syntax) {
+	syntaxMap[name] = syntax
+}
+
+func LookupSyntax(name string) (Syntax, error) {
+	if syntax, ok := syntaxMap[name]; !ok {
+		return syntax, fmt.Errorf("Unknown Syntax %v", name)
+	} else {
+		return syntax, nil
+	}
+}
