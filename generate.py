@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
+import pprint
 import pysmi.compiler
 import pysmi.codegen
+import pysmi.codegen.base
 import pysmi.debug
+import pysmi.mibinfo
 import pysmi.parser
 import pysmi.reader
 import pysmi.searcher
 import pysmi.writer
+import logging
 
 """
 Generate github.com/qmsk/snmpbot JSON MIB files from ASN.1 SMI sources.
@@ -21,10 +26,194 @@ MIB_PATH = [
     '/usr/local/share/mibs',
 ]
 
+log = logging.getLogger('main')
+
+def parseDeclArgs(args):
+    attrs = {}
+
+    for arg in args:
+        if arg is None or len(arg) == 0:
+            continue
+        elif isinstance(arg, tuple):
+            attr, *values = arg
+
+            if len(values) == 1:
+                attrs[attr] = values[0]
+            else:
+                attrs[attr] = parseDeclArgs(values)
+        else:
+            attrs[arg] = None
+
+    return attrs
+
+def parseDecl(decl):
+    type, name, *args = decl
+
+    return type, name, parseDeclArgs(args)
+
+class OID:
+    def __init__(self, *ids):
+        self.ids = ids
+
+    def extend(self, *ids):
+        return OID(*(self.ids + ids))
+
+    def __str__(self):
+        return '.' + '.'.join(str(x) for x in self.ids)
+
+class Context:
+    SYMBOL_CACHE = {
+        ('SNMPv2-SMI', 'iso'): OID(1),
+    }
+
+    def __init__(self, moduleName, symbolTable, imports):
+        self.moduleName = moduleName
+        self.symbolTable = symbolTable
+        self.importTable = {name: mib for mib, names in imports.items() for name in names}
+        self.symbolCache = dict(self.SYMBOL_CACHE)
+
+    def lookup(self, mib, name, id=None):
+        oid = self.symbolCache.get((mib, name))
+
+        if not oid:
+            if mib == self.moduleName and name in self.importTable:
+                mib = self.importTable[name]
+
+            sym = self.symbolTable[mib][name.replace('-', '_')]
+            parent, parent_id = sym['oid']
+            parent_name, parent_mib = parent
+
+            oid = self.symbolCache[mib, name] = self.lookup(parent_mib, parent_name, parent_id)
+
+        if id:
+            oid = oid.extend(id)
+
+        return oid
+
+    def parseSyntax(self, name, value):
+        syntax = None
+        options = None
+
+        if isinstance(value, str):
+            syntax = value
+        elif 'enumSpec' in value:
+            syntax = 'ENUM'
+            options = [{'Value': value, 'Name': name} for name, value in value['enumSpec']]
+        elif 'DisplayString' in value:
+            syntax = 'DisplayString'
+            options = value['octetStringSubType']
+            size_min, size_max = options[0]
+            options = {'SizeMin': size_min, 'SizeMax': size_max}
+        else:
+            log.warn("Unsupported syntax for %s::%s: %s", self.moduleName, name, syntax)
+
+        return syntax, options
+
+class CodeGen(pysmi.codegen.base.AbstractCodeGen):
+    def buildObject(self, ctx, oid, name, attrs):
+        if 'SimpleSyntax' in attrs:
+            syntax, syntax_options = ctx.parseSyntax(name, attrs['SimpleSyntax'])
+        elif 'ApplicationSyntax' in attrs:
+            syntax, syntax_options = ctx.parseSyntax(name, attrs['ApplicationSyntax'])
+        else:
+            syntax = syntax_options = None
+
+        object = {
+            'Name': name,
+            'OID': str(oid),
+            'Syntax': syntax,
+        }
+
+        if syntax_options:
+            object['SyntaxOptions'] = syntax_options
+
+        if attrs.get('MaxAccessPart') == 'not-accessible':
+            object['NotAccessible'] = True
+
+        return object
+
+    def buildTable(self, ctx, oid, name, attrs):
+        return {
+            'Name': name,
+            'OID': str(oid),
+        }
+
+    def genCode(self, ast, symbolTable, **kwargs):
+        moduleName, moduleOID, imports, declarations = ast
+        moduleIdentity = None
+
+        print(json.dumps(dict(
+            moduleName  = moduleName,
+            moduleOID   = moduleOID,
+            imports     = imports,
+        #    declarations=declarations,
+            symbolTable = symbolTable,
+        #    kwargs=kwargs,
+        ), indent=2))
+
+        ctx = Context(moduleName,
+            symbolTable = symbolTable,
+            imports     = imports,
+        )
+        out_objects = []
+        out_tables = []
+        out = {
+            'Name': moduleName,
+            'OID': None,
+            'Objects': out_objects,
+            'Tables': out_tables,
+        }
+
+        print("{mib}:".format(mib=moduleName))
+
+        for decl in declarations:
+            # parse
+            log.debug("parse mib=%s decl: %s", moduleName, decl)
+
+            type, name, attrs = parseDecl(decl)
+
+            # dump
+            if 'objectIdentifier' in attrs:
+                parent_name, id = attrs['objectIdentifier']
+
+                oid = ctx.lookup(moduleName, parent_name, id)
+            else:
+                oid = None
+
+            print("\t{type:15} {name:30} {oid}".format(type=type, name=name, oid=oid))
+
+            for attr, value in attrs.items():
+                print("\t\t{attr:20}: {value}".format(attr=attr, value=value))
+
+            # generate
+            if type == 'moduleIdentityClause':
+                moduleOID = oid
+
+            elif type == 'objectTypeClause' and 'conceptualTable' in attrs:
+                out_tables.append(self.buildTable(ctx, oid, name, attrs))
+
+            elif type == 'objectTypeClause' and 'row' in attrs:
+                pass
+
+            elif type == 'objectTypeClause':
+                out_objects.append(self.buildObject(ctx, oid, name, attrs))
+
+        out['OID'] = str(moduleOID)
+        mibinfo = pysmi.mibinfo.MibInfo(
+            oid         = moduleOID,
+            identity    = moduleIdentity,
+            name        = moduleName,
+        )
+        mibdata = json.dumps(out, indent=2)
+
+        return mibinfo, mibdata
+
 def build_compiler(args):
+    codegen = CodeGen()
+
     compiler = pysmi.compiler.MibCompiler(
         parser  = pysmi.parser.SmiStarParser(),
-        codegen = pysmi.codegen.JsonCodeGen(),
+        codegen = codegen,
         writer  = pysmi.writer.FileWriter(args.output_path).setOptions(suffix='.json'),
     )
 
@@ -33,7 +222,7 @@ def build_compiler(args):
     for url in args.mib_url:
         compiler.addSources(*pysmi.reader.getReadersFromUrls(url))
 
-    compiler.addSearchers(pysmi.searcher.StubSearcher(*pysmi.codegen.JsonCodeGen.baseMibs))
+    compiler.addSearchers(pysmi.searcher.StubSearcher(*codegen.baseMibs))
 
     return compiler
 
@@ -41,7 +230,9 @@ def main():
     parser = argparse.ArgumentParser(
         description = __doc__,
     )
-    parser.add_argument('--debug', nargs='?', const='all')
+    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--verbose', action='store_true')
+    parser.add_argument('--pysmi-debug', nargs='?', const='all')
     parser.add_argument('--mib-path', nargs='*', metavar='PATH', default=MIB_PATH)
     parser.add_argument('--mib-url', nargs='*', metavar='URL', default=[])
     parser.add_argument('--output-path', metavar='PATH', required=True)
@@ -50,8 +241,17 @@ def main():
 
     args = parser.parse_args()
 
+    logging.basicConfig()
+
     if args.debug:
-        pysmi.debug.setLogger(pysmi.debug.Debug(args.debug))
+        log.setLevel(logging.DEBUG)
+    elif args.verbose:
+        log.setLevel(logging.INFO)
+    else:
+        log.setLevel(logging.WARN)
+
+    if args.pysmi_debug:
+        pysmi.debug.setLogger(pysmi.debug.Debug(args.pysmi_debug))
 
     compiler = build_compiler(args)
     compile_status = compiler.compile(*args.mibs,
