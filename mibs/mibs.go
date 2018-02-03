@@ -8,14 +8,16 @@ import (
 
 var mibRegistry = makeRegistry()
 
-func RegisterMIB(name string, oid ...int) *MIB {
-	var mib = makeMIB(ID{Name: name, OID: snmp.OID(oid)})
-
+func registerMIB(mib MIB) *MIB {
 	mib.ID.MIB = &mib
 
 	mibRegistry.register(mib.ID)
 
 	return &mib
+}
+
+func RegisterMIB(name string, oid ...int) *MIB {
+	return registerMIB(makeMIB(ID{Name: name, OID: snmp.OID(oid)}))
 }
 
 func ResolveMIB(name string) (*MIB, error) {

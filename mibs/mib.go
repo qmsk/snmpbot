@@ -30,22 +30,30 @@ func (mib *MIB) MakeID(name string, ids ...int) ID {
 	return ID{mib, name, mib.OID.Extend(ids...)}
 }
 
+func (mib *MIB) registerObject(object Object) *Object {
+	mib.registry.register(object.ID)
+	mib.objects[object.ID.Key()] = &object
+
+	return &object
+}
+
 func (mib *MIB) RegisterObject(id ID, object Object) *Object {
 	object.ID = id
 
-	mib.registry.register(id)
-	mib.objects[id.Key()] = &object
+	return mib.registerObject(object)
+}
 
-	return &object
+func (mib *MIB) registerTable(table Table) *Table {
+	mib.registry.register(table.ID)
+	mib.tables[table.ID.Key()] = &table
+
+	return &table
 }
 
 func (mib *MIB) RegisterTable(id ID, table Table) *Table {
 	table.ID = id
 
-	mib.registry.register(id)
-	mib.tables[id.Key()] = &table
-
-	return &table
+	return mib.registerTable(table)
 }
 
 func (mib *MIB) ResolveName(name string) (ID, error) {
