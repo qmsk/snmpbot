@@ -79,16 +79,27 @@ class Context:
         ('SNMPv2-SMI', 'iso'): OID(1),
     }
 
-    SIMPLE_SYNTAX = set((
-        'TimeTicks',
-        'Counter32',
-        'OBJECT IDENTIFIER',
-    ))
+    @classmethod
+    def loadImports(cls, imports, convertTable):
+        importTable = {}
 
-    def __init__(self, moduleName, symbolTable, imports):
+        for mib, names in imports.items():
+            convertMap = convertTable.get(mib)
+
+            for name in names:
+                if convertMap and name in convertMap:
+                    converted = importTable[name] = next(convertMap[name]) # XXX: why list?
+
+                    log.debug("convert import %s::%s => %s::%s" , mib, name, *converted)
+                else:
+                    importTable[name] = (mib, name)
+
+        return importTable
+
+    def __init__(self, moduleName, symbolTable, imports, convertTable):
         self.moduleName = moduleName
         self.symbolTable = symbolTable
-        self.importTable = {name: mib for mib, names in imports.items() for name in names}
+        self.importTable = self.loadImports(imports, convertTable=convertTable)
         self.symbolCache = dict(self.SYMBOL_CACHE)
 
         self.objects = []
@@ -99,7 +110,7 @@ class Context:
 
         if not oid:
             if mib == self.moduleName and name in self.importTable:
-                mib = self.importTable[name]
+                mib, name = self.importTable[name]
 
             sym = self.symbolTable[mib][name.replace('-', '_')]
             parent, parent_id = sym['oid']
@@ -112,6 +123,16 @@ class Context:
 
         return oid
 
+    def parseSyntaxOptions(self, name, options):
+        if len(options) == 1:
+            min = max = options[0]
+        elif len(options) == 2:
+            min, max = options
+        else:
+            raise ValueError("Invalid SYNTAX options for %s::%s: %s" % (self.moduleName, name, options))
+
+        return {'Min': min, 'Max': max}
+
     def parseSyntax(self, name, value):
         syntax = None
         options = None
@@ -121,11 +142,18 @@ class Context:
         elif 'INTEGER' in value and 'enumSpec' in value:
             syntax = 'ENUM'
             options = [{'Value': value, 'Name': name} for name, value in value['enumSpec']]
+        elif 'INTEGER' in value and 'integerSubType' in value:
+            syntax = 'INTEGER'
+            options = self.parseSyntaxOptions(name, value['integerSubType'][0])
+        elif 'Integer32' in value and 'integerSubType' in value:
+            syntax = 'Integer32'
+            options = self.parseSyntaxOptions(name, value['integerSubType'][0])
         elif 'DisplayString' in value:
             syntax = 'DisplayString'
-            options = value['octetStringSubType']
-            size_min, size_max = options[0]
-            options = {'SizeMin': size_min, 'SizeMax': size_max}
+            options = self.parseSyntaxOptions(name, value['octetStringSubType'][0])
+        elif 'OCTET STRING' in value:
+            syntax = 'OCTET STRING'
+            options = self.parseSyntaxOptions(name, value['octetStringSubType'][0])
         elif len(value) == 1:
             # return simple syntax key
             for key in value:
@@ -183,8 +211,9 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
         ), indent=2))
 
         ctx = Context(moduleName,
-            symbolTable = symbolTable,
-            imports     = imports,
+            symbolTable     = symbolTable,
+            imports         = imports,
+            convertTable    = self.convertImportv2,
         )
 
         print("{mib}:".format(mib=moduleName))
