@@ -66,11 +66,20 @@ class Context:
         ('SNMPv2-SMI', 'iso'): OID(1),
     }
 
+    SIMPLE_SYNTAX = set((
+        'TimeTicks',
+        'Counter32',
+        'OBJECT IDENTIFIER',
+    ))
+
     def __init__(self, moduleName, symbolTable, imports):
         self.moduleName = moduleName
         self.symbolTable = symbolTable
         self.importTable = {name: mib for mib, names in imports.items() for name in names}
         self.symbolCache = dict(self.SYMBOL_CACHE)
+
+        self.objects = []
+        self.tables = []
 
     def lookup(self, mib, name, id=None):
         oid = self.symbolCache.get((mib, name))
@@ -96,7 +105,7 @@ class Context:
 
         if isinstance(value, str):
             syntax = value
-        elif 'enumSpec' in value:
+        elif 'INTEGER' in value and 'enumSpec' in value:
             syntax = 'ENUM'
             options = [{'Value': value, 'Name': name} for name, value in value['enumSpec']]
         elif 'DisplayString' in value:
@@ -104,19 +113,26 @@ class Context:
             options = value['octetStringSubType']
             size_min, size_max = options[0]
             options = {'SizeMin': size_min, 'SizeMax': size_max}
-        else:
-            log.warn("Unsupported syntax for %s::%s: %s", self.moduleName, name, syntax)
+        elif len(value) == 1:
+            # return simple syntax key
+            for key in value:
+                return key, None
 
         return syntax, options
 
 class CodeGen(pysmi.codegen.base.AbstractCodeGen):
-    def buildObject(self, ctx, oid, name, attrs):
-        if 'SimpleSyntax' in attrs:
-            syntax, syntax_options = ctx.parseSyntax(name, attrs['SimpleSyntax'])
-        elif 'ApplicationSyntax' in attrs:
-            syntax, syntax_options = ctx.parseSyntax(name, attrs['ApplicationSyntax'])
-        else:
-            syntax = syntax_options = None
+    def genObject(self, ctx, oid, name, attrs):
+        rawSyntax = attrs.get('SimpleSyntax') or attrs.get('ApplicationSyntax')
+
+        if not rawSyntax:
+            log.warn("Skip %s::%s without syntax", ctx.moduleName, name)
+            return
+
+        syntax, syntax_options = ctx.parseSyntax(name, rawSyntax)
+
+        if not syntax:
+            log.warn("Skip %s::%s with unsupported syntax: %s", ctx.moduleName, name, rawSyntax)
+            return
 
         object = {
             'Name': name,
@@ -130,13 +146,15 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
         if attrs.get('MaxAccessPart') == 'not-accessible':
             object['NotAccessible'] = True
 
-        return object
+        ctx.objects.append(object)
 
-    def buildTable(self, ctx, oid, name, attrs):
-        return {
+    def genTable(self, ctx, oid, name, attrs):
+        table = {
             'Name': name,
             'OID': str(oid),
         }
+
+        ctx.tables.append(table)
 
     def genCode(self, ast, symbolTable, **kwargs):
         moduleName, moduleOID, imports, declarations = ast
@@ -145,9 +163,9 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
         print(json.dumps(dict(
             moduleName  = moduleName,
             moduleOID   = moduleOID,
-            imports     = imports,
+        #    imports     = imports,
         #    declarations=declarations,
-            symbolTable = symbolTable,
+        #    symbolTable = symbolTable,
         #    kwargs=kwargs,
         ), indent=2))
 
@@ -155,14 +173,6 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
             symbolTable = symbolTable,
             imports     = imports,
         )
-        out_objects = []
-        out_tables = []
-        out = {
-            'Name': moduleName,
-            'OID': None,
-            'Objects': out_objects,
-            'Tables': out_tables,
-        }
 
         print("{mib}:".format(mib=moduleName))
 
@@ -190,15 +200,21 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
                 moduleOID = oid
 
             elif type == 'objectTypeClause' and 'conceptualTable' in attrs:
-                out_tables.append(self.buildTable(ctx, oid, name, attrs))
+                self.genTable(ctx, oid, name, attrs)
 
             elif type == 'objectTypeClause' and 'row' in attrs:
                 pass
 
             elif type == 'objectTypeClause':
-                out_objects.append(self.buildObject(ctx, oid, name, attrs))
+                self.genObject(ctx, oid, name, attrs)
 
-        out['OID'] = str(moduleOID)
+        out = {
+            'Name': moduleName,
+            'OID': str(moduleOID),
+            'Objects': ctx.objects,
+            'Tables': ctx.tables,
+        }
+
         mibinfo = pysmi.mibinfo.MibInfo(
             oid         = moduleOID,
             identity    = moduleIdentity,
