@@ -15,10 +15,10 @@ type ConfigID struct {
 }
 
 func (config ConfigID) resolve(mib *MIB) (ID, error) {
-	if id, err := mib.Resolve(config.OID); err != nil {
-		return id, err
+	if oid, err := snmp.ParseOID(config.OID); err != nil {
+		return ID{}, err
 	} else {
-		return ID{MIB: mib, OID: id.OID, Name: config.Name}, nil
+		return ID{MIB: mib, OID: oid, Name: config.Name}, nil
 	}
 }
 
