@@ -3,6 +3,7 @@
 import argparse
 import json
 import pprint
+import pysmi.borrower
 import pysmi.compiler
 import pysmi.codegen
 import pysmi.codegen.base
@@ -25,6 +26,12 @@ MIB_PATH = [
     '/usr/share/snmp/mibs',
     '/usr/local/share/mibs',
 ]
+MIB_URLS = [
+    'http://mibs.snmplabs.com/asn1/@mib@',
+]
+MIB_BORROWERS = [
+    'http://mibs.snmplabs.com/pysnmp/notexts/@mib@',
+]
 
 log = logging.getLogger('main')
 
@@ -32,7 +39,7 @@ def parseDeclArgs(args):
     attrs = {}
 
     for arg in args:
-        if arg is None or len(arg) == 0:
+        if arg is None:
             continue
         elif isinstance(arg, tuple):
             attr, *values = arg
@@ -41,6 +48,12 @@ def parseDeclArgs(args):
                 attrs[attr] = values[0]
             else:
                 attrs[attr] = parseDeclArgs(values)
+        elif isinstance(arg, list):
+            if len(arg) == 0:
+                # ???
+                continue
+            else:
+                raise ValueError("Unexpected list: %r", arg)
         else:
             attrs[arg] = None
 
@@ -184,7 +197,15 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
 
             # dump
             if 'objectIdentifier' in attrs:
-                parent_name, id = attrs['objectIdentifier']
+                ref = attrs['objectIdentifier']
+
+                if len(ref) == 1:
+                    parent_name, = ref
+                    id = None
+                elif len(ref) == 2:
+                    parent_name, id = ref
+                else:
+                    raise ValueError("Invalid objectIdentifier for %s::%s: %s", ctx.modueName, name, ref)
 
                 oid = ctx.lookup(moduleName, parent_name, id)
             else:
@@ -210,10 +231,12 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
 
         out = {
             'Name': moduleName,
-            'OID': str(moduleOID),
             'Objects': ctx.objects,
             'Tables': ctx.tables,
         }
+
+        if moduleOID:
+            out['OID'] = str(moduleOID)
 
         mibinfo = pysmi.mibinfo.MibInfo(
             oid         = moduleOID,
@@ -237,6 +260,9 @@ def build_compiler(args):
         compiler.addSources(pysmi.reader.FileReader(path, recursive=True))
     for url in args.mib_url:
         compiler.addSources(*pysmi.reader.getReadersFromUrls(url))
+    for url in args.mib_borrowers:
+        for reader in pysmi.reader.getReadersFromUrls(url):
+            compiler.addBorrowers(pysmi.borrower.PyFileBorrower(reader))
 
     compiler.addSearchers(pysmi.searcher.StubSearcher(*codegen.baseMibs))
 
@@ -250,7 +276,8 @@ def main():
     parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--pysmi-debug', nargs='?', const='all')
     parser.add_argument('--mib-path', nargs='*', metavar='PATH', default=MIB_PATH)
-    parser.add_argument('--mib-url', nargs='*', metavar='URL', default=[])
+    parser.add_argument('--mib-url', nargs='*', metavar='URL', default=MIB_URLS)
+    parser.add_argument('--mib-borrowers', nargs='*', metavar='URL', default=MIB_BORROWERS)
     parser.add_argument('--output-path', metavar='PATH', required=True)
     parser.add_argument('--rebuild', action='store_true')
     parser.add_argument('mibs', metavar='MIB', nargs='+')
