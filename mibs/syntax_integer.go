@@ -40,5 +40,6 @@ func (syntax IntegerSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 }
 
 func init() {
+	RegisterSyntax("INTEGER", IntegerSyntax{})
 	RegisterSyntax("Integer32", IntegerSyntax{})
 }

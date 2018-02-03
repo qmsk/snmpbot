@@ -34,6 +34,7 @@ func (syntax CounterSyntax) UnpackIndex(index []int) (Value, []int, error) {
 }
 
 func init() {
+	RegisterSyntax("Counter", CounterSyntax{})
 	RegisterSyntax("Counter32", CounterSyntax{})
 	RegisterSyntax("Counter64", CounterSyntax{})
 }

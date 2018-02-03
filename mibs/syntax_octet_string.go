@@ -43,5 +43,5 @@ func (syntax OctetStringSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 }
 
 func init() {
-	RegisterSyntax("OctetString", OctetStringSyntax{})
+	RegisterSyntax("OCTET STRING", OctetStringSyntax{})
 }
