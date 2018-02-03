@@ -17,9 +17,16 @@ type registry struct {
 	byName map[string]ID
 }
 
-func (registry *registry) register(id ID) {
+func (registry *registry) registerOID(id ID) {
 	registry.byOID[id.OID.String()] = id
-	registry.byName[id.Name] = id
+}
+func (registry *registry) registerName(id ID, name string) {
+	registry.byName[name] = id
+}
+
+func (registry *registry) register(id ID) {
+	registry.registerOID(id)
+	registry.registerName(id, id.Name)
 }
 
 func (registry *registry) getName(name string) (ID, bool) {

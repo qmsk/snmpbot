@@ -81,6 +81,12 @@ func TestConfigLoadMIB(t *testing.T) {
 			}
 		}
 
+		if object, err := ResolveObject("TEST2-MIB::extObject"); err != nil {
+			t.Errorf("ResolveObject TEST2-MIB::extObject: %v", err)
+		} else {
+			assert.Equal(t, "TEST2-MIB::extObject", object.String())
+		}
+
 		if object := LookupObject(snmp.OID{1, 0, 2, 1, 1}); object == nil {
 			t.Errorf("LookupObject .1.0.2.1.1: %v", nil)
 		} else {
@@ -96,5 +102,10 @@ func TestConfigLoadMIB(t *testing.T) {
 			}
 		}
 
+		if object := LookupObject(snmp.OID{1, 1, 5, 1}); object == nil {
+			t.Errorf("LookupObject .1.1.5.1: %v", nil)
+		} else {
+			assert.Equal(t, "TEST2-MIB::extObject", object.String())
+		}
 	}
 }

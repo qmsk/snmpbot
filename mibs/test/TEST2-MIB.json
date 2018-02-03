@@ -25,6 +25,11 @@
         { "Value": 1, "Name": "one"},
         { "Value": 2, "Name": "two"}
       ]
+    },
+    {
+      "Name": "extObject",
+      "OID": ".1.1.5.1",
+      "Syntax": "Integer32"
     }
   ],
   "Tables": [

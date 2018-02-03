@@ -32,6 +32,7 @@ func (mib *MIB) MakeID(name string, ids ...int) ID {
 }
 
 func (mib *MIB) registerObject(object Object) *Object {
+	mibRegistry.registerOID(object.ID)
 	mib.registry.register(object.ID)
 	mib.objects[object.ID.Key()] = &object
 
@@ -45,6 +46,7 @@ func (mib *MIB) RegisterObject(id ID, object Object) *Object {
 }
 
 func (mib *MIB) registerTable(table Table) *Table {
+	mibRegistry.registerOID(table.ID)
 	mib.registry.register(table.ID)
 	mib.tables[table.ID.Key()] = &table
 
