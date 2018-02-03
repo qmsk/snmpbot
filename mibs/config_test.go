@@ -62,12 +62,6 @@ func TestConfigLoadMIB(t *testing.T) {
 			assert.Equal(t, IndexSyntax{mib.ResolveObject("testID")}, object.IndexSyntax)
 		}
 
-		if object := LookupObject(snmp.OID{1, 0, 2, 1, 1}); object == nil {
-			t.Errorf("LookupObject .1.0.2.1.1: %v", nil)
-		} else {
-			assert.Equal(t, "TEST2-MIB::test", object.String())
-		}
-
 		if object, err := ResolveObject("TEST2-MIB::testEnum"); err != nil {
 			t.Errorf("ResolveObject TEST2-MIB::testEnum: %v", err)
 		} else {
@@ -86,5 +80,21 @@ func TestConfigLoadMIB(t *testing.T) {
 				assert.Equal(t, "one", fmt.Sprintf("%v", value))
 			}
 		}
+
+		if object := LookupObject(snmp.OID{1, 0, 2, 1, 1}); object == nil {
+			t.Errorf("LookupObject .1.0.2.1.1: %v", nil)
+		} else {
+			assert.Equal(t, "TEST2-MIB::test", object.String())
+
+			var varBind = snmp.MakeVarBind(object.OID.Extend(0), []byte("foobar"))
+
+			if name, value, err := object.Format(varBind); err != nil {
+				t.Errorf("Object<%v>.Format %v: %v", object, varBind, err)
+			} else {
+				assert.Equal(t, "TEST2-MIB::test.0", name)
+				assert.Equal(t, "foobar", fmt.Sprintf("%v", value))
+			}
+		}
+
 	}
 }
