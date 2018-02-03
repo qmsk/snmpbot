@@ -16,6 +16,15 @@
       "Name": "testName",
       "OID": ".1.2.2",
       "Syntax": "DisplayString"
+    },
+    {
+      "Name": "testEnum",
+      "OID": ".1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        { "Value": 1, "Name": "one"},
+        { "Value": 2, "Name": "two"}
+      ]
     }
   ],
   "Tables": [

@@ -67,6 +67,13 @@ func (config ObjectConfig) build(mib *MIB) (Object, error) {
 		object.Syntax = syntax
 	}
 
+	if config.SyntaxOptions != nil {
+		// the dynamically loaded syntax interfaces are pointer-valued
+		if err := json.Unmarshal(config.SyntaxOptions, object.Syntax); err != nil {
+			return object, fmt.Errorf("Invalid SyntaxOptions: %v", err)
+		}
+	}
+
 	return object, nil
 }
 

@@ -1,6 +1,7 @@
 package mibs
 
 import (
+	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -40,7 +41,7 @@ func TestConfigLoadMIB(t *testing.T) {
 			t.Errorf("ResolveObject TEST2-MIB::test: %v", err)
 		} else {
 			assert.Equal(t, "TEST2-MIB::test", object.String())
-			assert.Equal(t, DisplayStringSyntax{}, object.Syntax)
+			assert.Equal(t, &DisplayStringSyntax{}, object.Syntax)
 		}
 
 		if table, err := ResolveTable("TEST2-MIB::testTable"); err != nil {
@@ -55,7 +56,7 @@ func TestConfigLoadMIB(t *testing.T) {
 			t.Errorf("ResolveObject TEST2-MIB::testName: %v", err)
 		} else {
 			assert.Equal(t, "TEST2-MIB::testName", object.String())
-			assert.Equal(t, DisplayStringSyntax{}, object.Syntax)
+			assert.Equal(t, &DisplayStringSyntax{}, object.Syntax)
 			assert.Equal(t, IndexSyntax{mib.ResolveObject("testID")}, object.IndexSyntax)
 		}
 
@@ -63,6 +64,25 @@ func TestConfigLoadMIB(t *testing.T) {
 			t.Errorf("LookupObject .1.0.2.1.1: %v", nil)
 		} else {
 			assert.Equal(t, "TEST2-MIB::test", object.String())
+		}
+
+		if object, err := ResolveObject("TEST2-MIB::testEnum"); err != nil {
+			t.Errorf("ResolveObject TEST2-MIB::testEnum: %v", err)
+		} else {
+			assert.Equal(t, "TEST2-MIB::testEnum", object.String())
+			assert.Equal(t, &EnumSyntax{
+				{1, "one"},
+				{2, "two"},
+			}, object.Syntax)
+
+			var varBind = snmp.MakeVarBind(object.OID.Extend(0), int(1))
+
+			if name, value, err := object.Format(varBind); err != nil {
+				t.Errorf("Object<%v>.Format %v: %v", object, varBind, err)
+			} else {
+				assert.Equal(t, "TEST2-MIB::testEnum.0", name)
+				assert.Equal(t, "one", fmt.Sprintf("%v", value))
+			}
 		}
 	}
 }
