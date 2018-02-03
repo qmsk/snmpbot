@@ -1,0 +1,29 @@
+{
+  "Name": "TEST2-MIB",
+  "OID": ".1.0.2",
+  "Objects": [
+    {
+      "Name": "test",
+      "OID": ".1.1",
+      "Syntax": "DisplayString"
+    },
+    {
+      "Name": "testID",
+      "OID": ".1.2.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "testName",
+      "OID": ".1.2.2",
+      "Syntax": "DisplayString"
+    }
+  ],
+  "Tables": [
+    {
+      "Name": "testTable",
+      "OID": ".1.2",
+      "IndexObjects": [ "testID" ],
+      "EntryObjects": [ "testName" ]
+    }
+  ]
+}
