@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -161,15 +162,43 @@ func LoadJSON(r io.Reader) (*MIB, error) {
 	return loadMIB(config)
 }
 
-func Load(path string) (*MIB, error) {
-	if file, err := os.Open(path); err != nil {
-		return nil, err
-	} else {
-		switch ext := filepath.Ext(path); ext {
-		case ".json":
-			return LoadJSON(file)
-		default:
-			return nil, fmt.Errorf("Unknown MIB file extension: %v", ext)
-		}
+func LoadFile(file *os.File) (*MIB, error) {
+	log.Printf("Load MIB from file: %v", file.Name())
+
+	switch ext := filepath.Ext(file.Name()); ext {
+	case ".json":
+		return LoadJSON(file)
+	default:
+		return nil, fmt.Errorf("Unknown MIB file extension: %v", ext)
 	}
+}
+
+func Load(path string) error {
+	if file, err := os.Open(path); err != nil {
+		return err
+	} else if fileInfo, err := file.Stat(); err != nil {
+		return err
+	} else if fileInfo.IsDir() {
+		log.Printf("Load MIBs from directory: %v", path)
+
+		if names, err := file.Readdirnames(0); err != nil {
+			return err
+		} else {
+			for _, name := range names {
+				if name[0] == '.' {
+					continue
+				}
+
+				if err := Load(filepath.Join(path, name)); err != nil {
+					return err
+				}
+			}
+		}
+	} else if mib, err := LoadFile(file); err != nil {
+		return fmt.Errorf("Failed to load MIB from %v: %v", path, err)
+	} else {
+		log.Printf("Load MIB %v from %v with %d objects", mib, path, len(mib.objects))
+	}
+
+	return nil
 }

@@ -8,15 +8,17 @@ import (
 )
 
 func TestConfigLoadMIB(t *testing.T) {
-	if mib, err := Load("test/TEST2-MIB.json"); err != nil {
+	if err := Load("test/TEST2-MIB.json"); err != nil {
 		t.Fatalf("Load test/TEST2-MIB.json: %v", err)
 	} else {
-		assert.Equal(t, "TEST2-MIB", mib.String())
+		var mib *MIB
 
-		if resolveMib, err := ResolveMIB("TEST2-MIB"); err != nil {
+		if resolveMIB, err := ResolveMIB("TEST2-MIB"); err != nil {
 			t.Errorf("ResolveMIB TEST2-MIB: %v", err)
 		} else {
-			assert.Equal(t, mib, resolveMib)
+			assert.Equal(t, "TEST2-MIB", resolveMIB.String())
+
+			mib = resolveMIB
 		}
 
 		if id, err := Resolve("TEST2-MIB"); err != nil {
