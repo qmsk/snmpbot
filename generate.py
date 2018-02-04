@@ -105,9 +105,10 @@ class Context:
         self.symbolCache = dict(self.SYMBOL_CACHE)
         self.oidCache = dict(self.OID_CACHE)
 
-        self.types = {}
+        self.types = {} # SYNTAX * => TEXTUAL-CONVENTION *
         self.objects = []
         self.tables = []
+        self.entryTable = {} # mapping from Entry type => Table name
 
     def lookupSymbol(self, mib, name):
         sym = self.symbolCache.get((mib, name))
@@ -136,21 +137,33 @@ class Context:
 
         return oid
 
-    # returns raw syntax
+    # returns parsed syntax
     def lookupType(self, name):
         mib = self.moduleName
 
         if name in self.types:
-            return self.types[name]
+            log.debug("lookup type=%s: %r", name, self.types[name])
+
+            return self.parseObjectSyntax(name, self.types[name])
         elif name in self.importTable:
             # XXX: the lookup should happen via the symbolTable with imports?
             mib, symName = self.importTable[name]
             sym = self.lookupSymbol(mib, symName)
 
+            log.debug("lookup type=%s => %s::%s: %r", name, mib, symName, sym)
+
             if sym['type'] != 'TypeDeclaration':
                 raise TypeError("Invalid type=%s => %s::%s is a %s" % (name, mib, symName, sym['type']))
 
-            return sym['syntax']
+            syntax, syntax_spec = sym['syntax']
+            syntax, syntax_mib = syntax
+
+            if syntax == 'Integer32' and syntax_spec:
+                return self.parseSyntaxEnum(syntax_spec)
+            elif syntax == 'OctetString':
+                return 'OCTET STRING', None
+            else:
+                return syntax, None
         else:
             raise ValueError("Unknown type=%s" % (name, ))
 
@@ -164,6 +177,9 @@ class Context:
 
         return {'Min': min, 'Max': max}
 
+    def parseSyntaxEnum(self, spec):
+        return 'ENUM', [{'Value': value, 'Name': name} for name, value in spec]
+
     def parseSyntax(self, name, value):
         syntax = None
         options = None
@@ -171,8 +187,7 @@ class Context:
         if isinstance(value, str):
             syntax = value
         elif 'INTEGER' in value and 'enumSpec' in value:
-            syntax = 'ENUM'
-            options = [{'Value': value, 'Name': name} for name, value in value['enumSpec']]
+            return self.parseSyntaxEnum(value['enumSpec'])
         elif 'INTEGER' in value and 'integerSubType' in value:
             syntax = 'INTEGER'
             options = self.parseSyntaxOptions(name, value['integerSubType'][0])
@@ -192,6 +207,14 @@ class Context:
 
         return syntax, options
 
+    def parseObjectSyntax(self, name, attrs):
+        if 'SimpleSyntax' in attrs:
+            return self.parseSyntax(name, attrs['SimpleSyntax'])
+        elif 'ApplicationSyntax' in attrs:
+            return self.parseSyntax(name, attrs['ApplicationSyntax'])
+        else:
+            return None, None
+
 class CodeGen(pysmi.codegen.base.AbstractCodeGen):
     # register a TEXTUAL-CONVENTION as an alias for some SYNTAX
     def registerType(self, ctx, name, attrs):
@@ -203,25 +226,22 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
 
     def genObject(self, ctx, oid, name, attrs):
         rawSyntax = None
+        table = False
 
-        if 'row' in attrs:
-            # row => any UpperCase SYNTAX
-            typeAttrs = ctx.lookupType(attrs['row'])
+        # table, entry, object with custom syntax, or object with built-in syntax?
+        if 'conceptualTable' in attrs:
+            return self.genTable(ctx, oid, name, attrs, attrs['conceptualTable']['row'])
+        elif 'row' in attrs and attrs['row'] in ctx.entryTable:
+            return self.genEntry(ctx, oid, name, attrs, ctx.entryTable[attrs['row']])
+        elif 'row' in attrs:
+            # using a custom SYNTAX
+            syntax, syntax_options = ctx.lookupType(attrs['row'])
         else:
-            typeAttrs = attrs
+            syntax, syntax_options = ctx.parseObjectSyntax(name, attrs)
 
-        if 'SimpleSyntax' in typeAttrs:
-            rawSyntax = typeAttrs['SimpleSyntax']
-        elif 'ApplicationSyntax' in typeAttrs:
-            rawSyntax = typeAttrs['ApplicationSyntax']
-        else:
-            log.warn("Skip %s::%s without scalar syntax", ctx.moduleName, name)
-            return
-
-        syntax, syntax_options = ctx.parseSyntax(name, rawSyntax)
-
+        # scalar objects
         if not syntax:
-            log.warn("Skip %s::%s with unsupported syntax: %s", ctx.moduleName, name, rawSyntax)
+            log.warn("Skip %s::%s with unsupported syntax: %r", ctx.moduleName, name, attrs)
             return
 
         object = {
@@ -238,13 +258,37 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
 
         ctx.objects.append(object)
 
-    def genTable(self, ctx, oid, name, attrs):
+    def genTable(self, ctx, oid, name, attrs, entryType):
+        log.info("parse table=%s for entry=%s attrs: %r", name, entryType, attrs)
+
         table = {
             'Name': name,
             'OID': str(oid),
         }
 
         ctx.tables.append(table)
+        ctx.entryTable[entryType] = table
+
+    def genEntry(self, ctx, oid, name, attrs, table):
+        log.info("parse entry=%s for table=%s: %r", name, table, attrs)
+
+        typeAttrs = ctx.types[attrs['row']]
+
+        if 'SEQUENCE' in typeAttrs:
+            entrySyntax = typeAttrs['SEQUENCE']
+        else:
+            log.warn("Skip %s::%s without sequence syntax: %r", ctx.moduleName, name, typeAttrs)
+            return
+
+        if 'INDEX' in attrs:
+            indexSyntax = attrs['INDEX']
+        else:
+            # TODO: AUGEMENTS?
+            log.warn("Skip %s::%s without index syntax: %r", ctx.moduleName, name, attrs)
+            return
+
+        table['IndexObjects'] = [name for i, name in indexSyntax]
+        table['EntryObjects'] = [name for name, syntax in entrySyntax]
 
     def genCode(self, ast, symbolTable, **kwargs):
         moduleName, moduleOID, imports, declarations = ast
