@@ -158,10 +158,13 @@ class Context:
             syntax, syntax_spec = sym['syntax']
             syntax, syntax_mib = syntax
 
+            # XXX: where do these get mapped?
             if syntax == 'Integer32' and syntax_spec:
                 return self.parseSyntaxEnum(syntax_spec)
             elif syntax == 'OctetString':
                 return 'OCTET STRING', None
+            elif syntax == 'ObjectIdentifier':
+                return 'OBJECT IDENTIFIER', None
             else:
                 return syntax, None
         else:
@@ -197,7 +200,7 @@ class Context:
         elif 'DisplayString' in value:
             syntax = 'DisplayString'
             options = self.parseSyntaxOptions(name, value['octetStringSubType'][0])
-        elif 'OCTET STRING' in value:
+        elif 'OCTET STRING' in value or 'SnmpAdminString' in value: # XXX: should get resolved using lookupType!
             syntax = 'OCTET STRING'
             options = self.parseSyntaxOptions(name, value['octetStringSubType'][0])
         elif len(value) == 1:
@@ -314,6 +317,8 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
         # type pass
         for type, name, *args in declarations:
             if type == 'typeDeclaration':
+                log.debug("parse mib=%s decl <%s>%s: %s", moduleName, type, name, args)
+
                 self.registerType(ctx, name, parseDeclAttrs(args))
 
         # objects pass
