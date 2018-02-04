@@ -35,7 +35,7 @@ MIB_BORROWERS = [
 
 log = logging.getLogger('main')
 
-def parseDeclArgs(args):
+def parseDeclAttrs(args):
     attrs = {}
 
     for arg in args:
@@ -44,10 +44,10 @@ def parseDeclArgs(args):
         elif isinstance(arg, tuple):
             attr, *values = arg
 
-            if len(values) == 1:
+            if len(values) == 1 and not isinstance(values[0], tuple):
                 attrs[attr] = values[0]
             else:
-                attrs[attr] = parseDeclArgs(values)
+                attrs[attr] = parseDeclAttrs(values)
         elif isinstance(arg, list):
             if len(arg) == 0:
                 # ???
@@ -58,11 +58,6 @@ def parseDeclArgs(args):
             attrs[arg] = None
 
     return attrs
-
-def parseDecl(decl):
-    type, name, *args = decl
-
-    return type, name, parseDeclArgs(args)
 
 class OID:
     def __init__(self, *ids):
@@ -75,9 +70,16 @@ class OID:
         return '.' + '.'.join(str(x) for x in self.ids)
 
 class Context:
-    SYMBOL_CACHE = {
+    SYMBOL_CACHE = {}
+    OID_CACHE = {
         ('SNMPv2-SMI', 'iso'): OID(1),
     }
+
+    # list of explicitly supported syntax types
+    SUPPORTED_SYNTAX = set([
+        ('Q-BRIDGE-MIB', 'PortList'),
+        ('BRIDGE-MIB', 'BridgeId'),
+    ])
 
     @classmethod
     def loadImports(cls, imports, convertTable):
@@ -101,27 +103,56 @@ class Context:
         self.symbolTable = symbolTable
         self.importTable = self.loadImports(imports, convertTable=convertTable)
         self.symbolCache = dict(self.SYMBOL_CACHE)
+        self.oidCache = dict(self.OID_CACHE)
 
+        self.types = {}
         self.objects = []
         self.tables = []
 
-    def lookup(self, mib, name, id=None):
-        oid = self.symbolCache.get((mib, name))
+    def lookupSymbol(self, mib, name):
+        sym = self.symbolCache.get((mib, name))
 
-        if not oid:
+        if not sym:
             if mib == self.moduleName and name in self.importTable:
                 mib, name = self.importTable[name]
 
-            sym = self.symbolTable[mib][name.replace('-', '_')]
+            sym = self.symbolCache[mib, name] = self.symbolTable[mib][name.replace('-', '_')]
+
+        return sym
+
+    def lookup(self, mib, name, id=None):
+        oid = self.oidCache.get((mib, name))
+
+        if not oid:
+            sym = self.lookupSymbol(mib, name)
+
             parent, parent_id = sym['oid']
             parent_name, parent_mib = parent
 
-            oid = self.symbolCache[mib, name] = self.lookup(parent_mib, parent_name, parent_id)
+            oid = self.oidCache[mib, name] = self.lookup(parent_mib, parent_name, parent_id)
 
         if id:
             oid = oid.extend(id)
 
         return oid
+
+    # returns raw syntax
+    def lookupType(self, name):
+        mib = self.moduleName
+
+        if name in self.types:
+            return self.types[name]
+        elif name in self.importTable:
+            # XXX: the lookup should happen via the symbolTable with imports?
+            mib, symName = self.importTable[name]
+            sym = self.lookupSymbol(mib, symName)
+
+            if sym['type'] != 'TypeDeclaration':
+                raise TypeError("Invalid type=%s => %s::%s is a %s" % (name, mib, symName, sym['type']))
+
+            return sym['syntax']
+        else:
+            raise ValueError("Unknown type=%s" % (name, ))
 
     def parseSyntaxOptions(self, name, options):
         if len(options) == 1:
@@ -162,11 +193,29 @@ class Context:
         return syntax, options
 
 class CodeGen(pysmi.codegen.base.AbstractCodeGen):
-    def genObject(self, ctx, oid, name, attrs):
-        rawSyntax = attrs.get('SimpleSyntax') or attrs.get('ApplicationSyntax')
+    # register a TEXTUAL-CONVENTION as an alias for some SYNTAX
+    def registerType(self, ctx, name, attrs):
+        typeAttrs = attrs.get('typeDeclarationRHS')
 
-        if not rawSyntax:
-            log.warn("Skip %s::%s without syntax", ctx.moduleName, name)
+        log.debug("register type=%s: %s", name, typeAttrs)
+
+        ctx.types[name] = typeAttrs
+
+    def genObject(self, ctx, oid, name, attrs):
+        rawSyntax = None
+
+        if 'row' in attrs:
+            # row => any UpperCase SYNTAX
+            typeAttrs = ctx.lookupType(attrs['row'])
+        else:
+            typeAttrs = attrs
+
+        if 'SimpleSyntax' in typeAttrs:
+            rawSyntax = typeAttrs['SimpleSyntax']
+        elif 'ApplicationSyntax' in typeAttrs:
+            rawSyntax = typeAttrs['ApplicationSyntax']
+        else:
+            log.warn("Skip %s::%s without scalar syntax", ctx.moduleName, name)
             return
 
         syntax, syntax_options = ctx.parseSyntax(name, rawSyntax)
@@ -218,11 +267,17 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
 
         print("{mib}:".format(mib=moduleName))
 
-        for decl in declarations:
-            # parse
-            log.debug("parse mib=%s decl: %s", moduleName, decl)
+        # type pass
+        for type, name, *args in declarations:
+            if type == 'typeDeclaration':
+                self.registerType(ctx, name, parseDeclAttrs(args))
 
-            type, name, attrs = parseDecl(decl)
+        # objects pass
+        for type, name, *args in declarations:
+            # parse
+            log.debug("parse mib=%s decl <%s>%s: %s", moduleName, type, name, args)
+
+            attrs = parseDeclAttrs(args)
 
             # dump
             if 'objectIdentifier' in attrs:
@@ -248,12 +303,6 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
             # generate
             if type == 'moduleIdentityClause':
                 moduleOID = oid
-
-            elif type == 'objectTypeClause' and 'conceptualTable' in attrs:
-                self.genTable(ctx, oid, name, attrs)
-
-            elif type == 'objectTypeClause' and 'row' in attrs:
-                pass
 
             elif type == 'objectTypeClause':
                 self.genObject(ctx, oid, name, attrs)
