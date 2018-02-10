@@ -108,6 +108,7 @@ class Context:
         self.oidCache = dict(self.OID_CACHE)
 
         self.types = {} # SYNTAX * => TEXTUAL-CONVENTION *
+        self.objectTypes = {} # OBJECT-TYPE * => *
         self.objects = []
         self.tables = []
         self.entryTable = {} # mapping from Entry type => Table name
@@ -241,6 +242,9 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
 
         ctx.types[name] = typeAttrs
 
+    def registerObject(self, ctx, name, attrs):
+        ctx.objectTypes[name] = attrs
+
     def genObject(self, ctx, oid, name, attrs):
         rawSyntax = None
         table = False
@@ -290,6 +294,16 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
 
         return '{mib}::{name}'.format(mib=mib, name=name)
 
+    def checkEntryType(self, ctx, name):
+        # XXX: what about entry objects from other MIBs...? the 'not-accessible' part is not in the symbolTable :/
+        if name in ctx.objectTypes[name]:
+            attrs = ctx.objectTypes[name]
+
+            if attrs['MaxAccessPart'] == 'not-accessible':
+                return False
+
+        return True
+
     def genEntry(self, ctx, oid, name, attrs, table):
         log.info("parse entry=%s for table=%s: %r", name, table, attrs)
 
@@ -309,7 +323,7 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
             return
 
         table['IndexObjects'] = [self.buildObjectReference(ctx, name) for i, name in indexSyntax]
-        table['EntryObjects'] = [self.buildObjectReference(ctx, name) for name, syntax in entrySyntax]
+        table['EntryObjects'] = [self.buildObjectReference(ctx, name) for name, syntax in entrySyntax] # TODO: if checkEntryType(ctx, name)?
 
     def genCode(self, ast, symbolTable, **kwargs):
         moduleName, moduleOID, imports, declarations = ast
