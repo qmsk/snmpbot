@@ -44,5 +44,5 @@ func (syntax PhysAddressSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 }
 
 func init() {
-	RegisterSyntax("PhysAddress", PhysAddressSyntax{})
+	RegisterSyntax("SNMPv2-TC::PhysAddress", PhysAddressSyntax{})
 }

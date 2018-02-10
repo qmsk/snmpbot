@@ -64,5 +64,5 @@ func (syntax MACAddressSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 }
 
 func init() {
-	RegisterSyntax("MacAddress", MACAddressSyntax{})
+	RegisterSyntax("SNMPv2-TC::MacAddress", MACAddressSyntax{})
 }
