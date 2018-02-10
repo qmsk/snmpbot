@@ -107,5 +107,21 @@ func TestConfigLoadMIB(t *testing.T) {
 		} else {
 			assert.Equal(t, "TEST2-MIB::extObject", object.String())
 		}
+
+		if object, err := ResolveObject("TEST2-MIB::testUnknownSyntax"); err != nil {
+			t.Errorf("ResolveObject TEST2-MIB::testUnknownSyntax: %v", err)
+		} else {
+			assert.Equal(t, "TEST2-MIB::testUnknownSyntax", object.String())
+			assert.Equal(t, nil, object.Syntax)
+
+			var varBind = snmp.MakeVarBind(object.OID.Extend(0), int(1))
+
+			if name, value, err := object.Format(varBind); err != nil {
+				t.Errorf("Object<%v>.Format %v: %v", object, varBind, err)
+			} else {
+				assert.Equal(t, "TEST2-MIB::testUnknownSyntax.0", name)
+				assert.Equal(t, "1", fmt.Sprintf("%v", value))
+			}
+		}
 	}
 }

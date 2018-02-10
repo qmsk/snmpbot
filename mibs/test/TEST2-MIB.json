@@ -30,6 +30,11 @@
       "Name": "extObject",
       "OID": ".1.1.5.1",
       "Syntax": "Integer32"
+    },
+    {
+      "Name": "testUnknownSyntax",
+      "OID": ".1.0.2.1.4",
+      "Syntax": null
     }
   ],
   "Tables": [

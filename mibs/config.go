@@ -62,7 +62,9 @@ func (config ObjectConfig) build(mib *MIB) (Object, error) {
 		object.ID = id
 	}
 
-	if syntax, err := LookupSyntax(config.Syntax); err != nil {
+	if config.Syntax == "" {
+
+	} else if syntax, err := LookupSyntax(config.Syntax); err != nil {
 		return object, err
 	} else {
 		object.Syntax = syntax

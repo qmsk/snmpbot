@@ -16,7 +16,12 @@ type Object struct {
 func (object *Object) Unpack(varBind snmp.VarBind) (Value, error) {
 	if err := varBind.ErrorValue(); err != nil {
 		return nil, err
+	} else if snmpValue, err := varBind.Value(); err != nil {
+		return nil, err
+	} else if object.Syntax == nil {
+		return snmpValue, nil
 	} else {
+		// TODO: change interface to Unpack(interface{})?
 		return object.Syntax.Unpack(varBind)
 	}
 }
@@ -37,10 +42,6 @@ func (object *Object) Format(varBind snmp.VarBind) (string, Value, error) {
 }
 
 func (object *Object) FormatIndex(oid snmp.OID) string {
-	if object.IndexSyntax == nil {
-		return object.ID.FormatOID(oid)
-	}
-
 	if index := object.OID.Index(oid); index == nil {
 		return oid.String()
 	} else if len(index) == 0 {
