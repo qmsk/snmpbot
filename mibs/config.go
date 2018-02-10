@@ -97,16 +97,16 @@ func (config TableConfig) build(mib *MIB) (Table, error) {
 	}
 
 	for i, indexName := range config.IndexObjects {
-		if indexObject := mib.ResolveObject(indexName); indexObject == nil {
-			return table, fmt.Errorf("Unknown IndexObject: %v", indexName)
+		if indexObject, err := ResolveObject(indexName); err != nil {
+			return table, fmt.Errorf("Invalid IndexObject %v: %v", indexName, err)
 		} else {
 			table.IndexSyntax[i] = indexObject
 		}
 	}
 
 	for i, entryName := range config.EntryObjects {
-		if entryObject := mib.ResolveObject(entryName); entryObject == nil {
-			return table, fmt.Errorf("Unknown EntryObject: %v", entryName)
+		if entryObject, err := ResolveObject(entryName); err != nil {
+			return table, fmt.Errorf("Unknown EntryObject %v: %v", entryName, err)
 		} else {
 			table.EntrySyntax[i] = entryObject
 		}

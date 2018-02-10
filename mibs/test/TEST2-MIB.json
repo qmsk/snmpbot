@@ -36,8 +36,8 @@
     {
       "Name": "testTable",
       "OID": ".1.0.2.1.2",
-      "IndexObjects": [ "testID" ],
-      "EntryObjects": [ "testName" ]
+      "IndexObjects": [ "TEST2-MIB::testID" ],
+      "EntryObjects": [ "TEST2-MIB::testName" ]
     }
   ]
 }
