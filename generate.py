@@ -78,6 +78,7 @@ class Context:
     # list of explicitly supported syntax types
     SUPPORTED_SYNTAX = set([
         ('SNMPv2-TC', 'MacAddress'),
+        ('SNMPv2-TC', 'PhysAddress'),
         ('Q-BRIDGE-MIB', 'PortList'),
         ('BRIDGE-MIB', 'BridgeId'),
     ])
