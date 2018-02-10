@@ -55,7 +55,7 @@ func (registry *registry) getOID(oid snmp.OID) (ID, bool) {
 }
 
 func (registry *registry) walk(f func(ID)) {
-	for _, id := range registry.byOID {
+	for _, id := range registry.byName {
 		f(id)
 	}
 }

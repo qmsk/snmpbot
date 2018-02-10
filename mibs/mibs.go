@@ -12,7 +12,10 @@ func registerMIB(mib MIB) *MIB {
 	mib.ID.MIB = &mib
 
 	mibRegistry.registerName(ID{MIB: &mib, OID: mib.OID}, mib.Name)
-	mibRegistry.registerOID(ID{MIB: &mib, OID: mib.OID})
+
+	if mib.OID != nil {
+		mibRegistry.registerOID(ID{MIB: &mib, OID: mib.OID})
+	}
 
 	return &mib
 }
@@ -31,6 +34,11 @@ func ResolveMIB(name string) (*MIB, error) {
 
 func WalkMIBs(f func(mib *MIB)) {
 	mibRegistry.walk(func(id ID) {
+		if id.OID == nil {
+			// skip MIBs without a top-level OID
+			return
+		}
+
 		f(id.MIB)
 	})
 }
