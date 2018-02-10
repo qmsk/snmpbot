@@ -60,6 +60,15 @@ func TestConfigLoadMIB(t *testing.T) {
 			assert.Equal(t, "TEST2-MIB::testName", object.String())
 			assert.Equal(t, &DisplayStringSyntax{}, object.Syntax)
 			assert.Equal(t, IndexSyntax{mib.ResolveObject("testID")}, object.IndexSyntax)
+
+			var varBind = snmp.MakeVarBind(object.OID.Extend(10), []byte("foobar"))
+
+			if name, value, err := object.Format(varBind); err != nil {
+				t.Errorf("Object<%v>.Format %v: %v", object, varBind, err)
+			} else {
+				assert.Equal(t, "TEST2-MIB::testName[10]", name)
+				assert.Equal(t, "foobar", fmt.Sprintf("%v", value))
+			}
 		}
 
 		if object, err := ResolveObject("TEST2-MIB::testEnum"); err != nil {
@@ -76,7 +85,7 @@ func TestConfigLoadMIB(t *testing.T) {
 			if name, value, err := object.Format(varBind); err != nil {
 				t.Errorf("Object<%v>.Format %v: %v", object, varBind, err)
 			} else {
-				assert.Equal(t, "TEST2-MIB::testEnum.0", name)
+				assert.Equal(t, "TEST2-MIB::testEnum", name)
 				assert.Equal(t, "one", fmt.Sprintf("%v", value))
 			}
 		}
@@ -97,7 +106,7 @@ func TestConfigLoadMIB(t *testing.T) {
 			if name, value, err := object.Format(varBind); err != nil {
 				t.Errorf("Object<%v>.Format %v: %v", object, varBind, err)
 			} else {
-				assert.Equal(t, "TEST2-MIB::test.0", name)
+				assert.Equal(t, "TEST2-MIB::test", name)
 				assert.Equal(t, "foobar", fmt.Sprintf("%v", value))
 			}
 		}
@@ -119,7 +128,7 @@ func TestConfigLoadMIB(t *testing.T) {
 			if name, value, err := object.Format(varBind); err != nil {
 				t.Errorf("Object<%v>.Format %v: %v", object, varBind, err)
 			} else {
-				assert.Equal(t, "TEST2-MIB::testUnknownSyntax.0", name)
+				assert.Equal(t, "TEST2-MIB::testUnknownSyntax", name)
 				assert.Equal(t, "1", fmt.Sprintf("%v", value))
 			}
 		}

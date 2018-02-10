@@ -45,10 +45,7 @@ func (options Options) PrintVarBind(varBind snmp.VarBind) {
 }
 
 func (options Options) PrintObject(object *mibs.Object, varBind snmp.VarBind) {
-	name := object.FormatIndex(varBind.OID())
-	value, err := object.Unpack(varBind)
-
-	if err != nil {
+	if name, value, err := object.Format(varBind); err != nil {
 		log.Printf("VarBind[%v](%v): %v", varBind.OID(), object, err)
 	} else {
 		fmt.Printf("%v = %v\n", name, value)
