@@ -77,6 +77,7 @@ class Context:
 
     # list of explicitly supported syntax types
     SUPPORTED_SYNTAX = set([
+        ('SNMPv2-TC', 'MacAddress'),
         ('Q-BRIDGE-MIB', 'PortList'),
         ('BRIDGE-MIB', 'BridgeId'),
     ])
@@ -154,8 +155,11 @@ class Context:
 
             return self.parseObjectSyntax(name, self.types[name])
         elif name in self.importTable:
-            # XXX: the lookup should happen via the symbolTable with imports?
             mib, symName = self.importTable[name]
+
+            if (mib, symName) in self.SUPPORTED_SYNTAX:
+                return '{mib}::{name}'.format(mib=mib, name=symName), None
+
             sym = self.lookupSymbol(mib, symName)
 
             log.debug("lookup type=%s => %s::%s: %r", name, mib, symName, sym)
@@ -174,6 +178,7 @@ class Context:
             elif syntax == 'ObjectIdentifier':
                 return 'OBJECT IDENTIFIER', None
             else:
+                # XXX: map remaining import types...
                 return syntax, None
         else:
             raise ValueError("Unknown type=%s" % (name, ))
