@@ -454,11 +454,11 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
             'Tables': ctx.tables,
         }
 
-        if moduleOID:
-            out['OID'] = str(moduleOID)
+        if ctx.moduleOID:
+            out['OID'] = str(ctx.moduleOID)
 
         mibinfo = pysmi.mibinfo.MibInfo(
-            oid         = moduleOID,
+            oid         = ctx.moduleOID,
             identity    = moduleIdentity,
             name        = moduleName,
         )
