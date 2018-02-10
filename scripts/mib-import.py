@@ -74,6 +74,8 @@ class OID:
 class Context:
     IMPORT_TABLE = {
         'iso': ('SNMPv2-SMI', 'iso'),
+        'Counter': ('SNMPv2-SMI', 'Counter32'),
+        'Gauge': ('SNMPv2-SMI', 'Gauge32'),
     }
     SYMBOL_CACHE = {}
     OID_CACHE = {
@@ -81,7 +83,26 @@ class Context:
     }
 
     # list of explicitly supported syntax types
+    SIMPLE_SYNTAX = set([
+        'INTEGER',
+        'OCTET STRING',
+        'OBJECT IDENTIFIER',
+    ])
+    APPLICATION_SYNTAX = set([
+        'IpAddress',
+        'TimeTicks',
+        'Opaque',
+
+        'Counter32',
+        'Gauge32',
+        'Integer32',
+        'Unsigned32',
+
+        'Counter64',
+    ])
     SUPPORTED_SYNTAX = set([
+        ('SNMP-FRAMEWORK-MIB', 'SnmpAdminString'),
+        ('SNMPv2-TC', 'DisplayString'),
         ('SNMPv2-TC', 'MacAddress'),
         ('SNMPv2-TC', 'PhysAddress'),
         ('Q-BRIDGE-MIB', 'PortList'),
@@ -158,42 +179,51 @@ class Context:
         return oid
 
     # @return [syntax, options]
-    def lookupSyntax(self, name):
+    def lookupSyntax(self, syntaxName, options=None):
+        if syntaxName in self.objectTypes:
+            syntax, options = self.objectTypes[syntaxName]
+
+            log.debug("lookup type=%s: %s %r", syntaxName, syntax, options)
+
+            return syntax, options
+
         mib = self.moduleName
+        name = syntaxName
 
-        if name in self.objectTypes:
-            log.debug("lookup type=%s: %r", name, self.objectTypes[name])
+        if name in self.importTable:
+            mib, name = self.importTable[name]
 
-            return self.objectTypes[name]
+        if (mib, name) in self.SUPPORTED_SYNTAX:
+            return '{mib}::{name}'.format(mib=mib, name=name), None
 
-        elif name in self.importTable:
-            mib, symName = self.importTable[name]
+        sym = self.lookupSymbol(mib, name)
 
-            if (mib, symName) in self.SUPPORTED_SYNTAX:
-                return '{mib}::{name}'.format(mib=mib, name=symName), None
+        if not sym:
+            raise ValueError("Unknown syntax: {mib}::{name}".format(mib=mib, name=name))
 
-            sym = self.lookupSymbol(mib, symName)
-
-            log.debug("lookup type=%s => %s::%s: %r", name, mib, symName, sym)
-
-            if sym['type'] != 'TypeDeclaration':
-                raise TypeError("Invalid type=%s => %s::%s is a %s" % (name, mib, symName, sym['type']))
-
-            syntax, syntax_spec = sym['syntax']
-            syntax, syntax_mib = syntax
-
-            # XXX: where do these get mapped?
-            if syntax == 'Integer32' and syntax_spec:
-                return 'ENUM', self.parseSyntaxEnum(syntax_spec)
-            elif syntax == 'OctetString':
-                return 'OCTET STRING', None
-            elif syntax == 'ObjectIdentifier':
-                return 'OBJECT IDENTIFIER', None
-            else:
-                # XXX: map remaining import types...
-                return syntax, None
+        if sym['type'] == 'TypeDeclaration':
+            log.debug("lookup type=%s => %s::%s: %r", syntaxName, mib, name, sym)
         else:
-            raise ValueError("Unknown type=%s" % (name, ))
+            raise ValueError("Invalid type=%s => %s::%s is a %s" % (syntaxName, mib, name, sym['type']))
+
+        syntax, syntax_spec = sym['syntax']
+        syntax, syntax_mib = syntax
+
+        # these get mapped stupidly by the symtable codegen
+        if syntax == 'Integer32' and syntax_spec:
+            return 'ENUM', self.parseSyntaxEnum(syntax_spec)
+        elif syntax == 'OctetString':
+            return 'OCTET STRING', options
+        elif syntax == 'ObjectIdentifier':
+            return 'OBJECT IDENTIFIER', options
+        elif syntax in self.SIMPLE_SYNTAX:
+            return syntax, options
+        elif syntax in self.APPLICATION_SYNTAX:
+            return syntax, options
+        elif (syntax_mib, syntax) in self.SUPPORTED_SYNTAX:
+            return '{mib}::{name}'.format(mib=syntax_mib, name=syntax), options
+        else:
+            raise ValueError("Invalid syntax={syntaxName} => {mib}::{name} => {syntax}".format(syntaxName=syntaxName, mib=mib, name=name, syntax=syntax))
 
     def parseObjectIdentifier(self, objectIdentifier):
         parent, *ids = objectIdentifier
@@ -217,23 +247,29 @@ class Context:
 
     def parseSyntax(self, value):
         if isinstance(value, str):
-            return value, None
+            syntax = value
+            options = None
         else:
             syntax, options = value
             options = parseDeclArg(options)
 
-            if syntax == 'INTEGER' and 'enumSpec' in options:
-                return 'ENUM', self.parseSyntaxEnum(options['enumSpec'])
-            elif syntax == 'INTEGER' and 'integerSubType' in options:
-                return syntax, self.parseSyntaxOptions(options['integerSubType'][0])
-            elif syntax == 'Integer32' and 'integerSubType' in options:
-                return syntax, self.parseSyntaxOptions(options['integerSubType'][0])
-            elif syntax == 'DisplayString' and 'octetStringSubType' in options:
-                return syntax, self.parseSyntaxOptions(options['octetStringSubType'][0])
-            elif syntax == 'OCTET STRING' and 'SnmpAdminString' in options: # XXX: should get resolved using lookupType!
-                return syntax, self.parseSyntaxOptions(options['octetStringSubType'][0])
-            else:
-                return None, None
+        if not options:
+            syntax_options = None
+        elif 'enumSpec' in options:
+            return 'ENUM', self.parseSyntaxEnum(options['enumSpec'])
+        elif 'integerSubType' in options:
+            syntax_options = self.parseSyntaxOptions(options['integerSubType'][0])
+        elif 'octetStringSubType' in options:
+            syntax_options = self.parseSyntaxOptions(options['octetStringSubType'][0])
+        else:
+            syntax_options = None
+
+        if syntax in self.SIMPLE_SYNTAX:
+            return syntax, syntax_options
+        elif syntax in self.APPLICATION_SYNTAX:
+            return syntax, syntax_options
+        else:
+            return self.lookupSyntax(syntax, syntax_options)
 
     def parseObjectSyntax(self, syntax):
         if 'SimpleSyntax' in syntax:
@@ -392,7 +428,7 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
         for type, name, *args in declarations:
             args = parseDeclArgs(args)
 
-            print("\t{type:<20} {mib:>18}::{name:<30} = {args!r}".format(type=type, mib=mib, name=name, args=args))
+            print("\t{type:<20} {mib:>18}::{name:<30} = {args!r}".format(type=type, mib=moduleName, name=name, args=args))
 
             if type == 'objectTypeClause':
                 log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
