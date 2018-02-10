@@ -468,8 +468,9 @@ def main():
         rebuild = args.rebuild,
     )
 
+    print("Compiled MIBs to {path}:".format(path=args.output_path))
     for mib, status in compile_status.items():
-        print(mib, status)
+        print("\t{mib}.json: {status}".format(mib=mib, status=status))
 
     return 0
 
