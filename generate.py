@@ -357,10 +357,10 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
             else:
                 oid = None
 
-            print("\t{type:15} {name:30} {oid}".format(type=type, name=name, oid=oid))
+            print("\t{type:15} {name} = {oid}:".format(type=type, name=name, oid=oid))
 
             for attr, value in attrs.items():
-                print("\t\t{attr:20}: {value}".format(attr=attr, value=value))
+                print("\t\t{attr:20} {value}".format(attr=str(attr) + ':', value=value))
 
             # generate
             if type == 'moduleIdentityClause':
