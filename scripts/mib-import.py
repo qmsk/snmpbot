@@ -307,7 +307,7 @@ class Context:
 
             log.debug("register entry type=%s: %s", name, entrySyntax)
 
-        else: # XXX: This is an odd case for thigns like TOKEN-RING-RMON-MIB::MacAddress
+        else:
             syntax_name, options = self.objectTypes[name] = self.parseObjectSyntax(typeDeclarationRHS)
 
             log.debug("register object type=%s: %s, %s", name, syntax_name, options)
