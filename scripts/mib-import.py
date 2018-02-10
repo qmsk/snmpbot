@@ -274,7 +274,7 @@ class Context:
     def load_moduleIdentityClause(self, name, lastUpdated, organization, contactInfo, description, revisions, oid):
         self.moduleOID = self.parseObjectIdentifier(oid['objectIdentifier'])
 
-        log.debug("register module=%s: oid=%s", name, self.moduleOID)
+        log.info("load mib %s@%s", name, self.moduleOID)
 
     def load_objectTypeClause_object(self, name, syntax, maxAccessPart, oid):
         oid = self.parseObjectIdentifier(oid['objectIdentifier'])
@@ -284,8 +284,6 @@ class Context:
         # scalar objects
         if not syntax:
             log.warn("Object %s::%s has unsupported syntax: %r", self.moduleName, name, syntax)
-        else:
-            log.info("load object %s::%s@%s: %s, %s", self.moduleName, name, oid, syntax_name, syntax_options)
 
         object = {
             'Name': name,
@@ -299,6 +297,8 @@ class Context:
         if maxAccessPart and maxAccessPart['MaxAccessPart'] == 'not-accessible':
             object['NotAccessible'] = True
 
+        log.info("load object %s::%s@%s: %r", self.moduleName, name, oid, object)
+
         self.objects.append(object)
 
     def load_objectTypeClause_table(self, name, syntax, oid):
@@ -307,41 +307,47 @@ class Context:
 
         entryType = conceptualTable['row']
 
-        log.info("load table %s::%s@%s with entryType=%s", self.moduleName, name, oid, entryType)
-
         table = {
             'Name': name,
             'OID': str(oid),
         }
 
+        log.info("load table %s::%s@%s with entryType=%s", self.moduleName, name, oid, entryType)
+
         self.tables.append(table)
         self.entryTable[entryType] = table
 
-    def load_objectTypeClause_entry(self, name, syntax, index, oid):
+    def load_objectTypeClause_entry(self, name, syntax, augmention, index, oid):
         entryType = syntax['row']
         oid = self.parseObjectIdentifier(oid['objectIdentifier'])
 
         table = self.entryTable[entryType]
         entrySyntax = self.entryTypes[entryType]
 
-        if index and 'INDEX' in index:
+        table['EntryName'] = name
+
+        if augmention:
+            entryName = self.formatObject(augmention)
+
+            table['AugmentsEntry'] = entryName
+
+        elif index and 'INDEX' in index:
             indexSyntax = index['INDEX']
+
+            table['IndexObjects'] = [self.formatObject(name) for i, name in indexSyntax]
         else:
-            # TODO: AUGEMENTS?
-            log.warn("Entry %s::%s missing INDEX: %r", self.moduleName, name, index)
-            return
+            raise ValueError("Missing AUGMENTS/INDEX: %r %r", augmention, index)
 
-        log.info("load entry %s::%s@%s for table=%s: index=%s syntax=%s", self.moduleName, name, oid, table['Name'], indexSyntax, entrySyntax)
-
-        table['IndexObjects'] = [self.formatObject(name) for i, name in indexSyntax]
         table['EntryObjects'] = [self.formatObject(name) for name, syntax in entrySyntax] # TODO: only if object is accessible?
 
+        log.info("load entry %s::%s@%s for table=%s: %r", self.moduleName, name, oid, table['Name'], table)
+
+    # load objects once all types are registered
     def load_objectTypeClause(self, name, syntax, units, maxAccessPart, status, description, reference, augmention, index, defval, oid):
-        # table, entry, object with custom syntax, or object with built-in syntax?
         if 'conceptualTable' in syntax:
             return self.load_objectTypeClause_table(name, syntax, oid)
         elif 'row' in syntax and syntax['row'] in self.entryTypes:
-            return self.load_objectTypeClause_entry(name, syntax, index, oid)
+            return self.load_objectTypeClause_entry(name, syntax, augmention, index, oid)
         else:
             return self.load_objectTypeClause_object(name, syntax, maxAccessPart, oid)
 
@@ -372,7 +378,12 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
         for type, name, *args in declarations:
             args = parseDeclArgs(args)
 
-            if type == 'typeDeclaration':
+            if type == 'moduleIdentityClause':
+                log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
+
+                ctx.load_moduleIdentityClause(name, *args)
+
+            elif type == 'typeDeclaration':
                 log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
 
                 ctx.load_typeDeclaration(name, *args)
@@ -383,13 +394,7 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
 
             print("\t{type:<20} {mib:>18}::{name:<30} = {args!r}".format(type=type, mib=mib, name=name, args=args))
 
-            # generate
-            if type == 'moduleIdentityClause':
-                log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
-
-                ctx.load_moduleIdentityClause(name, *args)
-
-            elif type == 'objectTypeClause':
+            if type == 'objectTypeClause':
                 log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
 
                 ctx.load_objectTypeClause(name, *args)

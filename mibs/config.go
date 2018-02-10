@@ -117,6 +117,7 @@ func (config ObjectConfig) build(mib *MIB) (Object, error) {
 	return object, nil
 }
 
+// TODO: support AugmentsEntry => EntryName mapping for augmented table indexes
 type TableConfig struct {
 	ConfigID
 	IndexObjects []string
