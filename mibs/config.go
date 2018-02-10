@@ -71,11 +71,7 @@ func (config MIBConfig) loadTables(mib *MIB) error {
 		} else {
 			mib.registerTable(table)
 
-			// setup object IndexSyntax
-			for _, indexObject := range table.IndexSyntax {
-				indexObject.IndexSyntax = table.IndexSyntax
-			}
-
+			// setup entry objects IndexSyntax
 			for _, entryObject := range table.EntrySyntax {
 				entryObject.IndexSyntax = table.IndexSyntax
 			}
