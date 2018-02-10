@@ -44,6 +44,47 @@ func (config MIBConfig) build() (MIB, error) {
 	return makeMIB(id), nil
 }
 
+func (config MIBConfig) loadMIB() (*MIB, error) {
+	if buildMIB, err := config.build(); err != nil {
+		return nil, err
+	} else {
+		return registerMIB(buildMIB), nil
+	}
+}
+
+func (config MIBConfig) loadObjects(mib *MIB) error {
+	for _, objectConfig := range config.Objects {
+		if object, err := objectConfig.build(mib); err != nil {
+			return fmt.Errorf("Invalid Object %v: %v", objectConfig.Name, err)
+		} else {
+			mib.registerObject(object)
+		}
+	}
+
+	return nil
+}
+
+func (config MIBConfig) loadTables(mib *MIB) error {
+	for _, tableConfig := range config.Tables {
+		if table, err := tableConfig.build(mib); err != nil {
+			return fmt.Errorf("Invalid Table %v: %v", tableConfig.Name, err)
+		} else {
+			mib.registerTable(table)
+
+			// setup object IndexSyntax
+			for _, indexObject := range table.IndexSyntax {
+				indexObject.IndexSyntax = table.IndexSyntax
+			}
+
+			for _, entryObject := range table.EntrySyntax {
+				entryObject.IndexSyntax = table.IndexSyntax
+			}
+		}
+	}
+
+	return nil
+}
+
 type ObjectConfig struct {
 	ConfigID
 	Syntax        string
@@ -117,65 +158,30 @@ func (config TableConfig) build(mib *MIB) (Table, error) {
 	return table, nil
 }
 
-func loadMIB(config MIBConfig) (*MIB, error) {
-	var mib *MIB
+type configWalkFunc func(config MIBConfig, path string) error
 
-	if buildMIB, err := config.build(); err != nil {
-		return nil, err
-	} else {
-		mib = registerMIB(buildMIB)
-	}
-
-	for _, objectConfig := range config.Objects {
-		if object, err := objectConfig.build(mib); err != nil {
-			return mib, fmt.Errorf("Invalid Object %v: %v", objectConfig.Name, err)
-		} else {
-			mib.registerObject(object)
-		}
-	}
-
-	for _, tableConfig := range config.Tables {
-		if table, err := tableConfig.build(mib); err != nil {
-			return mib, fmt.Errorf("Invalid Table %v: %v", tableConfig.Name, err)
-		} else {
-			mib.registerTable(table)
-
-			// setup object IndexSyntax
-			for _, indexObject := range table.IndexSyntax {
-				indexObject.IndexSyntax = table.IndexSyntax
-			}
-
-			for _, entryObject := range table.EntrySyntax {
-				entryObject.IndexSyntax = table.IndexSyntax
-			}
-		}
-	}
-
-	return mib, nil
-}
-
-func LoadJSON(r io.Reader) (*MIB, error) {
+func walkJSON(r io.Reader, handler configWalkFunc, path string) error {
 	var config MIBConfig
 
 	if err := json.NewDecoder(r).Decode(&config); err != nil {
-		return nil, err
+		return err
 	}
 
-	return loadMIB(config)
+	return handler(config, path)
 }
 
-func LoadFile(file *os.File) (*MIB, error) {
-	log.Printf("Load MIB from file: %v", file.Name())
+func walkFile(file *os.File, handler configWalkFunc) error {
+	//log.Printf("Load MIB from file: %v", file.Name())
 
 	switch ext := filepath.Ext(file.Name()); ext {
 	case ".json":
-		return LoadJSON(file)
+		return walkJSON(file, handler, file.Name())
 	default:
-		return nil, fmt.Errorf("Unknown MIB file extension: %v", ext)
+		return fmt.Errorf("Unknown MIB file extension: %v", ext)
 	}
 }
 
-func Load(path string) error {
+func walkPath(path string, handler configWalkFunc) error {
 	if file, err := os.Open(path); err != nil {
 		return err
 	} else if fileInfo, err := file.Stat(); err != nil {
@@ -191,16 +197,51 @@ func Load(path string) error {
 					continue
 				}
 
-				if err := Load(filepath.Join(path, name)); err != nil {
+				if err := walkPath(filepath.Join(path, name), handler); err != nil {
 					return err
 				}
 			}
 		}
-	} else if mib, err := LoadFile(file); err != nil {
-		return fmt.Errorf("Failed to load MIB from %v: %v", path, err)
 	} else {
-		log.Printf("Load MIB %v from %v with %d objects", mib, path, len(mib.objects))
+		return walkFile(file, handler)
 	}
 
 	return nil
+}
+
+func walkPathMulti(path string, handlers ...configWalkFunc) error {
+	for _, handler := range handlers {
+		if err := walkPath(path, handler); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func Load(path string) error {
+	return walkPathMulti(path,
+		func(mibConfig MIBConfig, path string) error {
+			if mib, err := mibConfig.loadMIB(); err != nil {
+				return fmt.Errorf("Failed to load MIB from %v: %v", path, err)
+			} else if err := mibConfig.loadObjects(mib); err != nil {
+				return fmt.Errorf("Failed to load MIB %v objects from %v: %v", mib, path, err)
+			} else {
+				log.Printf("Load MIB %v from %v with %d objects", mib, path, len(mib.objects))
+
+				return nil
+			}
+		},
+		func(mibConfig MIBConfig, path string) error {
+			if mib, err := ResolveMIB(mibConfig.Name); err != nil {
+				return fmt.Errorf("Failed to resolve MIB from %v: %v", path, err)
+			} else if err := mibConfig.loadTables(mib); err != nil {
+				return fmt.Errorf("Failed to load MIB %v tables from %v: %v", mib, path, err)
+			} else {
+				log.Printf("Load MIB %v from %v with %d tables", mib, path, len(mib.tables))
+
+				return nil
+			}
+		},
+	)
 }
