@@ -59,6 +59,14 @@ def parseDeclAttrs(args):
 
     return attrs
 
+def parseOIDPart(part):
+    if isinstance(part, tuple):
+        name, id = part
+    else:
+        id = part
+
+    return id
+
 class OID:
     def __init__(self, *ids):
         self.ids = ids
@@ -70,6 +78,9 @@ class OID:
         return '.' + '.'.join(str(x) for x in self.ids)
 
 class Context:
+    IMPORT_TABLE = {
+        'iso': ('SNMPv2-SMI', 'iso'),
+    }
     SYMBOL_CACHE = {}
     OID_CACHE = {
         ('SNMPv2-SMI', 'iso'): OID(1),
@@ -85,7 +96,7 @@ class Context:
 
     @classmethod
     def loadImports(cls, imports, convertTable):
-        importTable = {}
+        importTable = dict(cls.IMPORT_TABLE)
 
         for mib, names in imports.items():
             convertMap = convertTable.get(mib)
@@ -132,19 +143,21 @@ class Context:
 
         return mib, name
 
-    def lookup(self, mib, name, id=None):
+    def lookup(self, mib, name, *ids):
+        if mib == self.moduleName:
+            mib, name = self.resolveName(name)
+
         oid = self.oidCache.get((mib, name))
 
         if not oid:
             sym = self.lookupSymbol(mib, name)
 
-            parent, parent_id = sym['oid']
+            parent, *parent_ids = sym['oid']
             parent_name, parent_mib = parent
 
-            oid = self.oidCache[mib, name] = self.lookup(parent_mib, parent_name, parent_id)
+            oid = self.oidCache[mib, name] = self.lookup(parent_mib, parent_name, *parent_ids)
 
-        if id:
-            oid = oid.extend(id)
+        oid = oid.extend(*ids)
 
         return oid
 
@@ -363,17 +376,11 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
 
             # dump
             if 'objectIdentifier' in attrs:
-                ref = attrs['objectIdentifier']
+                parent, *ids = attrs['objectIdentifier']
 
-                if len(ref) == 1:
-                    parent_name, = ref
-                    id = None
-                elif len(ref) == 2:
-                    parent_name, id = ref
-                else:
-                    raise ValueError("Invalid objectIdentifier for %s::%s: %s", ctx.modueName, name, ref)
+                ids = [parseOIDPart(id) for id in ids]
 
-                oid = ctx.lookup(moduleName, parent_name, id)
+                oid = ctx.lookup(moduleName, parent, *ids)
             else:
                 oid = None
 
