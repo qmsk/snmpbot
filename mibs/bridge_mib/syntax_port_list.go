@@ -69,3 +69,7 @@ func (syntax PortListSyntax) Unpack(varBind snmp.VarBind) (mibs.Value, error) {
 		return nil, mibs.SyntaxError{syntax, value}
 	}
 }
+
+func init() {
+	mibs.RegisterSyntax("Q-BRIDGE-MIB::PortList", PortListSyntax{})
+}

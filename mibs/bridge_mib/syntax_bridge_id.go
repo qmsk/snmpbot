@@ -42,3 +42,7 @@ func (syntax BridgeIDSyntax) Unpack(varBind snmp.VarBind) (mibs.Value, error) {
 		return nil, mibs.SyntaxError{syntax, value}
 	}
 }
+
+func init() {
+	mibs.RegisterSyntax("BRIDGE-MIB::BridgeId", BridgeIDSyntax{})
+}

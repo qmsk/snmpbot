@@ -49,3 +49,8 @@ func (syntax PortIDSyntax) Unpack(varBind snmp.VarBind) (mibs.Value, error) {
 		return nil, mibs.SyntaxError{syntax, value}
 	}
 }
+
+func init() {
+	// XXX: This is made up for BRIDGE-MIB::dot1dStpPortDesignatedPort
+	mibs.RegisterSyntax("BRIDGE-MIB::PortId", PortIDSyntax{})
+}
