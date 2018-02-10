@@ -252,8 +252,7 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
 
         # scalar objects
         if not syntax:
-            log.warn("Skip %s::%s with unsupported syntax: %r", ctx.moduleName, name, attrs)
-            return
+            log.warn("Object %s::%s has unsupported syntax: %r", ctx.moduleName, name, attrs)
 
         object = {
             'Name': name,
