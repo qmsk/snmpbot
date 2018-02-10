@@ -121,6 +121,14 @@ class Context:
 
         return sym
 
+    def resolveName(self, name):
+        if name in self.importTable:
+            mib, name = self.importTable[name]
+        else:
+            mib = self.moduleName
+
+        return mib, name
+
     def lookup(self, mib, name, id=None):
         oid = self.oidCache.get((mib, name))
 
@@ -272,6 +280,11 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
         ctx.tables.append(table)
         ctx.entryTable[entryType] = table
 
+    def buildObjectReference(self, ctx, name):
+        mib, name = ctx.resolveName(name)
+
+        return '{mib}::{name}'.format(mib=mib, name=name)
+
     def genEntry(self, ctx, oid, name, attrs, table):
         log.info("parse entry=%s for table=%s: %r", name, table, attrs)
 
@@ -290,8 +303,8 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
             log.warn("Skip %s::%s without index syntax: %r", ctx.moduleName, name, attrs)
             return
 
-        table['IndexObjects'] = [name for i, name in indexSyntax]
-        table['EntryObjects'] = [name for name, syntax in entrySyntax]
+        table['IndexObjects'] = [self.buildObjectReference(ctx, name) for i, name in indexSyntax]
+        table['EntryObjects'] = [self.buildObjectReference(ctx, name) for name, syntax in entrySyntax]
 
     def genCode(self, ast, symbolTable, **kwargs):
         moduleName, moduleOID, imports, declarations = ast
