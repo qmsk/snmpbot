@@ -245,6 +245,9 @@ class Context:
     def parseSyntaxEnum(self, spec):
         return [{'Value': value, 'Name': name} for name, value in spec]
 
+    def parseSyntaxBits(self, spec):
+        return [{'Bit': bit, 'Name': name} for name, bit in spec]
+
     def parseSyntax(self, value):
         if isinstance(value, str):
             syntax = value
@@ -278,6 +281,8 @@ class Context:
             return self.parseSyntax(syntax['ApplicationSyntax'])
         elif 'row' in syntax:
             return self.lookupSyntax(syntax['row'])
+        elif 'BITS' in syntax:
+            return 'BITS', self.parseSyntaxBits(syntax['BITS'])
         else:
             return None, None
 
