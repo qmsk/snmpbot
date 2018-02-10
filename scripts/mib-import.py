@@ -35,29 +35,23 @@ MIB_BORROWERS = [
 
 log = logging.getLogger('mib-import')
 
-def parseDeclAttrs(args):
-    attrs = {}
+def parseDeclArg(arg):
+    if arg is None:
+        return None
+    elif isinstance(arg, tuple):
+        if len(arg) == 2:
+            attr, value = arg
 
-    for arg in args:
-        if arg is None:
-            continue
-        elif isinstance(arg, tuple):
+            return {attr: value}
+        else:
             attr, *values = arg
 
-            if len(values) == 1 and not isinstance(values[0], tuple):
-                attrs[attr] = values[0]
-            else:
-                attrs[attr] = parseDeclAttrs(values)
-        elif isinstance(arg, list):
-            if len(arg) == 0:
-                # ???
-                continue
-            else:
-                raise ValueError("Unexpected list: %r", arg)
-        else:
-            attrs[arg] = None
+            return {attr: parseDeclArg(values)}
+    else:
+        return arg
 
-    return attrs
+def parseDeclArgs(args):
+    return tuple(parseDeclArg(arg) for arg in args)
 
 def parseOIDPart(part):
     if isinstance(part, tuple):
@@ -118,11 +112,13 @@ class Context:
         self.symbolCache = dict(self.SYMBOL_CACHE)
         self.oidCache = dict(self.OID_CACHE)
 
-        self.types = {} # SYNTAX * => TEXTUAL-CONVENTION *
-        self.objectTypes = {} # OBJECT-TYPE * => *
+        self.objectTypes = {} # SYNTAX row=* => TEXTUAL-CONVENTION<...>
+        self.entryTypes = {} # SYNTAX row= => <SEQUENCE>(name, syntax)]
+        self.entryTable = {} # mapping from Entry type => Table name
+
+        self.moduleOID = None
         self.objects = []
         self.tables = []
-        self.entryTable = {} # mapping from Entry type => Table name
 
     def lookupSymbol(self, mib, name):
         sym = self.symbolCache.get((mib, name))
@@ -143,7 +139,7 @@ class Context:
 
         return mib, name
 
-    def lookup(self, mib, name, *ids):
+    def resolveOID(self, mib, name, *ids):
         if mib == self.moduleName:
             mib, name = self.resolveName(name)
 
@@ -155,20 +151,21 @@ class Context:
             parent, *parent_ids = sym['oid']
             parent_name, parent_mib = parent
 
-            oid = self.oidCache[mib, name] = self.lookup(parent_mib, parent_name, *parent_ids)
+            oid = self.oidCache[mib, name] = self.resolveOID(parent_mib, parent_name, *parent_ids)
 
         oid = oid.extend(*ids)
 
         return oid
 
-    # returns parsed syntax
-    def lookupType(self, name):
+    # @return [syntax, options]
+    def lookupSyntax(self, name):
         mib = self.moduleName
 
-        if name in self.types:
-            log.debug("lookup type=%s: %r", name, self.types[name])
+        if name in self.objectTypes:
+            log.debug("lookup type=%s: %r", name, self.objectTypes[name])
 
-            return self.parseObjectSyntax(name, self.types[name])
+            return self.objectTypes[name]
+
         elif name in self.importTable:
             mib, symName = self.importTable[name]
 
@@ -187,7 +184,7 @@ class Context:
 
             # XXX: where do these get mapped?
             if syntax == 'Integer32' and syntax_spec:
-                return self.parseSyntaxEnum(syntax_spec)
+                return 'ENUM', self.parseSyntaxEnum(syntax_spec)
             elif syntax == 'OctetString':
                 return 'OCTET STRING', None
             elif syntax == 'ObjectIdentifier':
@@ -198,146 +195,157 @@ class Context:
         else:
             raise ValueError("Unknown type=%s" % (name, ))
 
-    def parseSyntaxOptions(self, name, options):
+    def parseObjectIdentifier(self, objectIdentifier):
+        parent, *ids = objectIdentifier
+
+        ids = [parseOIDPart(id) for id in ids]
+
+        return self.resolveOID(self.moduleName, parent, *ids)
+
+    def parseSyntaxOptions(self, options):
         if len(options) == 1:
             min = max = options[0]
         elif len(options) == 2:
             min, max = options
         else:
-            raise ValueError("Invalid SYNTAX options for %s::%s: %s" % (self.moduleName, name, options))
+            raise ValueError("Invalid SYNTAX options: {options}".format(options=options))
 
         return {'Min': min, 'Max': max}
 
     def parseSyntaxEnum(self, spec):
-        return 'ENUM', [{'Value': value, 'Name': name} for name, value in spec]
+        return [{'Value': value, 'Name': name} for name, value in spec]
 
-    def parseSyntax(self, name, value):
-        syntax = None
-        options = None
-
+    def parseSyntax(self, value):
         if isinstance(value, str):
-            syntax = value
-        elif 'INTEGER' in value and 'enumSpec' in value:
-            return self.parseSyntaxEnum(value['enumSpec'])
-        elif 'INTEGER' in value and 'integerSubType' in value:
-            syntax = 'INTEGER'
-            options = self.parseSyntaxOptions(name, value['integerSubType'][0])
-        elif 'Integer32' in value and 'integerSubType' in value:
-            syntax = 'Integer32'
-            options = self.parseSyntaxOptions(name, value['integerSubType'][0])
-        elif 'DisplayString' in value:
-            syntax = 'DisplayString'
-            options = self.parseSyntaxOptions(name, value['octetStringSubType'][0])
-        elif 'OCTET STRING' in value or 'SnmpAdminString' in value: # XXX: should get resolved using lookupType!
-            syntax = 'OCTET STRING'
-            options = self.parseSyntaxOptions(name, value['octetStringSubType'][0])
-        elif len(value) == 1:
-            # return simple syntax key
-            for key in value:
-                return key, None
+            return value, None
+        else:
+            syntax, options = value
+            options = parseDeclArg(options)
 
-        return syntax, options
+            if syntax == 'INTEGER' and 'enumSpec' in options:
+                return 'ENUM', self.parseSyntaxEnum(options['enumSpec'])
+            elif syntax == 'INTEGER' and 'integerSubType' in options:
+                return syntax, self.parseSyntaxOptions(options['integerSubType'][0])
+            elif syntax == 'Integer32' and 'integerSubType' in options:
+                return syntax, self.parseSyntaxOptions(options['integerSubType'][0])
+            elif syntax == 'DisplayString' and 'octetStringSubType' in options:
+                return syntax, self.parseSyntaxOptions(options['octetStringSubType'][0])
+            elif syntax == 'OCTET STRING' and 'SnmpAdminString' in options: # XXX: should get resolved using lookupType!
+                return syntax, self.parseSyntaxOptions(options['octetStringSubType'][0])
+            else:
+                return None, None
 
-    def parseObjectSyntax(self, name, attrs):
-        if 'SimpleSyntax' in attrs:
-            return self.parseSyntax(name, attrs['SimpleSyntax'])
-        elif 'ApplicationSyntax' in attrs:
-            return self.parseSyntax(name, attrs['ApplicationSyntax'])
+    def parseObjectSyntax(self, syntax):
+        if 'SimpleSyntax' in syntax:
+            return self.parseSyntax(syntax['SimpleSyntax'])
+        elif 'ApplicationSyntax' in syntax:
+            return self.parseSyntax(syntax['ApplicationSyntax'])
+        elif 'row' in syntax:
+            return self.lookupSyntax(syntax['row'])
         else:
             return None, None
 
-class CodeGen(pysmi.codegen.base.AbstractCodeGen):
-    # register a TEXTUAL-CONVENTION as an alias for some SYNTAX
-    def registerType(self, ctx, name, attrs):
-        typeAttrs = attrs.get('typeDeclarationRHS')
+    def formatObject(self, name):
+        mib, name = self.resolveName(name)
 
-        log.debug("register type=%s: %s", name, typeAttrs)
+        return '{mib}::{name}'.format(mib=mib, name=name)
 
-        ctx.types[name] = typeAttrs
+    def load_typeDeclaration_textualConvention(self, name, display, status, description, reference, syntax):
+        syntax_name, options = self.objectTypes[name] = self.parseObjectSyntax(syntax)
 
-    def registerObject(self, ctx, name, attrs):
-        ctx.objectTypes[name] = attrs
+        log.debug("register object type=%s: %s, %r", name, syntax_name, options)
 
-    def genObject(self, ctx, oid, name, attrs):
-        rawSyntax = None
-        table = False
+    def load_typeDeclaration(self, name, typeDeclarationRHS):
+        typeDeclarationRHS = parseDeclArg(typeDeclarationRHS['typeDeclarationRHS'])
 
-        # table, entry, object with custom syntax, or object with built-in syntax?
-        if 'conceptualTable' in attrs:
-            return self.genTable(ctx, oid, name, attrs, attrs['conceptualTable']['row'])
-        elif 'row' in attrs and attrs['row'] in ctx.entryTable:
-            return self.genEntry(ctx, oid, name, attrs, ctx.entryTable[attrs['row']])
-        elif 'row' in attrs:
-            # using a custom SYNTAX
-            syntax, syntax_options = ctx.lookupType(attrs['row'])
-        else:
-            syntax, syntax_options = ctx.parseObjectSyntax(name, attrs)
+        if isinstance(typeDeclarationRHS, list):
+            self.load_typeDeclaration_textualConvention(name, *parseDeclArgs(typeDeclarationRHS))
+
+        elif 'SEQUENCE' in typeDeclarationRHS:
+            entrySyntax = self.entryTypes[name] = typeDeclarationRHS['SEQUENCE']
+
+            log.debug("register entry type=%s: %s", name, entrySyntax)
+
+        else: # XXX: This is an odd case for thigns like TOKEN-RING-RMON-MIB::MacAddress
+            syntax_name, options = self.objectTypes[name] = self.parseObjectSyntax(typeDeclarationRHS)
+
+            log.debug("register object type=%s: %s, %s", name, syntax_name, options)
+
+    def load_moduleIdentityClause(self, name, lastUpdated, organization, contactInfo, description, revisions, oid):
+        self.moduleOID = self.parseObjectIdentifier(oid['objectIdentifier'])
+
+        log.debug("register module=%s: oid=%s", name, self.moduleOID)
+
+    def load_objectTypeClause_object(self, name, syntax, maxAccessPart, oid):
+        oid = self.parseObjectIdentifier(oid['objectIdentifier'])
+
+        syntax_name, syntax_options = self.parseObjectSyntax(syntax)
 
         # scalar objects
         if not syntax:
-            log.warn("Object %s::%s has unsupported syntax: %r", ctx.moduleName, name, attrs)
+            log.warn("Object %s::%s has unsupported syntax: %r", self.moduleName, name, syntax)
+        else:
+            log.info("load object %s::%s@%s: %s, %s", self.moduleName, name, oid, syntax_name, syntax_options)
 
         object = {
             'Name': name,
             'OID': str(oid),
-            'Syntax': syntax,
+            'Syntax': syntax_name,
         }
 
         if syntax_options:
             object['SyntaxOptions'] = syntax_options
 
-        if attrs.get('MaxAccessPart') == 'not-accessible':
+        if maxAccessPart and maxAccessPart['MaxAccessPart'] == 'not-accessible':
             object['NotAccessible'] = True
 
-        ctx.objects.append(object)
+        self.objects.append(object)
 
-    def genTable(self, ctx, oid, name, attrs, entryType):
-        log.info("parse table=%s for entry=%s attrs: %r", name, entryType, attrs)
+    def load_objectTypeClause_table(self, name, syntax, oid):
+        conceptualTable = parseDeclArg(syntax['conceptualTable'])
+        oid = self.parseObjectIdentifier(oid['objectIdentifier'])
+
+        entryType = conceptualTable['row']
+
+        log.info("load table %s::%s@%s with entryType=%s", self.moduleName, name, oid, entryType)
 
         table = {
             'Name': name,
             'OID': str(oid),
         }
 
-        ctx.tables.append(table)
-        ctx.entryTable[entryType] = table
+        self.tables.append(table)
+        self.entryTable[entryType] = table
 
-    def buildObjectReference(self, ctx, name):
-        mib, name = ctx.resolveName(name)
+    def load_objectTypeClause_entry(self, name, syntax, index, oid):
+        entryType = syntax['row']
+        oid = self.parseObjectIdentifier(oid['objectIdentifier'])
 
-        return '{mib}::{name}'.format(mib=mib, name=name)
+        table = self.entryTable[entryType]
+        entrySyntax = self.entryTypes[entryType]
 
-    def checkEntryType(self, ctx, name):
-        # XXX: what about entry objects from other MIBs...? the 'not-accessible' part is not in the symbolTable :/
-        if name in ctx.objectTypes[name]:
-            attrs = ctx.objectTypes[name]
-
-            if attrs['MaxAccessPart'] == 'not-accessible':
-                return False
-
-        return True
-
-    def genEntry(self, ctx, oid, name, attrs, table):
-        log.info("parse entry=%s for table=%s: %r", name, table, attrs)
-
-        typeAttrs = ctx.types[attrs['row']]
-
-        if 'SEQUENCE' in typeAttrs:
-            entrySyntax = typeAttrs['SEQUENCE']
-        else:
-            log.warn("Skip %s::%s without sequence syntax: %r", ctx.moduleName, name, typeAttrs)
-            return
-
-        if 'INDEX' in attrs:
-            indexSyntax = attrs['INDEX']
+        if index and 'INDEX' in index:
+            indexSyntax = index['INDEX']
         else:
             # TODO: AUGEMENTS?
-            log.warn("Skip %s::%s without index syntax: %r", ctx.moduleName, name, attrs)
+            log.warn("Entry %s::%s missing INDEX: %r", self.moduleName, name, index)
             return
 
-        table['IndexObjects'] = [self.buildObjectReference(ctx, name) for i, name in indexSyntax]
-        table['EntryObjects'] = [self.buildObjectReference(ctx, name) for name, syntax in entrySyntax] # TODO: if checkEntryType(ctx, name)?
+        log.info("load entry %s::%s@%s for table=%s: index=%s syntax=%s", self.moduleName, name, oid, table['Name'], indexSyntax, entrySyntax)
 
+        table['IndexObjects'] = [self.formatObject(name) for i, name in indexSyntax]
+        table['EntryObjects'] = [self.formatObject(name) for name, syntax in entrySyntax] # TODO: only if object is accessible?
+
+    def load_objectTypeClause(self, name, syntax, units, maxAccessPart, status, description, reference, augmention, index, defval, oid):
+        # table, entry, object with custom syntax, or object with built-in syntax?
+        if 'conceptualTable' in syntax:
+            return self.load_objectTypeClause_table(name, syntax, oid)
+        elif 'row' in syntax and syntax['row'] in self.entryTypes:
+            return self.load_objectTypeClause_entry(name, syntax, index, oid)
+        else:
+            return self.load_objectTypeClause_object(name, syntax, maxAccessPart, oid)
+
+class CodeGen(pysmi.codegen.base.AbstractCodeGen):
     def genCode(self, ast, symbolTable, **kwargs):
         moduleName, moduleOID, imports, declarations = ast
         moduleIdentity = None
@@ -360,41 +368,31 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
             for name, sym in symbols.items():
                 print("\t{type:<20} {mib:>18}::{name:<30} = {attrs!r}".format(type='symbol', mib=mib, name=name, attrs=sym))
 
-        # type pass
+        # types pass
         for type, name, *args in declarations:
-            if type == 'typeDeclaration':
-                log.debug("parse mib=%s decl <%s>%s: %s", moduleName, type, name, args)
+            args = parseDeclArgs(args)
 
-                self.registerType(ctx, name, parseDeclAttrs(args))
+            if type == 'typeDeclaration':
+                log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
+
+                ctx.load_typeDeclaration(name, *args)
 
         # objects pass
         for type, name, *args in declarations:
-            # parse
-            log.debug("parse mib=%s decl <%s>%s: %s", moduleName, type, name, args)
+            args = parseDeclArgs(args)
 
-            attrs = parseDeclAttrs(args)
-
-            # dump
-            if 'objectIdentifier' in attrs:
-                parent, *ids = attrs['objectIdentifier']
-
-                ids = [parseOIDPart(id) for id in ids]
-
-                oid = ctx.lookup(moduleName, parent, *ids)
-            else:
-                oid = None
-
-            print("\t{type:<20} {name:<30} = {oid}:".format(type=type, name=name, oid=oid))
-
-            for attr, value in attrs.items():
-                print("\t\t{attr:20} = {value}".format(attr=attr, value=value))
+            print("\t{type:<20} {mib:>18}::{name:<30} = {args!r}".format(type=type, mib=mib, name=name, args=args))
 
             # generate
             if type == 'moduleIdentityClause':
-                moduleOID = oid
+                log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
+
+                ctx.load_moduleIdentityClause(name, *args)
 
             elif type == 'objectTypeClause':
-                self.genObject(ctx, oid, name, attrs)
+                log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
+
+                ctx.load_objectTypeClause(name, *args)
 
         out = {
             'Name': moduleName,
