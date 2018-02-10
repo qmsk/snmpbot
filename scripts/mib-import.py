@@ -449,7 +449,7 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
             identity    = moduleIdentity,
             name        = moduleName,
         )
-        mibdata = json.dumps(out, indent=2)
+        mibdata = json.dumps(out, indent=2, sort_keys=True)
 
         return mibinfo, mibdata
 
