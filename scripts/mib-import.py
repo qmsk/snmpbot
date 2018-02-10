@@ -284,7 +284,7 @@ class Context:
         elif 'BITS' in syntax:
             return 'BITS', self.parseSyntaxBits(syntax['BITS'])
         else:
-            return None, None
+            raise ValueError("Invalid syntax for object: {syntax}".format(syntax=syntax))
 
     def formatObject(self, name):
         mib, name = self.resolveName(name)
@@ -417,17 +417,21 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
 
         # types pass
         for type, name, *args in declarations:
-            args = parseDeclArgs(args)
+            try:
+                args = parseDeclArgs(args)
 
-            if type == 'moduleIdentityClause':
-                log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
+                if type == 'moduleIdentityClause':
+                    log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
 
-                ctx.load_moduleIdentityClause(name, *args)
+                    ctx.load_moduleIdentityClause(name, *args)
 
-            elif type == 'typeDeclaration':
-                log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
+                elif type == 'typeDeclaration':
+                    log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
 
-                ctx.load_typeDeclaration(name, *args)
+                    ctx.load_typeDeclaration(name, *args)
+            except Exception as exc:
+                log.exception("Failed to load {type} {mib}::{name}: {exc}".format(type=type, mib=moduleName, name=name, exc=exc))
+                raise exc
 
         # objects pass
         for type, name, *args in declarations:
@@ -435,10 +439,14 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
 
             print("\t{type:<20} {mib:>18}::{name:<30} = {args!r}".format(type=type, mib=moduleName, name=name, args=args))
 
-            if type == 'objectTypeClause':
-                log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
+            try:
+                if type == 'objectTypeClause':
+                    log.debug("load mib=%s <%s>%s: %s", moduleName, type, name, args)
 
-                ctx.load_objectTypeClause(name, *args)
+                    ctx.load_objectTypeClause(name, *args)
+            except Exception as exc:
+                log.exception("Failed to load {type} {mib}::{name}: {exc}".format(type=type, mib=moduleName, name=name, exc=exc))
+                raise exc
 
         out = {
             'Name': moduleName,
