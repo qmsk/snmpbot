@@ -130,7 +130,7 @@ type TableConfig struct {
 func (config TableConfig) build(mib *MIB) (Table, error) {
 	var table = Table{
 		IndexSyntax: make(IndexSyntax, len(config.IndexObjects)),
-		EntrySyntax: make(EntrySyntax, len(config.EntryObjects)),
+		EntrySyntax: make(EntrySyntax, 0),
 	}
 
 	if id, err := config.resolve(mib); err != nil {
@@ -147,11 +147,13 @@ func (config TableConfig) build(mib *MIB) (Table, error) {
 		}
 	}
 
-	for i, entryName := range config.EntryObjects {
+	for _, entryName := range config.EntryObjects {
 		if entryObject, err := ResolveObject(entryName); err != nil {
 			return table, fmt.Errorf("Unknown EntryObject %v: %v", entryName, err)
+		} else if entryObject.NotAccessible {
+			continue
 		} else {
-			table.EntrySyntax[i] = entryObject
+			table.EntrySyntax = append(table.EntrySyntax, entryObject)
 		}
 	}
 
