@@ -315,15 +315,6 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
         moduleName, moduleOID, imports, declarations = ast
         moduleIdentity = None
 
-        print(json.dumps(dict(
-            moduleName  = moduleName,
-            moduleOID   = moduleOID,
-        #    imports     = imports,
-        #    declarations=declarations,
-        #    symbolTable = symbolTable,
-        #    kwargs=kwargs,
-        ), indent=2))
-
         ctx = Context(moduleName,
             symbolTable     = symbolTable,
             imports         = imports,
@@ -331,6 +322,16 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
         )
 
         print("{mib}:".format(mib=moduleName))
+
+        # imports
+        for mib, names in imports.items():
+            for name in names:
+                print("\t{type:<20} {name:<30} = {mib}::{name}".format(type='import', mib=mib, name=name))
+
+        # symbols
+        for mib, symbols in symbolTable.items():
+            for name, sym in symbols.items():
+                print("\t{type:<20} {mib:>18}::{name:<30} = {attrs!r}".format(type='symbol', mib=mib, name=name, attrs=sym))
 
         # type pass
         for type, name, *args in declarations:
@@ -362,10 +363,10 @@ class CodeGen(pysmi.codegen.base.AbstractCodeGen):
             else:
                 oid = None
 
-            print("\t{type:15} {name} = {oid}:".format(type=type, name=name, oid=oid))
+            print("\t{type:<20} {name:<30} = {oid}:".format(type=type, name=name, oid=oid))
 
             for attr, value in attrs.items():
-                print("\t\t{attr:20} {value}".format(attr=str(attr) + ':', value=value))
+                print("\t\t{attr:20} = {value}".format(attr=attr, value=value))
 
             # generate
             if type == 'moduleIdentityClause':
