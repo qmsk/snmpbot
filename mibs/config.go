@@ -61,17 +61,48 @@ func (config MIBConfig) loadObjects(mib *MIB) error {
 	return nil
 }
 
-func (config MIBConfig) loadTables(mib *MIB) error {
+type loadContext struct {
+	entryMap    map[string]*Table // EntryName => *Table
+	augmentsMap map[string]string // EntryName => AugmentsEntry
+}
+
+func (config MIBConfig) loadTables(mib *MIB, loadContext loadContext) error {
 	for _, tableConfig := range config.Tables {
 		if table, err := tableConfig.build(mib); err != nil {
 			return fmt.Errorf("Invalid Table %v: %v", tableConfig.Name, err)
 		} else {
-			mib.registerTable(table)
+			loadContext.entryMap[mib.Name+"::"+tableConfig.EntryName] = mib.registerTable(table)
+			loadContext.augmentsMap[mib.Name+"::"+tableConfig.EntryName] = tableConfig.AugmentsEntry
+		}
+	}
 
-			// setup entry objects IndexSyntax
-			for _, entryObject := range table.EntrySyntax {
-				entryObject.IndexSyntax = table.IndexSyntax
+	return nil
+}
+
+func (config MIBConfig) loadTablesIndex(mib *MIB, loadContext loadContext) error {
+	for _, tableConfig := range config.Tables {
+		table := mib.ResolveTable(tableConfig.Name)
+
+		// resolve IndexSyntax from augmented entry table
+		if tableConfig.AugmentsEntry != "" {
+			var augmentsEntry, nextEntry string
+
+			for augmentsEntry = tableConfig.AugmentsEntry; nextEntry != ""; augmentsEntry = nextEntry {
+				nextEntry = loadContext.augmentsMap[augmentsEntry]
 			}
+
+			if augmentsTable, ok := loadContext.entryMap[augmentsEntry]; !ok {
+				return fmt.Errorf("Invalid table %v::%v AugmentsEntry=%v: not found", mib.Name, tableConfig.Name, tableConfig.AugmentsEntry)
+			} else if augmentsTable.IndexSyntax == nil {
+				return fmt.Errorf("Invalid table %v::%v AugmentsEntry=%v: no index syntax", mib.Name, tableConfig.Name, tableConfig.AugmentsEntry)
+			} else {
+				table.IndexSyntax = augmentsTable.IndexSyntax
+			}
+		}
+
+		// setup entry objects IndexSyntax
+		for _, entryObject := range table.EntrySyntax {
+			entryObject.IndexSyntax = table.IndexSyntax
 		}
 	}
 
@@ -114,16 +145,16 @@ func (config ObjectConfig) build(mib *MIB) (Object, error) {
 	return object, nil
 }
 
-// TODO: support AugmentsEntry => EntryName mapping for augmented table indexes
 type TableConfig struct {
 	ConfigID
-	IndexObjects []string
-	EntryObjects []string
+	IndexObjects  []string
+	EntryObjects  []string
+	EntryName     string
+	AugmentsEntry string // map IndexObjects from table with EntryName
 }
 
 func (config TableConfig) build(mib *MIB) (Table, error) {
 	var table = Table{
-		IndexSyntax: make(IndexSyntax, len(config.IndexObjects)),
 		EntrySyntax: make(EntrySyntax, 0),
 	}
 
@@ -133,11 +164,15 @@ func (config TableConfig) build(mib *MIB) (Table, error) {
 		table.ID = id
 	}
 
-	for i, indexName := range config.IndexObjects {
-		if indexObject, err := ResolveObject(indexName); err != nil {
-			return table, fmt.Errorf("Invalid IndexObject %v: %v", indexName, err)
-		} else {
-			table.IndexSyntax[i] = indexObject
+	if config.AugmentsEntry == "" {
+		table.IndexSyntax = make(IndexSyntax, len(config.IndexObjects))
+
+		for i, indexName := range config.IndexObjects {
+			if indexObject, err := ResolveObject(indexName); err != nil {
+				return table, fmt.Errorf("Invalid IndexObject %v: %v", indexName, err)
+			} else {
+				table.IndexSyntax[i] = indexObject
+			}
 		}
 	}
 
@@ -216,6 +251,11 @@ func walkPathMulti(path string, handlers ...configWalkFunc) error {
 }
 
 func Load(path string) error {
+	var loadContext = loadContext{
+		entryMap:    make(map[string]*Table),
+		augmentsMap: make(map[string]string),
+	}
+
 	return walkPathMulti(path,
 		func(mibConfig MIBConfig, path string) error {
 			if mib, err := mibConfig.loadMIB(); err != nil {
@@ -231,11 +271,20 @@ func Load(path string) error {
 		func(mibConfig MIBConfig, path string) error {
 			if mib, err := ResolveMIB(mibConfig.Name); err != nil {
 				return fmt.Errorf("Failed to resolve MIB from %v: %v", path, err)
-			} else if err := mibConfig.loadTables(mib); err != nil {
+			} else if err := mibConfig.loadTables(mib, loadContext); err != nil {
 				return fmt.Errorf("Failed to load MIB %v tables from %v: %v", mib, path, err)
 			} else {
 				log.Printf("Load MIB %v from %v with %d tables", mib, path, len(mib.tables))
 
+				return nil
+			}
+		},
+		func(mibConfig MIBConfig, path string) error {
+			if mib, err := ResolveMIB(mibConfig.Name); err != nil {
+				return fmt.Errorf("Failed to resolve MIB from %v: %v", path, err)
+			} else if err := mibConfig.loadTablesIndex(mib, loadContext); err != nil {
+				return fmt.Errorf("Failed to load MIB %v tables from %v: %v", mib, path, err)
+			} else {
 				return nil
 			}
 		},

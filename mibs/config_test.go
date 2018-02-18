@@ -158,3 +158,27 @@ func TestConfigObjectUnknownSyntax(t *testing.T) {
 		}
 	}
 }
+
+func TestConfigResolveTableAugments(t *testing.T) {
+	mib := LookupMIB(snmp.OID{1, 0, 2})
+
+	if table, err := ResolveTable("TEST2-MIB::testTable2"); err != nil {
+		t.Errorf("ResolveTable TEST2-MIB::testTable2: %v", err)
+	} else {
+		assert.Equal(t, "TEST2-MIB::testTable2", table.String())
+		assert.Equal(t, IndexSyntax{mib.ResolveObject("testID")}, table.IndexSyntax)
+		assert.Equal(t, EntrySyntax{mib.ResolveObject("testName2")}, table.EntrySyntax)
+	}
+}
+
+func TestConfigObjectAugmentsIndexSyntax(t *testing.T) {
+	mib := LookupMIB(snmp.OID{1, 0, 2})
+
+	if object, err := ResolveObject("TEST2-MIB::testName2"); err != nil {
+		t.Errorf("ResolveObject TEST2-MIB::testName2: %v", err)
+	} else {
+		assert.Equal(t, "TEST2-MIB::testName2", object.String())
+		assert.Equal(t, &DisplayStringSyntax{}, object.Syntax)
+		assert.Equal(t, IndexSyntax{mib.ResolveObject("testID")}, object.IndexSyntax)
+	}
+}
