@@ -85,10 +85,15 @@ func (config MIBConfig) loadTablesIndex(mib *MIB, loadContext loadContext) error
 
 		// resolve IndexSyntax from augmented entry table
 		if tableConfig.AugmentsEntry != "" {
-			var augmentsEntry, nextEntry string
+			var augmentsEntry = tableConfig.AugmentsEntry
 
-			for augmentsEntry = tableConfig.AugmentsEntry; nextEntry != ""; augmentsEntry = nextEntry {
-				nextEntry = loadContext.augmentsMap[augmentsEntry]
+			// chase any chained augments
+			for {
+				if nextEntry := loadContext.augmentsMap[augmentsEntry]; nextEntry == "" {
+					break
+				} else {
+					augmentsEntry = nextEntry
+				}
 			}
 
 			if augmentsTable, ok := loadContext.entryMap[augmentsEntry]; !ok {
