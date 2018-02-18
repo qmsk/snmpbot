@@ -62,6 +62,8 @@ All of the commands support the same common flags:
         Default SNMP community (default "public")
   -snmp-maxvars uint
         Maximum request VarBinds (default 10)
+  -snmp-mibs string
+        Load MIBs from path (default $SNMPBOT_MIBS)
   -snmp-retry int
         SNMP request retry
   -snmp-timeout duration
@@ -240,6 +242,8 @@ $ $GOPATH/bin/snmpbot -help
         Default SNMP community (default "public")
   -snmp-maxvars uint
         Maximum request VarBinds (default 10)
+  -snmp-mibs string
+        Load MIBs from path (default $SNMPBOT_MIBS)
   -snmp-retry int
         SNMP request retry
   -snmp-timeout duration

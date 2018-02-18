@@ -23,7 +23,7 @@ func (options *Options) InitFlags() {
 	flag.BoolVar(&options.LogVerbose, "verbose", false, "Log info")
 	flag.BoolVar(&options.LogQuiet, "quiet", false, "Do not log warnings")
 
-	flag.StringVar(&options.MIBPath, "snmp-mibs", "", "Load MIBs from path")
+	flag.StringVar(&options.MIBPath, "snmp-mibs", os.Getenv("SNMPBOT_MIBS"), "Load MIBs from path")
 	flag.StringVar(&options.SNMP.Community, "snmp-community", "public", "Default SNMP community")
 	flag.DurationVar(&options.SNMP.Timeout, "snmp-timeout", client.DefaultTimeout, "SNMP request timeout")
 	flag.IntVar(&options.SNMP.Retry, "snmp-retry", 0, "SNMP request retry")
