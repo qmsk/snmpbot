@@ -11,17 +11,17 @@ var mibRegistry = makeRegistry()
 func registerMIB(mib MIB) *MIB {
 	mib.ID.MIB = &mib
 
-	mibRegistry.registerName(ID{MIB: &mib, OID: mib.OID}, mib.Name)
+	mibRegistry.registerName(mib.ID, mib.Name)
 
 	if mib.OID != nil {
-		mibRegistry.registerOID(ID{MIB: &mib, OID: mib.OID})
+		mibRegistry.registerOID(mib.ID)
 	}
 
 	return &mib
 }
 
 func RegisterMIB(name string, oid ...int) *MIB {
-	return registerMIB(makeMIB(ID{Name: name, OID: snmp.OID(oid)}))
+	return registerMIB(makeMIB(name, snmp.OID(oid)))
 }
 
 func ResolveMIB(name string) (*MIB, error) {

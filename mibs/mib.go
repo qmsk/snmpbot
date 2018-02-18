@@ -6,9 +6,10 @@ import (
 	"regexp"
 )
 
-func makeMIB(id ID) MIB {
+func makeMIB(name string, oid snmp.OID) MIB {
 	return MIB{
-		ID:       id,
+		ID:       ID{OID: oid},
+		Name:     name,
 		registry: makeRegistry(),
 		objects:  make(map[IDKey]*Object),
 		tables:   make(map[IDKey]*Table),
@@ -17,6 +18,7 @@ func makeMIB(id ID) MIB {
 
 type MIB struct {
 	ID
+	Name string // shadows ID.Name, which is empty
 	registry
 
 	objects map[IDKey]*Object

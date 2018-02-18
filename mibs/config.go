@@ -33,15 +33,12 @@ type MIBConfig struct {
 }
 
 func (config MIBConfig) build() (MIB, error) {
-	var id = ID{Name: config.Name}
-
 	if oid, err := snmp.ParseOID(config.OID); err != nil {
 		return MIB{}, fmt.Errorf("Invalid OID for MIB %v: %v", config.Name, err)
 	} else {
-		id.OID = oid
+		return makeMIB(config.Name, oid), nil
 	}
 
-	return makeMIB(id), nil
 }
 
 func (config MIBConfig) loadMIB() (*MIB, error) {
