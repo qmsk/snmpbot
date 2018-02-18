@@ -35,9 +35,72 @@ func testID(t *testing.T, test idTest) {
 	testIDString(t, test)
 }
 
+func TestResolveInvalidSyntax(t *testing.T) {
+	testResolve(t, idTest{
+		str: ":x",
+		err: "Invalid syntax: :x",
+	})
+}
+
+func TestResolveInvalidMIB(t *testing.T) {
+	testResolve(t, idTest{
+		str: "::foo",
+		err: "Invalid name without MIB: ::foo",
+	})
+}
+
+func TestResolveMIBNotFoundError(t *testing.T) {
+	testResolve(t, idTest{
+		str: "ASDF-MIB",
+		err: "MIB not found: ASDF-MIB",
+	})
+}
+
+func TestResolveNameNotFoundError(t *testing.T) {
+	testResolve(t, idTest{
+		str: "TEST-MIB::missing",
+		err: "TEST-MIB name not found: missing",
+	})
+}
+
+func TestResolveInvalidName(t *testing.T) {
+	testResolve(t, idTest{
+		str: "TEST-MIB::.0",
+		err: "Invalid syntax: TEST-MIB::.0",
+	})
+}
+
+func TestResolveInvalidIndex(t *testing.T) {
+	testResolve(t, idTest{
+		str: "TEST-MIB.0..0",
+		err: "Invalid OID part: ",
+	})
+}
+
 func TestIDMIB(t *testing.T) {
 	testID(t, idTest{
 		str: "TEST-MIB",
-		id:  ID{MIB: TestMIB, Name: "", OID: snmp.OID{1, 0, 1}},
+		id:  ID{MIB: TestMIB, OID: snmp.OID{1, 0, 1}},
+	})
+}
+
+func TestIDMIBIndex(t *testing.T) {
+	testID(t, idTest{
+		str: "TEST-MIB.2.1",
+		id:  ID{MIB: TestMIB, OID: snmp.OID{1, 0, 1, 2, 1}},
+	})
+}
+
+func TestIDMIBName(t *testing.T) {
+	testID(t, idTest{
+		str: "TEST-MIB::test",
+		id:  ID{MIB: TestMIB, Name: "test", OID: snmp.OID{1, 0, 1, 1, 1}},
+	})
+}
+
+func TestResolveMIBNameIndex(t *testing.T) {
+	testResolve(t, idTest{
+		str: "TEST-MIB::test.0",
+		id:  ID{MIB: TestMIB, Name: "test", OID: snmp.OID{1, 0, 1, 1, 1, 0}},
 	})
 }

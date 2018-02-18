@@ -17,6 +17,12 @@ func init() {
 }
 
 func snmpprobe(client *mibs.Client, ids ...mibs.ID) error {
+	if len(ids) == 0 {
+		mibs.WalkMIBs(func(mib *mibs.MIB) {
+			ids = append(ids, mib.ID)
+		})
+	}
+
 	for _, id := range ids {
 		if ok, err := client.Probe(id); err != nil {
 			return err

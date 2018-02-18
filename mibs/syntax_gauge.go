@@ -30,3 +30,7 @@ func (syntax GaugeSyntax) UnpackIndex(index []int) (Value, []int, error) {
 	// TODO
 	return nil, index, SyntaxIndexError{syntax, index}
 }
+
+func init() {
+	RegisterSyntax("Gauge32", GaugeSyntax{})
+}

@@ -38,3 +38,7 @@ func (syntax UnsignedSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 		return nil, SyntaxError{syntax, value}
 	}
 }
+
+func init() {
+	RegisterSyntax("Unsigned32", UnsignedSyntax{})
+}

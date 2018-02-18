@@ -56,3 +56,7 @@ func (syntax EnumSyntax) UnpackIndex(index []int) (Value, []int, error) {
 	// TODO
 	return nil, index, SyntaxIndexError{syntax, index}
 }
+
+func init() {
+	RegisterSyntax("ENUM", EnumSyntax{})
+}

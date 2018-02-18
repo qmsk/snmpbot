@@ -3,11 +3,13 @@ package mibs
 import (
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
+	"regexp"
 )
 
-func makeMIB(id ID) MIB {
+func makeMIB(name string, oid snmp.OID) MIB {
 	return MIB{
-		ID:       id,
+		ID:       ID{OID: oid},
+		Name:     name,
 		registry: makeRegistry(),
 		objects:  make(map[IDKey]*Object),
 		tables:   make(map[IDKey]*Table),
@@ -16,6 +18,7 @@ func makeMIB(id ID) MIB {
 
 type MIB struct {
 	ID
+	Name string // shadows ID.Name, which is empty
 	registry
 
 	objects map[IDKey]*Object
@@ -30,22 +33,73 @@ func (mib *MIB) MakeID(name string, ids ...int) ID {
 	return ID{mib, name, mib.OID.Extend(ids...)}
 }
 
+func (mib *MIB) registerObject(object Object) *Object {
+	mibRegistry.registerOID(object.ID)
+	mib.registry.register(object.ID)
+	mib.objects[object.ID.Key()] = &object
+
+	return &object
+}
+
 func (mib *MIB) RegisterObject(id ID, object Object) *Object {
 	object.ID = id
 
-	mib.registry.register(id)
-	mib.objects[id.Key()] = &object
+	return mib.registerObject(object)
+}
 
-	return &object
+func (mib *MIB) registerTable(table Table) *Table {
+	mibRegistry.registerOID(table.ID)
+	mib.registry.register(table.ID)
+	mib.tables[table.ID.Key()] = &table
+
+	return &table
 }
 
 func (mib *MIB) RegisterTable(id ID, table Table) *Table {
 	table.ID = id
 
-	mib.registry.register(id)
-	mib.tables[id.Key()] = &table
+	return mib.registerTable(table)
+}
 
-	return &table
+/* Resolve MIB-relative ID by human-readable name:
+".1.0"
+"sysDescr"
+"sysDescr.0"
+*/
+var mibResolveRegexp = regexp.MustCompile("^([^.]+?)?([.][0-9.]+)?$")
+
+func (mib *MIB) Resolve(name string) (ID, error) {
+	var id = ID{OID: mib.OID}
+	var nameID, nameOID string
+
+	if matches := mibResolveRegexp.FindStringSubmatch(name); matches == nil {
+		return id, fmt.Errorf("Invalid syntax: %v", name)
+	} else {
+		nameID = matches[1]
+		nameOID = matches[2]
+	}
+
+	if nameID == "" {
+
+	} else if resolveID, err := mib.ResolveName(nameID); err != nil {
+		return id, err
+	} else {
+		id = resolveID
+	}
+
+	if nameOID == "" {
+
+	} else if oid, err := snmp.ParseOID(nameOID); err != nil {
+		return id, err
+	} else {
+		if id.OID == nil {
+			id.OID = oid
+		} else {
+			id.OID = id.OID.Extend(oid...)
+		}
+	}
+
+	return id, nil
 }
 
 func (mib *MIB) ResolveName(name string) (ID, error) {
@@ -76,11 +130,27 @@ func (mib *MIB) Object(id ID) *Object {
 	}
 }
 
+func (mib *MIB) ResolveObject(name string) *Object {
+	if id, err := mib.Resolve(name); err != nil {
+		return nil
+	} else {
+		return mib.Object(id)
+	}
+}
+
 func (mib *MIB) Table(id ID) *Table {
 	if table, ok := mib.tables[id.Key()]; !ok {
 		return nil
 	} else {
 		return table
+	}
+}
+
+func (mib *MIB) ResolveTable(name string) *Table {
+	if id, err := mib.Resolve(name); err != nil {
+		return nil
+	} else {
+		return mib.Table(id)
 	}
 }
 

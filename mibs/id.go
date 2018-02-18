@@ -36,6 +36,8 @@ func (id ID) FormatOID(oid snmp.OID) string {
 		return oid.String()
 	} else if len(index) == 0 {
 		return id.String()
+	} else if id.Name == "" {
+		return fmt.Sprintf("%s%s", id.MIB.Name, snmp.OID(index).String())
 	} else {
 		return fmt.Sprintf("%s::%s%s", id.MIB.Name, id.Name, snmp.OID(index).String())
 	}

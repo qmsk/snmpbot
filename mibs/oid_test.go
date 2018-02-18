@@ -34,24 +34,10 @@ func testParseFormatOID(t *testing.T, test oidTest) {
 	testFormatOID(t, test)
 }
 
-func TestParseOIDMibNotFoundError(t *testing.T) {
+func TestOIDError(t *testing.T) {
 	testParseOID(t, oidTest{
-		name: "ASDF-MIB",
-		err:  "MIB not found: ASDF-MIB",
-	})
-}
-
-func TestParseOIDNameNotFoundError(t *testing.T) {
-	testParseOID(t, oidTest{
-		name: "TEST-MIB::missing",
-		err:  "TEST-MIB name not found: missing",
-	})
-}
-
-func TestOIDMIBIndexInvalid(t *testing.T) {
-	testParseOID(t, oidTest{
-		name: "TEST-MIB::.0",
-		err:  "Invalid syntax: TEST-MIB::.0",
+		name: "ASDF",
+		err:  "MIB not found: ASDF",
 	})
 }
 
@@ -95,4 +81,40 @@ func TestOIDIndex(t *testing.T) {
 		name: "TEST-MIB::test.0",
 		oid:  snmp.OID{1, 0, 1, 1, 1, 0},
 	})
+}
+
+func TestLookupMIBNotFound(t *testing.T) {
+	mib := LookupMIB(snmp.OID{1, 2, 0})
+
+	assert.Nil(t, mib)
+}
+
+func TestLookupMIB(t *testing.T) {
+	mib := LookupMIB(snmp.OID{1, 0, 1})
+
+	assert.Equal(t, TestMIB, mib)
+}
+
+func TestLookupObjectNotFound(t *testing.T) {
+	object := LookupObject(snmp.OID{1, 2, 0})
+
+	assert.Nil(t, object)
+}
+
+func TestLookupObjectNotObject(t *testing.T) {
+	object := LookupObject(snmp.OID{1, 0, 1, 0, 1})
+
+	assert.Nil(t, object)
+}
+
+func TestLookupObject(t *testing.T) {
+	object := LookupObject(snmp.OID{1, 0, 1, 1, 1})
+
+	assert.Equal(t, TestObject, object)
+}
+
+func TestLookupObjectIndex(t *testing.T) {
+	object := LookupObject(snmp.OID{1, 0, 1, 1, 1, 0})
+
+	assert.Equal(t, TestObject, object)
 }

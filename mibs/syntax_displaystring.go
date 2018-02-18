@@ -25,3 +25,8 @@ func (syntax DisplayStringSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 		return nil, SyntaxError{syntax, value}
 	}
 }
+
+func init() {
+	RegisterSyntax("SNMPv2-TC::DisplayString", DisplayStringSyntax{})
+	RegisterSyntax("SNMP-FRAMEWORK-MIB::SnmpAdminString", DisplayStringSyntax{})
+}

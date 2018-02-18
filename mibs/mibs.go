@@ -8,14 +8,20 @@ import (
 
 var mibRegistry = makeRegistry()
 
-func RegisterMIB(name string, oid ...int) *MIB {
-	var mib = makeMIB(ID{Name: name, OID: snmp.OID(oid)})
-
+func registerMIB(mib MIB) *MIB {
 	mib.ID.MIB = &mib
 
-	mibRegistry.register(mib.ID)
+	mibRegistry.registerName(mib.ID, mib.Name)
+
+	if mib.OID != nil {
+		mibRegistry.registerOID(mib.ID)
+	}
 
 	return &mib
+}
+
+func RegisterMIB(name string, oid ...int) *MIB {
+	return registerMIB(makeMIB(name, snmp.OID(oid)))
 }
 
 func ResolveMIB(name string) (*MIB, error) {
@@ -26,16 +32,13 @@ func ResolveMIB(name string) (*MIB, error) {
 	}
 }
 
-func LookupMIB(oid snmp.OID) *MIB {
-	if id, ok := mibRegistry.getOID(oid); !ok {
-		return nil
-	} else {
-		return id.MIB
-	}
-}
-
 func WalkMIBs(f func(mib *MIB)) {
 	mibRegistry.walk(func(id ID) {
+		if id.OID == nil {
+			// skip MIBs without a top-level OID
+			return
+		}
+
 		f(id.MIB)
 	})
 }
@@ -120,11 +123,19 @@ func ResolveTable(name string) (*Table, error) {
 }
 
 // Lookup ID by OID
+func LookupMIB(oid snmp.OID) *MIB {
+	if id, ok := mibRegistry.getOID(oid); !ok {
+		return nil
+	} else {
+		return id.MIB
+	}
+}
+
 func Lookup(oid snmp.OID) ID {
-	if mib := LookupMIB(oid); mib == nil {
+	if id, ok := mibRegistry.getOID(oid); !ok {
 		return ID{OID: oid}
 	} else {
-		return mib.Lookup(oid)
+		return id
 	}
 }
 

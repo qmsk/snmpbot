@@ -4,10 +4,6 @@ import (
 	"fmt"
 	"github.com/qmsk/snmpbot/mibs"
 	_ "github.com/qmsk/snmpbot/mibs/bridge_mib"
-	_ "github.com/qmsk/snmpbot/mibs/if_mib"
-	_ "github.com/qmsk/snmpbot/mibs/ip_mib"
-	_ "github.com/qmsk/snmpbot/mibs/lldp_mib"
-	_ "github.com/qmsk/snmpbot/mibs/snmpv2_mib"
 	"github.com/qmsk/snmpbot/snmp"
 	"log"
 )
@@ -49,10 +45,7 @@ func (options Options) PrintVarBind(varBind snmp.VarBind) {
 }
 
 func (options Options) PrintObject(object *mibs.Object, varBind snmp.VarBind) {
-	name := object.FormatIndex(varBind.OID())
-	value, err := object.Unpack(varBind)
-
-	if err != nil {
+	if name, value, err := object.Format(varBind); err != nil {
 		log.Printf("VarBind[%v](%v): %v", varBind.OID(), object, err)
 	} else {
 		fmt.Printf("%v = %v\n", name, value)

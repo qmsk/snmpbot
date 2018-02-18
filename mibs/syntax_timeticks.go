@@ -47,3 +47,7 @@ func (syntax TimeTicksSyntax) Unpack(varBind snmp.VarBind) (Value, error) {
 		return nil, SyntaxError{syntax, value}
 	}
 }
+
+func init() {
+	RegisterSyntax("TimeTicks", TimeTicksSyntax{})
+}
