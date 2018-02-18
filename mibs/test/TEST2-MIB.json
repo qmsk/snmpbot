@@ -5,7 +5,7 @@
     {
       "Name": "test",
       "OID": ".1.0.2.1.1",
-      "Syntax": "DisplayString"
+      "Syntax": "SNMPv2-TC::DisplayString"
     },
     {
       "Name": "testID",
@@ -15,7 +15,7 @@
     {
       "Name": "testName",
       "OID": ".1.0.2.1.2.2",
-      "Syntax": "DisplayString"
+      "Syntax": "SNMPv2-TC::DisplayString"
     },
     {
       "Name": "testEnum",
