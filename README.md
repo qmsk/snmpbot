@@ -1,6 +1,6 @@
 # github.com/qmsk/snmpbot
 
-SNMP client (manager) library for Go with rudimentary support for SMI MIBs.
+SNMP client (manager) library for Go with support for SMI MIBs.
 
 REST (HTTP/JSON) API for writing SNMP applications.
 
@@ -9,6 +9,17 @@ REST (HTTP/JSON) API for writing SNMP applications.
 ### Go version 1.9
 
 * [encoding/asn1: add NullBytes and NullRawValue for working with ASN.1 NULL](https://github.com/golang/go/commit/d9b1f9e85ee097ebc95c5904cee921ba7be4f732)
+
+### SNMP MIBs
+
+SNMP MIBs must be pre-processed into a custom JSON format for use with `snmpbot`.
+
+Common pre-processed MIBs can be found at [github.com/qmsk/snmpbot-mibs](https://github.com/qmsk/snmpbot-mibs):
+
+    git clone https://github.com/qmsk/snmpbot-mibs
+    export SNMPBOT_MIBS=$PWD/snmpbot-mibs
+
+Custom MIBs can be imported using the [`mib-import.py` script](./scripts).
 
 ## Go Libraries
 
@@ -36,12 +47,11 @@ SNMP client with support for UDP queries
 
 SMI support for MIBs
 
+* Initialize using `Load(path string)` to load the `.json` MIB files
 * Resolving strings like `"interfaces::ifDescr"` to `*Object`
 * Resolving OIDs like `ParseOID(".1.3.6.1.2.1.2.2.1.2")` to `*Object`
 * Decoding SMI object `SYNTAX` to `interface{}`, including `encoding/json` support
 * Decoding SMI table `INDEX` syntax from OIDs
-
-***NOTE***: The supported MIBs are currently all hand-written, TODO support for importing ASN.1 MIBs
 
 ### `github.com/qmsk/snmpbot/server`
 
