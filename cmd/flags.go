@@ -34,13 +34,13 @@ func (options *Options) InitFlags() {
 func (options *Options) Parse() []string {
 	flag.Parse()
 
-	log.Printf("Parse: MIBPath=%v", options.MIBPath)
-
 	return flag.Args()
 }
 
 func (options *Options) LoadMIBs() error {
-	log.Printf("LoadMIBs: MIBPath=%v", options.MIBPath)
+	if options.MIBPath == "" {
+		return fmt.Errorf("Must provide -snmp-mibs/$SNMPBOT_MIBS with path to .../snmpbot-mibs/*.json")
+	}
 
 	for _, path := range filepath.SplitList(options.MIBPath) {
 		if err := mibs.Load(path); err != nil {
