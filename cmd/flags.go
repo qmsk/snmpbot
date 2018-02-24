@@ -12,13 +12,13 @@ import (
 )
 
 type Options struct {
-	Log  logging.Options
-	MIBs mibs.Options
-	SNMP client.Config
+	Logging logging.Options
+	MIBs    mibs.Options
+	SNMP    client.Config
 }
 
 func (options *Options) InitFlags() {
-	options.Log.InitFlags("")
+	options.Logging.InitFlags("")
 	options.MIBs.InitFlags()
 
 	flag.StringVar(&options.SNMP.Community, "snmp-community", "public", "Default SNMP community")
@@ -31,13 +31,15 @@ func (options *Options) InitFlags() {
 func (options *Options) Parse() []string {
 	flag.Parse()
 
+	options.MIBs.Logging.ApplyDefaults(options.Logging)
+
 	return flag.Args()
 }
 
 func (options Options) ClientConfig() client.Config {
 	var config = options.SNMP
 
-	config.Logging = options.Log.MakeLogging()
+	config.Logging = options.Logging.MakeLogging()
 
 	return config
 }

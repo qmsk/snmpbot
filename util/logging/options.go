@@ -27,6 +27,18 @@ func (options *Options) InitFlags(module string) {
 	flag.BoolVar(&options.Quiet, "quiet"+flagSuffix, false, "Do not log warnings"+descSuffix)
 }
 
+func (options *Options) ApplyDefaults(defaultOptions Options) {
+	if defaultOptions.Debug {
+		options.Debug = true
+	}
+	if defaultOptions.Verbose {
+		options.Verbose = true
+	}
+	if defaultOptions.Quiet {
+		options.Quiet = true
+	}
+}
+
 func (options *Options) MakeLogging() Logging {
 	var logging = Logging{}
 	var logSuffix = ": "

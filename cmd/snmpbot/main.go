@@ -27,6 +27,7 @@ func (options *Options) InitFlags() {
 }
 
 func (options *Options) Apply() {
+	options.ServerLogging.ApplyDefaults(options.Options.Logging)
 	options.Server.SNMP = options.ClientConfig()
 
 	server.SetLogging(options.ServerLogging.MakeLogging())
