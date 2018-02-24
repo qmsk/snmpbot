@@ -20,10 +20,20 @@ type Options struct {
 }
 
 func (options *Options) InitFlags() {
-	options.Logging.InitFlags("")
+	options.MIBsLogging = logging.Options{
+		Module:   "mibs",
+		Defaults: &options.Logging,
+	}
+	options.ClientLogging = logging.Options{
+		Module:   "client",
+		Defaults: &options.Logging,
+	}
+
+	options.Logging.InitFlags()
+	options.MIBsLogging.InitFlags()
+	options.ClientLogging.InitFlags()
+
 	options.MIBs.InitFlags()
-	options.MIBsLogging.InitFlags("mibs")
-	options.ClientLogging.InitFlags("client")
 
 	flag.StringVar(&options.SNMP.Community, "snmp-community", "public", "Default SNMP community")
 	flag.DurationVar(&options.SNMP.Timeout, "snmp-timeout", client.DefaultTimeout, "SNMP request timeout")
@@ -34,9 +44,6 @@ func (options *Options) InitFlags() {
 
 func (options *Options) Parse() []string {
 	flag.Parse()
-
-	options.MIBsLogging.ApplyDefaults(options.Logging)
-	options.ClientLogging.ApplyDefaults(options.Logging)
 
 	mibs.SetLogging(options.MIBsLogging.MakeLogging())
 

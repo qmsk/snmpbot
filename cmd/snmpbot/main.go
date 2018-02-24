@@ -18,16 +18,19 @@ type Options struct {
 }
 
 func (options *Options) InitFlags() {
+	options.ServerLogging = logging.Options{
+		Module:   "server",
+		Defaults: &options.Options.Logging,
+	}
 	options.Options.InitFlags()
 	options.Server.InitFlags()
-	options.ServerLogging.InitFlags("server")
+	options.ServerLogging.InitFlags()
 
 	flag.StringVar(&options.Web.Listen, "http-listen", ":8286", "HTTP server listen: [HOST]:PORT")
 	flag.StringVar(&options.Web.Static, "http-static", "", "HTTP sever /static path: PATH")
 }
 
 func (options *Options) Apply() {
-	options.ServerLogging.ApplyDefaults(options.Options.Logging)
 	options.Server.SNMP = options.ClientConfig()
 
 	server.SetLogging(options.ServerLogging.MakeLogging())
