@@ -6,6 +6,7 @@ import (
 	"github.com/qmsk/snmpbot/api"
 	"github.com/qmsk/snmpbot/client"
 	"github.com/qmsk/snmpbot/mibs"
+	"github.com/qmsk/snmpbot/util/logging"
 )
 
 type HostConfig struct {
@@ -19,7 +20,10 @@ type HostConfig struct {
 }
 
 func newHost(id HostID) *Host {
-	return &Host{id: id}
+	host := Host{id: id}
+	host.log = logging.WithPrefix(log, fmt.Sprintf("Host<%v>", id))
+
+	return &host
 }
 
 type HostState struct {
@@ -30,6 +34,7 @@ type HostState struct {
 type Host struct {
 	id         HostID
 	config     HostConfig
+	log        logging.PrefixLogging
 	probedMIBs []*mibs.MIB
 	snmpClient *client.Client
 	state      HostState
@@ -53,12 +58,12 @@ func (host *Host) init(config HostConfig) error {
 	host.config = config
 	host.config.SNMP = &snmpConfig
 
-	log.Infof("Host<%v>: Config SNMP: %#v", host, host.config.SNMP)
+	host.log.Infof("Config SNMP: %#v", host.config.SNMP)
 
 	if snmpClient, err := snmpConfig.Client(); err != nil {
 		return fmt.Errorf("SNMP client for %v: %v", host, err)
 	} else {
-		log.Infof("Host<%v>: Connected client: %v", host, snmpClient)
+		host.log.Infof("Connected client: %v", snmpClient)
 
 		host.snmpClient = snmpClient
 	}
@@ -80,13 +85,13 @@ func (host *Host) probe() {
 	var client = mibs.Client{host.snmpClient}
 	var ids = host.makeMIBIDs()
 
-	log.Infof("Host<%v>: Probing MIBs: %v", host, ids)
+	host.log.Infof("Probing MIBs: %v", ids)
 
 	if probed, err := client.ProbeMany(ids); err != nil {
-		log.Warnf("Host<%v>: Failed to probe: %v", host, err)
+		host.log.Warnf("Failed to probe: %v", err)
 	} else {
 		for _, id := range ids {
-			log.Debugf("Host<%v>: Probed %v = %v", host, id, probed[id.Key()])
+			host.log.Debugf("Probed %v = %v", id, probed[id.Key()])
 
 			if probed[id.Key()] {
 				host.probedMIBs = append(host.probedMIBs, id.MIB)
@@ -106,7 +111,7 @@ func (host *Host) IsUp() bool {
 }
 
 func (host *Host) start() {
-	log.Infof("Host<%v>: Starting...", host)
+	host.log.Infof("Starting...")
 
 	go host.run()
 
@@ -115,18 +120,18 @@ func (host *Host) start() {
 }
 
 func (host *Host) run() {
-	log.Infof("Host<%v>: Running...", host)
+	host.log.Infof("Running...")
 
 	if err := host.snmpClient.Run(); err != nil {
 		// XXX: handle restarts?
-		log.Errorf("Host<%v>: SNMP client failed: %v", host, err)
+		host.log.Errorf("SNMP client failed: %v", err)
 	}
 
-	log.Infof("Host<%v>: Stopped", host)
+	host.log.Infof("Stopped")
 }
 
 func (host *Host) stop() {
-	log.Infof("Host<%v>: Stopping...", host)
+	host.log.Infof("Stopping...")
 
 	host.snmpClient.Close()
 }
