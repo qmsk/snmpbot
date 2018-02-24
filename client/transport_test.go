@@ -75,8 +75,9 @@ func (transport *testTransport) Close() error {
 	return nil
 }
 
-func (transport *testTransport) mockGetTimeout(oid snmp.OID) {
+func (transport *testTransport) mockGetTimeout(addr string, oid snmp.OID) {
 	transport.On("GetRequest", IO{
+		Addr: testAddr(addr),
 		Packet: snmp.Packet{
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
@@ -90,8 +91,9 @@ func (transport *testTransport) mockGetTimeout(oid snmp.OID) {
 	}).Return(error(nil), nil)
 }
 
-func (transport *testTransport) mockGet(oid snmp.OID, varBind snmp.VarBind) {
+func (transport *testTransport) mockGet(addr string, oid snmp.OID, varBind snmp.VarBind) {
 	transport.On("GetRequest", IO{
+		Addr: testAddr(addr),
 		Packet: snmp.Packet{
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
@@ -103,6 +105,7 @@ func (transport *testTransport) mockGet(oid snmp.OID, varBind snmp.VarBind) {
 			},
 		},
 	}).Return(error(nil), IO{
+		Addr: testAddr(addr),
 		Packet: snmp.Packet{
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
@@ -116,13 +119,14 @@ func (transport *testTransport) mockGet(oid snmp.OID, varBind snmp.VarBind) {
 	})
 }
 
-func (transport *testTransport) mockGetMany(oids []snmp.OID, varBinds []snmp.VarBind) {
+func (transport *testTransport) mockGetMany(addr string, oids []snmp.OID, varBinds []snmp.VarBind) {
 	var reqVars = make([]snmp.VarBind, len(oids))
 	for i, oid := range oids {
 		reqVars[i] = snmp.MakeVarBind(oid, nil)
 	}
 
 	transport.On("GetRequest", IO{
+		Addr: testAddr(addr),
 		Packet: snmp.Packet{
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
@@ -132,6 +136,7 @@ func (transport *testTransport) mockGetMany(oids []snmp.OID, varBinds []snmp.Var
 			VarBinds: reqVars,
 		},
 	}).Return(error(nil), IO{
+		Addr: testAddr(addr),
 		Packet: snmp.Packet{
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
@@ -143,8 +148,9 @@ func (transport *testTransport) mockGetMany(oids []snmp.OID, varBinds []snmp.Var
 	})
 }
 
-func (transport *testTransport) mockGetNext(oid snmp.OID, varBind snmp.VarBind) {
+func (transport *testTransport) mockGetNext(addr string, oid snmp.OID, varBind snmp.VarBind) {
 	transport.On("GetNextRequest", IO{
+		Addr: testAddr(addr),
 		Packet: snmp.Packet{
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
@@ -156,6 +162,7 @@ func (transport *testTransport) mockGetNext(oid snmp.OID, varBind snmp.VarBind) 
 			},
 		},
 	}).Return(error(nil), IO{
+		Addr: testAddr(addr),
 		Packet: snmp.Packet{
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
@@ -169,13 +176,14 @@ func (transport *testTransport) mockGetNext(oid snmp.OID, varBind snmp.VarBind) 
 	})
 }
 
-func (transport *testTransport) mockGetNextMulti(oids []snmp.OID, varBinds []snmp.VarBind) {
+func (transport *testTransport) mockGetNextMulti(addr string, oids []snmp.OID, varBinds []snmp.VarBind) {
 	var requestVars = make([]snmp.VarBind, len(oids))
 	for i, oid := range oids {
 		requestVars[i] = snmp.MakeVarBind(oid, nil)
 	}
 
 	transport.On("GetNextRequest", IO{
+		Addr: testAddr(addr),
 		Packet: snmp.Packet{
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
@@ -185,6 +193,7 @@ func (transport *testTransport) mockGetNextMulti(oids []snmp.OID, varBinds []snm
 			VarBinds: requestVars,
 		},
 	}).Return(error(nil), IO{
+		Addr: testAddr(addr),
 		Packet: snmp.Packet{
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),

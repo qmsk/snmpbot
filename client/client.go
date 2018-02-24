@@ -75,6 +75,7 @@ func (client *Client) requestRead(requestType snmp.PDUType, varBinds []snmp.VarB
 	var retVars = make([]snmp.VarBind, len(varBinds))
 	var retLen = uint(0)
 	var send = IO{
+		Addr: client.addr,
 		Packet: snmp.Packet{
 			Version:   SNMPVersion,
 			Community: []byte(client.options.Community),
