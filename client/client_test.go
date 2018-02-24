@@ -150,6 +150,46 @@ func TestGetRecvWrongAddr(t *testing.T) {
 	})
 }
 
+func TestGetRecvWrongCommunity(t *testing.T) {
+	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0}
+
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		transport.On("GetRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetRequestType,
+			PDU: snmp.PDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(oid, nil),
+				},
+			},
+		}).Return(nil, IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("not-public"),
+			},
+			PDUType: snmp.GetResponseType,
+			PDU: snmp.PDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(oid, 1),
+				},
+			},
+		})
+
+		if varBinds, err := client.Get(oid); err == nil {
+			t.Errorf("Get(%v): %v", oid, varBinds)
+		} else if timeoutErr, ok := err.(TimeoutError); !ok {
+			t.Errorf("Get(%v): %v", oid, err)
+		} else {
+			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[1] after %v", timeoutErr.Duration))
+		}
+	})
+}
+
 func TestGetRequestErrorValue(t *testing.T) {
 	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0}
 	var value = snmp.NoSuchObjectValue
