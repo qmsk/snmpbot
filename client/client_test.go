@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
+	"github.com/qmsk/snmpbot/util/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -22,7 +23,7 @@ func makeTestClient(t *testing.T) (*testTransport, *Client) {
 	var testTransport = testTransport{
 		recvChan: make(chan IO),
 	}
-	var client = makeClient(Logging{
+	var client = makeClient(logging.Logging{
 		Debug: testLogger{t, "DEBUG: "},
 		Info:  testLogger{t, "INFO: "},
 		Warn:  testLogger{t, "WARN: "},

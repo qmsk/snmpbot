@@ -6,22 +6,20 @@ import (
 	"github.com/qmsk/snmpbot/client"
 	"github.com/qmsk/snmpbot/mibs"
 	"github.com/qmsk/snmpbot/snmp"
+	"github.com/qmsk/snmpbot/util/logging"
 	"log"
 	"os"
 	"path/filepath"
 )
 
 type Options struct {
-	LogDebug, LogVerbose, LogQuiet bool
-
+	Log     logging.Options
 	MIBPath string
 	SNMP    client.Config
 }
 
 func (options *Options) InitFlags() {
-	flag.BoolVar(&options.LogDebug, "debug", false, "Log debug")
-	flag.BoolVar(&options.LogVerbose, "verbose", false, "Log info")
-	flag.BoolVar(&options.LogQuiet, "quiet", false, "Do not log warnings")
+	options.Log.InitFlags()
 
 	flag.StringVar(&options.MIBPath, "snmp-mibs", os.Getenv("SNMPBOT_MIBS"), "Load MIBs from PATH[:PATH[...]]")
 	flag.StringVar(&options.SNMP.Community, "snmp-community", "public", "Default SNMP community")
@@ -54,16 +52,7 @@ func (options *Options) LoadMIBs() error {
 func (options Options) ClientConfig() client.Config {
 	var config = options.SNMP
 
-	if options.LogDebug {
-		config.Logging.Debug = makeLogger("DEBUG: ")
-	}
-	if options.LogDebug || options.LogVerbose {
-		config.Logging.Info = makeLogger("INFO: ")
-	}
-	if !options.LogQuiet {
-		config.Logging.Warn = makeLogger("WARN: ")
-		config.Logging.Error = makeLogger("ERROR: ")
-	}
+	config.Logging = options.Log.MakeLogging()
 
 	return config
 }

@@ -1,12 +1,13 @@
 package client
 
 import (
+	"github.com/qmsk/snmpbot/util/logging"
 	"net/url"
 	"time"
 )
 
 type Config struct {
-	Logging   Logging
+	Logging   logging.Logging
 	Community string
 	Addr      string // host or host:port
 	OID       string

@@ -1,8 +1,4 @@
-package client
-
-type Logger interface {
-	Printf(format string, args ...interface{})
-}
+package logging
 
 type Logging struct {
 	Debug Logger

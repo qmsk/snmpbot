@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
+	"github.com/qmsk/snmpbot/util/logging"
 	"time"
 )
 
@@ -22,7 +23,7 @@ func (config Config) Client() (*Client, error) {
 	return &client, nil
 }
 
-func makeClient(logging Logging) Client {
+func makeClient(logging logging.Logging) Client {
 	return Client{
 		log: logging,
 
@@ -34,7 +35,7 @@ func makeClient(logging Logging) Client {
 }
 
 type Client struct {
-	log Logging
+	log logging.Logging
 
 	version   snmp.Version
 	community []byte
@@ -123,7 +124,7 @@ func (client *Client) startRequest(request *request) error {
 
 		return err
 	} else {
-		client.log.Debugf("%v request %d...", request.id)
+		client.log.Debugf("%v request %d...", client, request.id)
 	}
 
 	request.start(request.timeout, client.timeoutChan)
