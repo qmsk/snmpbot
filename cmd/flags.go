@@ -14,6 +14,7 @@ import (
 type Options struct {
 	Logging       logging.Options
 	MIBs          mibs.Options
+	MIBsLogging   logging.Options
 	SNMP          client.Config
 	ClientLogging logging.Options
 }
@@ -21,6 +22,7 @@ type Options struct {
 func (options *Options) InitFlags() {
 	options.Logging.InitFlags("")
 	options.MIBs.InitFlags()
+	options.MIBsLogging.InitFlags("mibs")
 	options.ClientLogging.InitFlags("client")
 
 	flag.StringVar(&options.SNMP.Community, "snmp-community", "public", "Default SNMP community")
@@ -33,8 +35,10 @@ func (options *Options) InitFlags() {
 func (options *Options) Parse() []string {
 	flag.Parse()
 
-	options.MIBs.Logging.ApplyDefaults(options.Logging)
+	options.MIBsLogging.ApplyDefaults(options.Logging)
 	options.ClientLogging.ApplyDefaults(options.Logging)
+
+	mibs.SetLogging(options.MIBsLogging.MakeLogging())
 
 	return flag.Args()
 }
@@ -119,7 +123,7 @@ func (options Options) WithClientID(args []string, f func(*mibs.Client, mibs.ID)
 func (options *Options) Main(f func(args []string) error) {
 	args := options.Parse()
 
-	if err := options.MIBs.Apply(); err != nil {
+	if err := options.MIBs.LoadMIBs(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}

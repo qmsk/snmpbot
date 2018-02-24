@@ -3,19 +3,15 @@ package mibs
 import (
 	"flag"
 	"fmt"
-	"github.com/qmsk/snmpbot/util/logging"
 	"os"
 	"path/filepath"
 )
 
 type Options struct {
-	Logging logging.Options
 	MIBPath string
 }
 
 func (options *Options) InitFlags() {
-	options.Logging.InitFlags("snmp-mibs")
-
 	flag.StringVar(&options.MIBPath, "snmp-mibs", os.Getenv("SNMPBOT_MIBS"), "Load MIBs from PATH[:PATH[...]]")
 }
 
@@ -28,16 +24,6 @@ func (options *Options) LoadMIBs() error {
 		if err := Load(path); err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-func (options *Options) Apply() error {
-	SetLogging(options.Logging.MakeLogging())
-
-	if err := options.LoadMIBs(); err != nil {
-		return err
 	}
 
 	return nil
