@@ -6,7 +6,6 @@ import (
 	"github.com/qmsk/snmpbot/api"
 	"github.com/qmsk/snmpbot/client"
 	"github.com/qmsk/snmpbot/mibs"
-	"log"
 )
 
 type HostConfig struct {
@@ -54,12 +53,12 @@ func (host *Host) init(config HostConfig) error {
 	host.config = config
 	host.config.SNMP = &snmpConfig
 
-	log.Printf("Host<%v>: Config SNMP: %#v", host, host.config.SNMP)
+	log.Infof("Host<%v>: Config SNMP: %#v", host, host.config.SNMP)
 
 	if snmpClient, err := snmpConfig.Client(); err != nil {
 		return fmt.Errorf("SNMP client for %v: %v", host, err)
 	} else {
-		log.Printf("Host<%v>: Connected client: %v", host, snmpClient)
+		log.Infof("Host<%v>: Connected client: %v", host, snmpClient)
 
 		host.snmpClient = snmpClient
 	}
@@ -81,13 +80,13 @@ func (host *Host) probe() {
 	var client = mibs.Client{host.snmpClient}
 	var ids = host.makeMIBIDs()
 
-	log.Printf("Host<%v>: Probing MIBs: %v", host, ids)
+	log.Infof("Host<%v>: Probing MIBs: %v", host, ids)
 
 	if probed, err := client.ProbeMany(ids); err != nil {
-		log.Printf("Host<%v>: Failed to probe: %v", host, err)
+		log.Warnf("Host<%v>: Failed to probe: %v", host, err)
 	} else {
 		for _, id := range ids {
-			log.Printf("Host<%v>: Probed %v = %v", host, id, probed[id.Key()])
+			log.Debugf("Host<%v>: Probed %v = %v", host, id, probed[id.Key()])
 
 			if probed[id.Key()] {
 				host.probedMIBs = append(host.probedMIBs, id.MIB)
@@ -107,7 +106,7 @@ func (host *Host) IsUp() bool {
 }
 
 func (host *Host) start() {
-	log.Printf("Host<%v>: Starting...", host)
+	log.Infof("Host<%v>: Starting...", host)
 
 	go host.run()
 
@@ -116,18 +115,18 @@ func (host *Host) start() {
 }
 
 func (host *Host) run() {
-	log.Printf("Host<%v>: Running...", host)
+	log.Infof("Host<%v>: Running...", host)
 
 	if err := host.snmpClient.Run(); err != nil {
 		// XXX: handle restarts?
-		log.Printf("Host<%v>: SNMP client failed: %v", host, err)
+		log.Errorf("Host<%v>: SNMP client failed: %v", host, err)
 	}
 
-	log.Printf("Host<%v>: Stopped", host)
+	log.Infof("Host<%v>: Stopped", host)
 }
 
 func (host *Host) stop() {
-	log.Printf("Host<%v>: Stopping...", host)
+	log.Infof("Host<%v>: Stopping...", host)
 
 	host.snmpClient.Close()
 }

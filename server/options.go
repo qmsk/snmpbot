@@ -1,14 +1,19 @@
 package server
 
 import (
+	"flag"
 	"fmt"
 	"github.com/qmsk/snmpbot/client"
 )
 
 type Options struct {
-	ConfigFile string
-
 	SNMP client.Config
+
+	ConfigFile string
+}
+
+func (options *Options) InitFlags() {
+	flag.StringVar(&options.ConfigFile, "config", "", "Load TOML config")
 }
 
 func (options Options) LoadConfig() (Config, error) {

@@ -6,27 +6,36 @@ import (
 	"github.com/qmsk/go-web"
 	"github.com/qmsk/snmpbot/cmd"
 	"github.com/qmsk/snmpbot/server"
+	"github.com/qmsk/snmpbot/util/logging"
 )
 
 type Options struct {
 	cmd.Options
 
-	Server server.Options
-	Web    web.Options
+	Server        server.Options
+	ServerLogging logging.Options
+	Web           web.Options
 }
 
-func (options *Options) InitServerFlags() {
-	flag.StringVar(&options.Server.ConfigFile, "config", "", "Load TOML config")
+func (options *Options) InitFlags() {
+	options.Options.InitFlags()
+	options.Server.InitFlags()
+	options.ServerLogging.InitFlags("server")
 
 	flag.StringVar(&options.Web.Listen, "http-listen", ":8286", "HTTP server listen: [HOST]:PORT")
 	flag.StringVar(&options.Web.Static, "http-static", "", "HTTP sever /static path: PATH")
+}
+
+func (options *Options) Apply() {
+	options.Server.SNMP = options.ClientConfig()
+
+	server.SetLogging(options.ServerLogging.MakeLogging())
 }
 
 var options Options
 
 func init() {
 	options.InitFlags()
-	options.InitServerFlags()
 }
 
 func run(engine *server.Engine) error {
@@ -41,7 +50,7 @@ func run(engine *server.Engine) error {
 
 func main() {
 	options.Main(func(args []string) error {
-		options.Server.SNMP = options.ClientConfig()
+		options.Apply()
 
 		if engine, err := options.Server.Engine(); err != nil {
 			return fmt.Errorf("Failed to load server: %v", err)

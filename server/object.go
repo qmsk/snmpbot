@@ -4,7 +4,6 @@ import (
 	"github.com/qmsk/go-web"
 	"github.com/qmsk/snmpbot/api"
 	"github.com/qmsk/snmpbot/mibs"
-	"log"
 	"path"
 )
 
@@ -228,7 +227,7 @@ func (handler *objectsHandler) query() ([]*api.Object, error) {
 			object.Instances = append(object.Instances, objectView{result.Object}.instanceFromResult(result))
 		} else {
 			// XXX: there is no place in the API to report non-object-specific errors, so we just drop them
-			log.Printf("ERROR: Query objects: Host %v: %v", result.Host, result.Error)
+			log.Errorf("Query objects: Host %v: %v", result.Host, result.Error)
 		}
 	}
 
@@ -240,7 +239,7 @@ func (handler *objectsHandler) QuerySchema() interface{} {
 }
 
 func (handler *objectsHandler) GetREST() (web.Resource, error) {
-	log.Printf("Get objects with params: %#v", handler.params)
+	log.Infof("Get objects with params: %#v", handler.params)
 
 	if handler.params.Hosts != nil {
 		handler.hosts = handler.hosts.Filter(handler.params.Hosts...)
