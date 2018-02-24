@@ -5,31 +5,34 @@ import (
 )
 
 type Options struct {
-	Prefix  string
+	Module string
+
 	Debug   bool
 	Verbose bool
 	Quiet   bool
 }
 
-func (options *Options) InitFlags(prefix string) {
-	var flagPrefix = ""
+func (options *Options) InitFlags(module string) {
+	var flagSuffix = ""
+	var descSuffix = ""
 
-	if prefix != "" {
-		options.Prefix = prefix
-		flagPrefix = prefix + "-"
+	if module != "" {
+		options.Module = module
+		flagSuffix = "." + module
+		descSuffix = " for " + module
 	}
 
-	flag.BoolVar(&options.Debug, flagPrefix+"debug", false, "Log debug")
-	flag.BoolVar(&options.Verbose, flagPrefix+"verbose", false, "Log info")
-	flag.BoolVar(&options.Quiet, flagPrefix+"quiet", false, "Do not log warnings")
+	flag.BoolVar(&options.Debug, "debug"+flagSuffix, false, "Log debug"+descSuffix)
+	flag.BoolVar(&options.Verbose, "verbose"+flagSuffix, false, "Log info"+descSuffix)
+	flag.BoolVar(&options.Quiet, "quiet"+flagSuffix, false, "Do not log warnings"+descSuffix)
 }
 
 func (options *Options) MakeLogging() Logging {
 	var logging = Logging{}
 	var logSuffix = ": "
 
-	if options.Prefix != "" {
-		logSuffix = " " + options.Prefix + logSuffix
+	if options.Module != "" {
+		logSuffix = " " + options.Module + logSuffix
 	}
 
 	if options.Debug {
