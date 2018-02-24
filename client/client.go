@@ -3,7 +3,6 @@ package client
 import (
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
-	"github.com/qmsk/snmpbot/util/logging"
 	"time"
 )
 
@@ -14,7 +13,7 @@ const (
 )
 
 func (config Config) Client() (*Client, error) {
-	var client = makeClient(config.Logging)
+	var client = makeClient()
 
 	if err := client.connectUDP(config); err != nil {
 		return nil, err
@@ -23,10 +22,8 @@ func (config Config) Client() (*Client, error) {
 	return &client, nil
 }
 
-func makeClient(logging logging.Logging) Client {
+func makeClient() Client {
 	return Client{
-		log: logging,
-
 		requestID:   1, // TODO: randomize
 		requests:    make(map[requestID]*request),
 		requestChan: make(chan *request),
@@ -35,8 +32,6 @@ func makeClient(logging logging.Logging) Client {
 }
 
 type Client struct {
-	log logging.Logging
-
 	version   snmp.Version
 	community []byte
 	timeout   time.Duration
@@ -80,7 +75,7 @@ func (client *Client) connectUDP(config Config) error {
 	if udp, err := DialUDP(config.Addr, config.UDP); err != nil {
 		return fmt.Errorf("DialUDP %v: %v", config.Addr, err)
 	} else {
-		client.log.Infof("Connect UDP %v: %v", config.Addr, udp)
+		log.Infof("Connect UDP %v: %v", config.Addr, udp)
 
 		client.transport = udp
 	}
@@ -97,7 +92,7 @@ func (client *Client) nextRequestID() requestID {
 }
 
 func (client *Client) teardown() {
-	client.log.Debugf("%v teardown...", client)
+	log.Debugf("%v teardown...", client)
 
 	close(client.requestChan)
 
@@ -118,13 +113,13 @@ func (client *Client) startRequest(request *request) error {
 	if err := client.transport.Send(request.send); err != nil {
 		err = fmt.Errorf("SNMP %v send failed: %v", client.transport, err)
 
-		client.log.Debugf("%v request %d fail: %v", client, request.id, err)
+		log.Debugf("%v request %d fail: %v", client, request.id, err)
 
 		request.fail(err)
 
 		return err
 	} else {
-		client.log.Debugf("%v request %d...", client, request.id)
+		log.Debugf("%v request %d...", client, request.id)
 	}
 
 	request.start(request.timeout, client.timeoutChan)
@@ -143,13 +138,13 @@ func (client *Client) run() error {
 
 		for {
 			if recv, err := client.transport.Recv(); err != nil {
-				client.log.Errorf("%v recv: %v", client, err)
+				log.Errorf("%v recv: %v", client, err)
 				recvErr = err
 				return
 			} else if string(recv.Packet.Community) != string(client.community) {
-				client.log.Warnf("%v, wrong community=%s", client, string(recv.Packet.Community))
+				log.Warnf("%v, wrong community=%s", client, string(recv.Packet.Community))
 			} else {
-				client.log.Debugf("%v recv: %#v", client, recv)
+				log.Debugf("%v recv: %#v", client, recv)
 
 				recvChan <- recv
 			}
@@ -161,7 +156,7 @@ func (client *Client) run() error {
 		case request := <-client.requestChan:
 			request.id = client.nextRequestID()
 
-			client.log.Debugf("%v request %d send: %#v", client, request.id, request.send)
+			log.Debugf("%v request %d send: %#v", client, request.id, request.send)
 
 			if err := client.startRequest(request); err == nil {
 				client.requests[request.id] = request
@@ -175,23 +170,23 @@ func (client *Client) run() error {
 			requestID := requestID(recv.PDU.RequestID)
 
 			if request, ok := client.requests[requestID]; !ok {
-				client.log.Warnf("%v recv with unknown requestID=%d", client, requestID)
+				log.Warnf("%v recv with unknown requestID=%d", client, requestID)
 			} else {
-				client.log.Debugf("%v request %d done", client, requestID)
+				log.Debugf("%v request %d done", client, requestID)
 				request.done(recv)
 				delete(client.requests, requestID)
 			}
 
 		case requestID := <-client.timeoutChan:
 			if request, ok := client.requests[requestID]; !ok {
-				client.log.Debugf("%v timeout with expired requestID=%d", client, requestID)
+				log.Debugf("%v timeout with expired requestID=%d", client, requestID)
 			} else if request.retry <= 0 {
-				client.log.Debugf("%v request %d timeout", client, request.id)
+				log.Debugf("%v request %d timeout", client, request.id)
 
 				request.failTimeout(client.transport)
 				delete(client.requests, requestID)
 			} else {
-				client.log.Debugf("%v request %d retry %d...", client, request.id, request.retry)
+				log.Debugf("%v request %d retry %d...", client, request.id, request.retry)
 
 				request.retry--
 
@@ -205,14 +200,14 @@ func (client *Client) run() error {
 }
 
 func (client *Client) Run() error {
-	client.log.Debugf("%v Run...", client)
+	log.Debugf("%v Run...", client)
 
 	return client.run()
 }
 
 // Closing the client will cancel any requests, and cause Run() to return
 func (client *Client) Close() error {
-	client.log.Debugf("%v Close...", client)
+	log.Debugf("%v Close...", client)
 
 	return client.transport.Close()
 }

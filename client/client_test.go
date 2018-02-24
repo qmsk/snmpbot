@@ -3,32 +3,19 @@ package client
 import (
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
-	"github.com/qmsk/snmpbot/util/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 )
 
-type testLogger struct {
-	t      *testing.T
-	prefix string
-}
-
-func (logger testLogger) Printf(format string, args ...interface{}) {
-	logger.t.Logf(logger.prefix+format, args...)
-}
-
 func makeTestClient(t *testing.T) (*testTransport, *Client) {
+	testLogging(t)
+
 	var testTransport = testTransport{
 		recvChan: make(chan IO),
 	}
-	var client = makeClient(logging.Logging{
-		Debug: testLogger{t, "DEBUG: "},
-		Info:  testLogger{t, "INFO: "},
-		Warn:  testLogger{t, "WARN: "},
-		Error: testLogger{t, "Error: "},
-	})
+	var client = makeClient()
 
 	client.version = SNMPVersion
 	client.community = []byte("public")

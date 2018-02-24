@@ -101,7 +101,7 @@ func (client *Client) request(send IO) (IO, error) {
 	client.requestChan <- &request
 
 	if recv, err := request.wait(); err != nil {
-		client.log.Infof("%v Request %v: %v", client, request, err)
+		log.Infof("%v Request %v: %v", client, request, err)
 
 		return recv, err
 
@@ -112,11 +112,11 @@ func (client *Client) request(send IO) (IO, error) {
 			ResponsePDU:  recv.PDU,
 		}
 
-		client.log.Infof("%v Request %v: %v", client, request, err)
+		log.Infof("%v Request %v: %v", client, request, err)
 
 		return recv, err
 	} else {
-		client.log.Infof("%v, Request %v", client, request)
+		log.Infof("%v, Request %v", client, request)
 
 		return recv, nil
 	}

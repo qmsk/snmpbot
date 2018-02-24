@@ -46,16 +46,13 @@ func (options *Options) Parse() []string {
 	flag.Parse()
 
 	mibs.ApplyLogging(options.MIBsLogging)
+	client.ApplyLogging(options.ClientLogging)
 
 	return flag.Args()
 }
 
 func (options Options) ClientConfig() client.Config {
-	var config = options.SNMP
-
-	config.Logging = options.ClientLogging.MakeLogging()
-
-	return config
+	return options.SNMP
 }
 
 func (options Options) ParseClientIDs(args []string) (*client.Client, []mibs.ID, error) {
