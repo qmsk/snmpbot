@@ -7,12 +7,18 @@ import (
 )
 
 type requestID uint32
+type requestKey struct {
+	id   requestID
+	addr string
+}
+
+type requestMap map[requestKey]*request
 
 type request struct {
 	send      IO
 	id        requestID
 	timeout   time.Duration
-	retry     int
+	retry     uint
 	startTime time.Time
 	timer     *time.Timer
 	waitChan  chan error
@@ -28,11 +34,23 @@ func (request request) String() string {
 	}
 }
 
-func (request *request) wait() (IO, error) {
-	if err, ok := <-request.waitChan; !ok {
-		return request.recv, fmt.Errorf("request canceled")
+func (request *request) Error() error {
+	if request.recv.PDU.ErrorStatus != 0 {
+		return SNMPError{
+			RequestType:  request.send.PDUType,
+			ResponseType: request.recv.PDUType,
+			ResponsePDU:  request.recv.PDU,
+		}
 	} else {
-		return request.recv, err
+		return nil
+	}
+}
+
+func (request *request) wait() error {
+	if err, ok := <-request.waitChan; !ok {
+		return fmt.Errorf("request canceled")
+	} else {
+		return err
 	}
 }
 
@@ -87,37 +105,4 @@ type SNMPError struct {
 
 func (err SNMPError) Error() string {
 	return fmt.Sprintf("SNMP %v error: %v @ %v", err.RequestType, err.ResponsePDU.ErrorStatus, err.ResponsePDU.ErrorVarBind())
-}
-
-func (client *Client) request(send IO) (IO, error) {
-	var request = request{
-		send:      send,
-		timeout:   client.timeout,
-		retry:     client.retry,
-		startTime: time.Now(),
-		waitChan:  make(chan error, 1),
-	}
-
-	client.requestChan <- &request
-
-	if recv, err := request.wait(); err != nil {
-		log.Infof("%v Request %v: %v", client, request, err)
-
-		return recv, err
-
-	} else if recv.PDU.ErrorStatus != 0 {
-		var err = SNMPError{
-			RequestType:  send.PDUType,
-			ResponseType: recv.PDUType,
-			ResponsePDU:  recv.PDU,
-		}
-
-		log.Infof("%v Request %v: %v", client, request, err)
-
-		return recv, err
-	} else {
-		log.Infof("%v, Request %v", client, request)
-
-		return recv, nil
-	}
 }

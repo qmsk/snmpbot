@@ -3,211 +3,156 @@ package client
 import (
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
+	"net"
 	"time"
 )
 
-const (
-	SNMPVersion    = snmp.SNMPv2c
-	DefaultTimeout = 1 * time.Second
-	DefaultMaxVars = 10
-)
+func NewClient(engine *Engine, config Config) (*Client, error) {
+	var client = makeClient(engine, config.Options)
 
-func (config Config) Client() (*Client, error) {
-	var client = makeClient()
-
-	if err := client.connectUDP(config); err != nil {
-		return nil, err
+	if addr, err := engine.transport.Resolve(config.Address); err != nil {
+		return nil, fmt.Errorf("Resolve Config.Address=%v: %v", config.Address, err)
+	} else {
+		client.addr = addr
 	}
 
 	return &client, nil
 }
 
-func makeClient() Client {
+func makeClient(engine *Engine, options Options) Client {
 	return Client{
-		requestID:   1, // TODO: randomize
-		requests:    make(map[requestID]*request),
-		requestChan: make(chan *request),
-		timeoutChan: make(chan requestID),
+		engine:  engine,
+		options: options,
 	}
 }
 
 type Client struct {
-	version   snmp.Version
-	community []byte
-	timeout   time.Duration
-	retry     int
-	maxVars   int
+	engine  *Engine
+	options Options
 
-	transport Transport
-
-	requestID   requestID
-	requests    map[requestID]*request
-	requestChan chan *request
-	timeoutChan chan requestID
+	addr net.Addr // host or host:port
 }
 
 func (client *Client) String() string {
-	if client.transport == nil {
-		return "<disconnected>"
-	}
-
-	return fmt.Sprintf("%s@%v", client.community, client.transport)
+	return fmt.Sprintf("%v@%v", string(client.options.Community), client.addr)
 }
 
-func (client *Client) connectUDP(config Config) error {
-	client.version = SNMPVersion
-	client.community = []byte(config.Community)
+func (client *Client) request(send IO) (IO, error) {
+	var request = &request{
+		send:      send,
+		timeout:   DefaultTimeout,
+		retry:     DefaultRetry,
+		startTime: time.Now(),
+		waitChan:  make(chan error, 1),
+	}
 
-	if config.Timeout == 0 {
-		client.timeout = DefaultTimeout
+	if client.options.Timeout != 0 {
+		request.timeout = client.options.Timeout
+	}
+	if client.options.Retry != 0 {
+		request.retry = client.options.Retry
+	}
+
+	if err := client.engine.request(request); err != nil {
+		log.Infof("%v Request %v: %v", client, request, err)
+
+		return request.recv, err
+
+	} else if err := request.Error(); err != nil {
+		log.Infof("%v Request %v: %v", client, request, err)
+
+		return request.recv, err
 	} else {
-		client.timeout = config.Timeout
-	}
+		log.Infof("%v, Request %v", client, request)
 
-	client.retry = config.Retry
-
-	if config.MaxVars == 0 {
-		client.maxVars = DefaultMaxVars
-	} else {
-		client.maxVars = int(config.MaxVars)
-	}
-
-	if udp, err := DialUDP(config.Addr, config.UDP); err != nil {
-		return fmt.Errorf("DialUDP %v: %v", config.Addr, err)
-	} else {
-		log.Infof("Connect UDP %v: %v", config.Addr, udp)
-
-		client.transport = udp
-	}
-
-	return nil
-}
-
-func (client *Client) nextRequestID() requestID {
-	var requestID = client.requestID
-
-	client.requestID++
-
-	return requestID
-}
-
-func (client *Client) teardown() {
-	log.Debugf("%v teardown...", client)
-
-	close(client.requestChan)
-
-	// cancel any queued requests
-	for request := range client.requestChan {
-		request.close()
-	}
-
-	// cancel any active requests
-	for _, request := range client.requests {
-		request.close()
+		return request.recv, nil
 	}
 }
 
-func (client *Client) startRequest(request *request) error {
-	request.send.PDU.RequestID = int(request.id)
-
-	if err := client.transport.Send(request.send); err != nil {
-		err = fmt.Errorf("SNMP %v send failed: %v", client.transport, err)
-
-		log.Debugf("%v request %d fail: %v", client, request.id, err)
-
-		request.fail(err)
-
-		return err
-	} else {
-		log.Debugf("%v request %d...", client, request.id)
+func (client *Client) requestRead(requestType snmp.PDUType, varBinds []snmp.VarBind) (snmp.PDUType, []snmp.VarBind, error) {
+	var maxVars = DefaultMaxVars
+	var retType snmp.PDUType
+	var retVars = make([]snmp.VarBind, len(varBinds))
+	var retLen = uint(0)
+	var send = IO{
+		Packet: snmp.Packet{
+			Version:   SNMPVersion,
+			Community: []byte(client.options.Community),
+		},
+		PDUType: requestType,
+		PDU:     snmp.PDU{},
 	}
 
-	request.start(request.timeout, client.timeoutChan)
+	if client.options.MaxVars > 0 {
+		maxVars = client.options.MaxVars
+	}
 
-	return nil
-}
+	for retLen < uint(len(varBinds)) {
+		var reqVars = make([]snmp.VarBind, maxVars)
+		var reqLen = uint(0)
 
-func (client *Client) run() error {
-	var recvChan = make(chan IO)
-	var recvErr error
-
-	defer client.teardown()
-
-	go func() {
-		defer close(recvChan)
-
-		for {
-			if recv, err := client.transport.Recv(); err != nil {
-				log.Errorf("%v recv: %v", client, err)
-				recvErr = err
-				return
-			} else if string(recv.Packet.Community) != string(client.community) {
-				log.Warnf("%v, wrong community=%s", client, string(recv.Packet.Community))
-			} else {
-				log.Debugf("%v recv: %#v", client, recv)
-
-				recvChan <- recv
-			}
+		for retLen+reqLen < uint(len(varBinds)) && reqLen < maxVars {
+			reqVars[reqLen] = varBinds[retLen+reqLen]
+			reqLen++
 		}
-	}()
 
-	for {
-		select {
-		case request := <-client.requestChan:
-			request.id = client.nextRequestID()
+		send.PDU.VarBinds = reqVars[:reqLen]
 
-			log.Debugf("%v request %d send: %#v", client, request.id, request.send)
+		// TODO: handle snmp.TooBigError
+		if recv, err := client.request(send); err != nil {
+			return recv.PDUType, recv.PDU.VarBinds, err
+		} else if len(recv.PDU.VarBinds) > len(reqVars) {
+			return retType, retVars, fmt.Errorf("Invalid %v with %d vars for %v with %d vars", recv.PDUType, len(recv.PDU.VarBinds), requestType, len(retVars))
+		} else {
+			retType = recv.PDUType
 
-			if err := client.startRequest(request); err == nil {
-				client.requests[request.id] = request
-			}
-
-		case recv, ok := <-recvChan:
-			if !ok {
-				return recvErr
-			}
-
-			requestID := requestID(recv.PDU.RequestID)
-
-			if request, ok := client.requests[requestID]; !ok {
-				log.Warnf("%v recv with unknown requestID=%d", client, requestID)
-			} else {
-				log.Debugf("%v request %d done", client, requestID)
-				request.done(recv)
-				delete(client.requests, requestID)
-			}
-
-		case requestID := <-client.timeoutChan:
-			if request, ok := client.requests[requestID]; !ok {
-				log.Debugf("%v timeout with expired requestID=%d", client, requestID)
-			} else if request.retry <= 0 {
-				log.Debugf("%v request %d timeout", client, request.id)
-
-				request.failTimeout(client.transport)
-				delete(client.requests, requestID)
-			} else {
-				log.Debugf("%v request %d retry %d...", client, request.id, request.retry)
-
-				request.retry--
-
-				if err := client.startRequest(request); err != nil {
-					// cleanup
-					delete(client.requests, requestID)
-				}
+			for _, varBind := range recv.PDU.VarBinds {
+				retVars[retLen] = varBind
+				retLen++
+				reqLen++
 			}
 		}
 	}
+
+	return retType, retVars, nil
 }
 
-func (client *Client) Run() error {
-	log.Debugf("%v Run...", client)
+func (client *Client) Get(oids ...snmp.OID) ([]snmp.VarBind, error) {
+	var requestVars = make([]snmp.VarBind, len(oids))
 
-	return client.run()
+	for i, oid := range oids {
+		requestVars[i] = snmp.MakeVarBind(oid, nil)
+	}
+
+	if len(oids) == 0 {
+		return nil, nil
+	} else if responseType, responseVars, err := client.requestRead(snmp.GetRequestType, requestVars); err != nil {
+		return responseVars, err
+	} else if responseType != snmp.GetResponseType {
+		return responseVars, fmt.Errorf("Unexpected response type %v for GetRequest", responseType)
+	} else if len(responseVars) != len(oids) {
+		return nil, fmt.Errorf("Incorrect number of response vars %d for GetRequest with %d OIDs", len(responseVars), len(oids))
+	} else {
+		return responseVars, nil
+	}
 }
 
-// Closing the client will cancel any requests, and cause Run() to return
-func (client *Client) Close() error {
-	log.Debugf("%v Close...", client)
+func (client *Client) GetNext(oids ...snmp.OID) ([]snmp.VarBind, error) {
+	var requestVars = make([]snmp.VarBind, len(oids))
 
-	return client.transport.Close()
+	for i, oid := range oids {
+		requestVars[i] = snmp.MakeVarBind(oid, nil)
+	}
+
+	if len(oids) == 0 {
+		return nil, nil
+	} else if responseType, responseVars, err := client.requestRead(snmp.GetNextRequestType, requestVars); err != nil {
+		return responseVars, err
+	} else if responseType != snmp.GetResponseType {
+		return responseVars, fmt.Errorf("Unexpected response type %v for GetNextRequest", responseType)
+	} else if len(responseVars) != len(oids) {
+		return nil, fmt.Errorf("Incorrect number of response vars %d for GetRequest with %d OIDs", len(responseVars), len(oids))
+	} else {
+		return responseVars, nil
+	}
 }

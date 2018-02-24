@@ -10,202 +10,32 @@ import (
 	"time"
 )
 
-func makeTestClient(t *testing.T) (*testTransport, *Client) {
+func makeTestClient(t *testing.T) (*testTransport, *Engine, *Client) {
 	SetLogging(logging.TestLogging(t))
 
-	var testTransport = testTransport{
-		recvChan: make(chan IO),
+	var options = Options{
+		Community: "public",
+		Timeout:   10 * time.Millisecond,
 	}
-	var client = makeClient()
 
-	client.version = SNMPVersion
-	client.community = []byte("public")
-	client.timeout = 10 * time.Millisecond
-	client.transport = &testTransport
-	client.maxVars = DefaultMaxVars
+	var testTransport = makeTestTransport()
+	var engine = makeEngine(&testTransport)
+	var client = makeClient(&engine, options)
 
-	return &testTransport, &client
+	client.addr = testAddr("test")
+
+	return &testTransport, &engine, &client
 }
 
 func withTestClient(t *testing.T, f func(*testTransport, *Client)) {
-	var transport, client = makeTestClient(t)
+	var transport, engine, client = makeTestClient(t)
 
-	go client.Run()
-	defer client.Close()
+	go engine.Run()
+	defer engine.Close()
 
 	f(transport, client)
 
 	transport.AssertExpectations(t)
-}
-
-type testTransport struct {
-	mock.Mock
-
-	recvChan      chan IO
-	recvErrorChan chan error
-}
-
-func (transport *testTransport) String() string {
-	return "<test>"
-}
-
-func (transport *testTransport) Send(io IO) error {
-	var requestID = io.PDU.RequestID
-
-	io.PDU.RequestID = 0
-
-	args := transport.MethodCalled(io.PDUType.String(), io)
-
-	if ret := args.Get(1); ret == nil {
-		// no response
-	} else {
-		recv := ret.(IO)
-		recv.PDU.RequestID = requestID
-
-		transport.recvChan <- recv
-	}
-
-	return args.Error(0)
-}
-
-func (transport *testTransport) Recv() (IO, error) {
-	select {
-	case io, ok := <-transport.recvChan:
-		if ok {
-			return io, nil
-		} else {
-			return io, EOF
-		}
-	case err := <-transport.recvErrorChan:
-		return IO{}, err
-	}
-}
-
-func (transport *testTransport) Close() error {
-	close(transport.recvChan)
-
-	return nil
-}
-
-func (transport *testTransport) mockGetTimeout(oid snmp.OID) {
-	transport.On("GetRequest", IO{
-		Packet: snmp.Packet{
-			Version:   snmp.SNMPv2c,
-			Community: []byte("public"),
-		},
-		PDUType: snmp.GetRequestType,
-		PDU: snmp.PDU{
-			VarBinds: []snmp.VarBind{
-				snmp.MakeVarBind(oid, nil),
-			},
-		},
-	}).Return(error(nil), nil)
-}
-
-func (transport *testTransport) mockGet(oid snmp.OID, varBind snmp.VarBind) {
-	transport.On("GetRequest", IO{
-		Packet: snmp.Packet{
-			Version:   snmp.SNMPv2c,
-			Community: []byte("public"),
-		},
-		PDUType: snmp.GetRequestType,
-		PDU: snmp.PDU{
-			VarBinds: []snmp.VarBind{
-				snmp.MakeVarBind(oid, nil),
-			},
-		},
-	}).Return(error(nil), IO{
-		Packet: snmp.Packet{
-			Version:   snmp.SNMPv2c,
-			Community: []byte("public"),
-		},
-		PDUType: snmp.GetResponseType,
-		PDU: snmp.PDU{
-			VarBinds: []snmp.VarBind{
-				varBind,
-			},
-		},
-	})
-}
-
-func (transport *testTransport) mockGetMany(oids []snmp.OID, varBinds []snmp.VarBind) {
-	var reqVars = make([]snmp.VarBind, len(oids))
-	for i, oid := range oids {
-		reqVars[i] = snmp.MakeVarBind(oid, nil)
-	}
-
-	transport.On("GetRequest", IO{
-		Packet: snmp.Packet{
-			Version:   snmp.SNMPv2c,
-			Community: []byte("public"),
-		},
-		PDUType: snmp.GetRequestType,
-		PDU: snmp.PDU{
-			VarBinds: reqVars,
-		},
-	}).Return(error(nil), IO{
-		Packet: snmp.Packet{
-			Version:   snmp.SNMPv2c,
-			Community: []byte("public"),
-		},
-		PDUType: snmp.GetResponseType,
-		PDU: snmp.PDU{
-			VarBinds: varBinds,
-		},
-	})
-}
-
-func (transport *testTransport) mockGetNext(oid snmp.OID, varBind snmp.VarBind) {
-	transport.On("GetNextRequest", IO{
-		Packet: snmp.Packet{
-			Version:   snmp.SNMPv2c,
-			Community: []byte("public"),
-		},
-		PDUType: snmp.GetNextRequestType,
-		PDU: snmp.PDU{
-			VarBinds: []snmp.VarBind{
-				snmp.MakeVarBind(oid, nil),
-			},
-		},
-	}).Return(error(nil), IO{
-		Packet: snmp.Packet{
-			Version:   snmp.SNMPv2c,
-			Community: []byte("public"),
-		},
-		PDUType: snmp.GetResponseType,
-		PDU: snmp.PDU{
-			VarBinds: []snmp.VarBind{
-				varBind,
-			},
-		},
-	})
-}
-
-func (transport *testTransport) mockGetNextMulti(oids []snmp.OID, varBinds []snmp.VarBind) {
-	var requestVars = make([]snmp.VarBind, len(oids))
-	for i, oid := range oids {
-		requestVars[i] = snmp.MakeVarBind(oid, nil)
-	}
-
-	transport.On("GetNextRequest", IO{
-		Packet: snmp.Packet{
-			Version:   snmp.SNMPv2c,
-			Community: []byte("public"),
-		},
-		PDUType: snmp.GetNextRequestType,
-		PDU: snmp.PDU{
-			VarBinds: requestVars,
-		},
-	}).Return(error(nil), IO{
-		Packet: snmp.Packet{
-			Version:   snmp.SNMPv2c,
-			Community: []byte("public"),
-		},
-		PDUType: snmp.GetResponseType,
-		PDU: snmp.PDU{
-			VarBinds: varBinds,
-		},
-	})
 }
 
 func assertVarBind(t *testing.T, varBinds []snmp.VarBind, index int, expectedOID snmp.OID, expectedValue interface{}) {
@@ -308,7 +138,7 @@ func TestGetRequestBig(t *testing.T) {
 	}
 
 	withTestClient(t, func(transport *testTransport, client *Client) {
-		client.maxVars = 2
+		client.options.MaxVars = 2
 
 		transport.mockGetMany([]snmp.OID{oids[0], oids[1]}, []snmp.VarBind{
 			snmp.MakeVarBind(oids[0], values[0]),

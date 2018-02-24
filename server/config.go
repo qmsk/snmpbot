@@ -27,7 +27,7 @@ func (err ConfigKeysError) Error() string {
 }
 
 type Config struct {
-	SNMP  client.Config
+	SNMP  client.Options
 	Hosts map[string]HostConfig
 }
 

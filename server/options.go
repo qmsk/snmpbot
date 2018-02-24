@@ -7,8 +7,6 @@ import (
 )
 
 type Options struct {
-	SNMP client.Config
-
 	ConfigFile string
 }
 
@@ -16,9 +14,9 @@ func (options *Options) InitFlags() {
 	flag.StringVar(&options.ConfigFile, "config", "", "Load TOML config")
 }
 
-func (options Options) LoadConfig() (Config, error) {
+func (options Options) LoadConfig(clientOptions client.Options) (Config, error) {
 	var config = Config{
-		SNMP: options.SNMP,
+		SNMP: clientOptions,
 	}
 
 	if err := config.LoadTOML(options.ConfigFile); err != nil {
@@ -28,12 +26,10 @@ func (options Options) LoadConfig() (Config, error) {
 	return config, nil
 }
 
-func (options Options) Engine() (*Engine, error) {
-	var engine = newEngine()
+func (options Options) Engine(clientEngine *client.Engine, config Config) (*Engine, error) {
+	var engine = newEngine(clientEngine)
 
-	if config, err := options.LoadConfig(); err != nil {
-		return nil, err
-	} else if err := engine.init(config); err != nil {
+	if err := engine.init(config); err != nil {
 		return nil, err
 	}
 

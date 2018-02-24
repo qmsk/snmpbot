@@ -2,24 +2,27 @@ package server
 
 import (
 	"fmt"
+	"github.com/qmsk/snmpbot/client"
 	"github.com/qmsk/snmpbot/mibs"
 )
 
-func newEngine() *Engine {
+func newEngine(clientEngine *client.Engine) *Engine {
 	return &Engine{
-		hosts: make(Hosts),
+		clientEngine: clientEngine,
+		hosts:        make(Hosts),
 	}
 }
 
 type Engine struct {
-	hosts Hosts
+	clientEngine *client.Engine
+	hosts        Hosts
 }
 
 func (engine *Engine) init(config Config) error {
 	for hostName, hostConfig := range config.Hosts {
 		var host = newHost(HostID(hostName))
 
-		if err := host.init(hostConfig); err != nil {
+		if err := host.init(engine.clientEngine, hostConfig); err != nil {
 			return fmt.Errorf("Failed to load host %v: %v", hostName, err)
 		}
 

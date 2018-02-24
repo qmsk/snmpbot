@@ -15,7 +15,7 @@ type Options struct {
 	Logging       logging.Options
 	MIBs          mibs.Options
 	MIBsLogging   logging.Options
-	SNMP          client.Config
+	Client        client.Options
 	ClientLogging logging.Options
 }
 
@@ -34,12 +34,7 @@ func (options *Options) InitFlags() {
 	options.ClientLogging.InitFlags()
 
 	options.MIBs.InitFlags()
-
-	flag.StringVar(&options.SNMP.Community, "snmp-community", "public", "Default SNMP community")
-	flag.DurationVar(&options.SNMP.Timeout, "snmp-timeout", client.DefaultTimeout, "SNMP request timeout")
-	flag.IntVar(&options.SNMP.Retry, "snmp-retry", 0, "SNMP request retry")
-	flag.UintVar(&options.SNMP.UDP.Size, "snmp-udp-size", client.UDPSize, "Maximum UDP recv size")
-	flag.UintVar(&options.SNMP.MaxVars, "snmp-maxvars", client.DefaultMaxVars, "Maximum request VarBinds")
+	options.Client.InitFlags()
 }
 
 func (options *Options) Parse() []string {
@@ -51,32 +46,34 @@ func (options *Options) Parse() []string {
 	return flag.Args()
 }
 
-func (options Options) ClientConfig() client.Config {
-	return options.SNMP
+func (options Options) ClientEngine() (*client.Engine, error) {
+	return client.NewEngine(options.Client)
 }
 
-func (options Options) ParseClientIDs(args []string) (*client.Client, []mibs.ID, error) {
+func (options Options) ClientConfig(url string) (client.Config, error) {
+	return client.ParseConfig(options.Client, url)
+}
+
+func (options Options) ParseClientIDs(engine *client.Engine, args []string) (*client.Client, []mibs.ID, error) {
 	if len(args) < 1 {
 		return nil, nil, fmt.Errorf("Usage: [options] <addr> <oid...>")
 	}
 
-	var clientConfig = options.ClientConfig()
-
-	if err := clientConfig.Parse(args[0]); err != nil {
+	if clientConfig, err := options.ClientConfig(args[0]); err != nil {
 		return nil, nil, fmt.Errorf("Invalid addr %v: %v", args[0], err)
-	}
-
-	if ids, err := options.ResolveIDs(args[1:]); err != nil {
+	} else if ids, err := options.ResolveIDs(args[1:]); err != nil {
 		return nil, nil, err
-	} else if client, err := clientConfig.Client(); err != nil {
-		return nil, nil, fmt.Errorf("Client: %v", err)
+	} else if client, err := client.NewClient(engine, clientConfig); err != nil {
+		return nil, nil, fmt.Errorf("NewClient: %v", err)
 	} else {
 		return client, ids, nil
 	}
 }
 
 func (options Options) WithClientOIDs(args []string, f func(*client.Client, ...snmp.OID) error) error {
-	if client, ids, err := options.ParseClientIDs(args); err != nil {
+	if engine, err := options.ClientEngine(); err != nil {
+		return err
+	} else if client, ids, err := options.ParseClientIDs(engine, args); err != nil {
 		return err
 	} else {
 		var oids = make([]snmp.OID, len(ids))
@@ -85,19 +82,21 @@ func (options Options) WithClientOIDs(args []string, f func(*client.Client, ...s
 			oids[i] = id.OID
 		}
 
-		go client.Run()
-		defer client.Close()
+		go engine.Run()
+		defer engine.Close()
 
 		return f(client, oids...)
 	}
 }
 
 func (options Options) WithClientIDs(args []string, f func(*mibs.Client, ...mibs.ID) error) error {
-	if snmpClient, ids, err := options.ParseClientIDs(args); err != nil {
+	if engine, err := options.ClientEngine(); err != nil {
+		return err
+	} else if snmpClient, ids, err := options.ParseClientIDs(engine, args); err != nil {
 		return err
 	} else {
-		go snmpClient.Run()
-		defer snmpClient.Close()
+		go engine.Run()
+		defer engine.Close()
 
 		var client = &mibs.Client{snmpClient}
 
@@ -106,11 +105,13 @@ func (options Options) WithClientIDs(args []string, f func(*mibs.Client, ...mibs
 }
 
 func (options Options) WithClientID(args []string, f func(*mibs.Client, mibs.ID) error) error {
-	if snmpClient, ids, err := options.ParseClientIDs(args); err != nil {
+	if engine, err := options.ClientEngine(); err != nil {
+		return err
+	} else if snmpClient, ids, err := options.ParseClientIDs(engine, args); err != nil {
 		return err
 	} else {
-		go snmpClient.Run()
-		defer snmpClient.Close()
+		go engine.Run()
+		defer engine.Close()
 
 		var client = &mibs.Client{snmpClient}
 

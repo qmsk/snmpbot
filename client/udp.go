@@ -32,6 +32,24 @@ func resolveUDP(addr string) (*net.UDPAddr, error) {
 	return net.ResolveUDPAddr("udp", addr)
 }
 
+func NewUDP(options UDPOptions) (*UDP, error) {
+	var udp = makeUDP(options)
+
+	if udpConn, err := net.ListenUDP("udp", &net.UDPAddr{}); err != nil {
+		return nil, err
+	} else {
+		udp.conn = udpConn
+	}
+
+	if udpAddr, err := udp.LocalAddr(); err != nil {
+		return nil, err
+	} else {
+		udp.addr = udpAddr
+	}
+
+	return &udp, nil
+}
+
 func ListenUDP(addr string, options UDPOptions) (*UDP, error) {
 	var udp = makeUDP(options)
 
@@ -79,6 +97,10 @@ func (udp *UDP) LocalAddr() (*net.UDPAddr, error) {
 	default:
 		return nil, fmt.Errorf("Unknown LocalAddr type %T", localAddr)
 	}
+}
+
+func (udp *UDP) Resolve(addr string) (net.Addr, error) {
+	return resolveUDP(addr)
 }
 
 func (udp *UDP) send(buf []byte, addr net.Addr) error {

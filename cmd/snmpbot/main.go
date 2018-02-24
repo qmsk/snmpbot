@@ -37,8 +37,6 @@ func (options *Options) InitFlags() {
 }
 
 func (options *Options) Apply() {
-	options.Server.SNMP = options.ClientConfig()
-
 	server.SetLogging(options.ServerLogging.MakeLogging())
 	web.SetLogging(options.WebLogging.MakeLogging())
 }
@@ -49,10 +47,10 @@ func init() {
 	options.InitFlags()
 }
 
-func run(engine *server.Engine) error {
-	// XXX: this is not a good API
+func run(serverEngine *server.Engine) error {
+	// XXX: this is not a good API, it just returns immediately if there is no -http-listen?
 	options.Web.Server(
-		options.Web.RouteAPI("/api/", engine.WebAPI()),
+		options.Web.RouteAPI("/api/", serverEngine.WebAPI()),
 		options.Web.RouteStatic("/"),
 	)
 
@@ -63,10 +61,17 @@ func main() {
 	options.Main(func(args []string) error {
 		options.Apply()
 
-		if engine, err := options.Server.Engine(); err != nil {
+		if clientEngine, err := options.ClientEngine(); err != nil {
+			return fmt.Errorf("Failed to start client engine: %v", err)
+		} else if config, err := options.Server.LoadConfig(options.Client); err != nil {
+			return fmt.Errorf("Failed to load server config: %v", err)
+		} else if serverEngine, err := options.Server.Engine(clientEngine, config); err != nil {
 			return fmt.Errorf("Failed to load server: %v", err)
 		} else {
-			return run(engine)
+			go clientEngine.Run()
+			defer clientEngine.Close()
+
+			return run(serverEngine)
 		}
 	})
 }

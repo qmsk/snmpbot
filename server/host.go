@@ -12,11 +12,11 @@ import (
 type HostConfig struct {
 	Host string
 
-	// optiona metadata
+	// optional metadata
 	Location string
 
 	// optional, defaults to global config
-	SNMP *client.Config
+	SNMP *client.Options
 }
 
 func newHost(id HostID) *Host {
@@ -44,24 +44,21 @@ func (host *Host) String() string {
 	return fmt.Sprintf("%v", host.id)
 }
 
-func (host *Host) init(config HostConfig) error {
-	var snmpConfig = *config.SNMP
+func (host *Host) init(clientEngine *client.Engine, config HostConfig) error {
+	var clientOptions = *config.SNMP
 
 	if config.Host == "" {
 		config.Host = string(host.id)
 	}
 
-	if err := snmpConfig.Parse(config.Host); err != nil {
-		return err
-	}
-
 	host.config = config
-	host.config.SNMP = &snmpConfig
 
-	host.log.Infof("Config SNMP: %#v", host.config.SNMP)
+	host.log.Infof("Config: %#v", host.config)
 
-	if snmpClient, err := snmpConfig.Client(); err != nil {
-		return fmt.Errorf("SNMP client for %v: %v", host, err)
+	if clientConfig, err := client.ParseConfig(clientOptions, config.Host); err != nil {
+		return err
+	} else if snmpClient, err := client.NewClient(clientEngine, clientConfig); err != nil {
+		return fmt.Errorf("NewClient %v: %v", host, err)
 	} else {
 		host.log.Infof("Connected client: %v", snmpClient)
 
@@ -113,27 +110,8 @@ func (host *Host) IsUp() bool {
 func (host *Host) start() {
 	host.log.Infof("Starting...")
 
-	go host.run()
-
 	// TODO: period re-probing in case host was offline when starting?
 	go host.probe()
-}
-
-func (host *Host) run() {
-	host.log.Infof("Running...")
-
-	if err := host.snmpClient.Run(); err != nil {
-		// XXX: handle restarts?
-		host.log.Errorf("SNMP client failed: %v", err)
-	}
-
-	host.log.Infof("Stopped")
-}
-
-func (host *Host) stop() {
-	host.log.Infof("Stopping...")
-
-	host.snmpClient.Close()
 }
 
 func (host *Host) walkObjects(f func(*mibs.Object)) {

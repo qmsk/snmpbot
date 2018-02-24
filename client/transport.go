@@ -16,6 +16,7 @@ type IO struct {
 }
 
 type Transport interface {
+	Resolve(addr string) (net.Addr, error)
 	Send(IO) error
 	Recv() (IO, error)
 	Close() error
