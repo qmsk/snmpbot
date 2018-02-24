@@ -178,6 +178,10 @@ func (engine *Engine) run() error {
 	}
 }
 
+func (engine *Engine) Transport() Transport {
+	return engine.transport
+}
+
 func (engine *Engine) Run() error {
 	engine.log.Debugf("Run...")
 

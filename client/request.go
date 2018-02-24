@@ -10,6 +10,7 @@ type requestID uint32
 
 type requestMap map[ioKey]*Request
 
+// send.Addr must be resolved using engine.Transport().Resolve(...)
 func NewRequest(options Options, send IO) *Request {
 	var request = makeRequest()
 
