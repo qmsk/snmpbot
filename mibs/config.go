@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/qmsk/snmpbot/snmp"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 )
@@ -223,7 +222,7 @@ func walkPath(path string, handler configWalkFunc) error {
 	} else if fileInfo, err := file.Stat(); err != nil {
 		return err
 	} else if fileInfo.IsDir() {
-		log.Printf("Load MIBs from directory: %v", path)
+		log.Infof("Load MIBs from directory: %v", path)
 
 		if names, err := file.Readdirnames(0); err != nil {
 			return err
@@ -268,7 +267,7 @@ func Load(path string) error {
 			} else if err := mibConfig.loadObjects(mib); err != nil {
 				return fmt.Errorf("Failed to load MIB %v objects from %v: %v", mib, path, err)
 			} else {
-				log.Printf("Load MIB %v from %v with %d objects", mib, path, len(mib.objects))
+				log.Infof("Load MIB %v from %v with %d objects", mib, path, len(mib.objects))
 
 				return nil
 			}
@@ -279,7 +278,7 @@ func Load(path string) error {
 			} else if err := mibConfig.loadTables(mib, loadContext); err != nil {
 				return fmt.Errorf("Failed to load MIB %v tables from %v: %v", mib, path, err)
 			} else {
-				log.Printf("Load MIB %v from %v with %d tables", mib, path, len(mib.tables))
+				log.Infof("Load MIB %v from %v with %d tables", mib, path, len(mib.tables))
 
 				return nil
 			}

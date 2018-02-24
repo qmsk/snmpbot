@@ -9,19 +9,18 @@ import (
 	"github.com/qmsk/snmpbot/util/logging"
 	"log"
 	"os"
-	"path/filepath"
 )
 
 type Options struct {
-	Log     logging.Options
-	MIBPath string
-	SNMP    client.Config
+	Log  logging.Options
+	MIBs mibs.Options
+	SNMP client.Config
 }
 
 func (options *Options) InitFlags() {
 	options.Log.InitFlags("")
+	options.MIBs.InitFlags()
 
-	flag.StringVar(&options.MIBPath, "snmp-mibs", os.Getenv("SNMPBOT_MIBS"), "Load MIBs from PATH[:PATH[...]]")
 	flag.StringVar(&options.SNMP.Community, "snmp-community", "public", "Default SNMP community")
 	flag.DurationVar(&options.SNMP.Timeout, "snmp-timeout", client.DefaultTimeout, "SNMP request timeout")
 	flag.IntVar(&options.SNMP.Retry, "snmp-retry", 0, "SNMP request retry")
@@ -33,20 +32,6 @@ func (options *Options) Parse() []string {
 	flag.Parse()
 
 	return flag.Args()
-}
-
-func (options *Options) LoadMIBs() error {
-	if options.MIBPath == "" {
-		return fmt.Errorf("Must provide -snmp-mibs/$SNMPBOT_MIBS with path to .../snmpbot-mibs/*.json")
-	}
-
-	for _, path := range filepath.SplitList(options.MIBPath) {
-		if err := mibs.Load(path); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (options Options) ClientConfig() client.Config {
@@ -129,7 +114,7 @@ func (options Options) WithClientID(args []string, f func(*mibs.Client, mibs.ID)
 func (options *Options) Main(f func(args []string) error) {
 	args := options.Parse()
 
-	if err := options.LoadMIBs(); err != nil {
+	if err := options.MIBs.Apply(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
