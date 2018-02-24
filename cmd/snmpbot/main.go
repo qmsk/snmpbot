@@ -33,7 +33,7 @@ func (options *Options) InitFlags() {
 func (options *Options) Apply() {
 	options.Server.SNMP = options.ClientConfig()
 
-	server.SetLogging(options.ServerLogging.MakeLogging())
+	server.ApplyLogging(options.ServerLogging)
 }
 
 var options Options

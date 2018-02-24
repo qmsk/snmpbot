@@ -45,7 +45,7 @@ func (options *Options) InitFlags() {
 func (options *Options) Parse() []string {
 	flag.Parse()
 
-	mibs.SetLogging(options.MIBsLogging.MakeLogging())
+	mibs.ApplyLogging(options.MIBsLogging)
 
 	return flag.Args()
 }
