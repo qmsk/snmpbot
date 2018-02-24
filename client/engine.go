@@ -22,9 +22,9 @@ func makeEngine(transport Transport) Engine {
 		transport: transport,
 
 		requestID:   1, // TODO: randomize
-		requests:    make(map[requestID]*request),
+		requests:    make(requestMap),
 		requestChan: make(chan *request),
-		timeoutChan: make(chan requestID),
+		timeoutChan: make(chan ioKey),
 	}
 }
 
@@ -33,9 +33,9 @@ type Engine struct {
 	transport Transport
 
 	requestID   requestID
-	requests    map[requestID]*request
+	requests    requestMap
 	requestChan chan *request
-	timeoutChan chan requestID
+	timeoutChan chan ioKey
 }
 
 func (engine *Engine) String() string {
@@ -67,8 +67,6 @@ func (engine *Engine) teardown() {
 }
 
 func (engine *Engine) startRequest(request *request) error {
-	request.send.PDU.RequestID = int(request.id)
-
 	engine.log.Debugf("Send: %#v", request.send)
 
 	if err := engine.transport.Send(request.send); err != nil {
@@ -78,8 +76,6 @@ func (engine *Engine) startRequest(request *request) error {
 
 		return err
 	}
-
-	request.start(request.timeout, engine.timeoutChan)
 
 	return nil
 }
@@ -109,14 +105,17 @@ func (engine *Engine) run() error {
 	for {
 		select {
 		case request := <-engine.requestChan:
-			request.id = engine.nextRequestID()
+			// initialize request with next request ID to get the request key used to track send/recv/timeout
+			requestKey := request.init(engine.nextRequestID())
 
 			if err := engine.startRequest(request); err != nil {
-				engine.log.Debugf("Start request %v failed: %v", request, err)
+				engine.log.Debugf("Start request %v failed: %v", requestKey, err)
 			} else {
-				engine.log.Debugf("Start request: %v", request)
+				engine.log.Debugf("Start request %v: %v", requestKey, request)
 
-				engine.requests[request.id] = request
+				engine.requests[requestKey] = request
+
+				request.startTimeout(engine.timeoutChan, requestKey)
 			}
 
 		case recv, ok := <-recvChan:
@@ -124,37 +123,39 @@ func (engine *Engine) run() error {
 				return recvErr
 			}
 
-			requestID := requestID(recv.PDU.RequestID)
+			requestKey := recv.key()
 
-			if request, ok := engine.requests[requestID]; !ok {
-				engine.log.Debugf("Recv for unknown requestID=%d", requestID)
+			if request, ok := engine.requests[requestKey]; !ok {
+				engine.log.Debugf("Unknown request %v recv", requestKey)
 			} else {
-				engine.log.Debugf("Request done: %v", request)
+				engine.log.Debugf("Request %v done: %v", requestKey, request)
 				request.done(recv)
-				delete(engine.requests, requestID)
+				delete(engine.requests, requestKey)
 			}
 
-		case requestID := <-engine.timeoutChan:
-			if request, ok := engine.requests[requestID]; !ok {
-				engine.log.Debugf("Timeout with expired requestID=%d", requestID)
+		case requestKey := <-engine.timeoutChan:
+			if request, ok := engine.requests[requestKey]; !ok {
+				engine.log.Debugf("Unknown request %v timeout", requestKey)
 
 			} else if request.retry <= 0 {
-				engine.log.Debugf("Timeout request: %v", request)
+				engine.log.Debugf("Timeout %v request: %v", requestKey, request)
 
 				request.failTimeout(engine.transport)
 
-				delete(engine.requests, requestID)
+				delete(engine.requests, requestKey)
 
 			} else {
 				request.retry--
 
-				engine.log.Debugf("Retry on timeout (%d attempts remaining): %v", request.retry, request)
+				engine.log.Debugf("Retry request %v on timeout (%d attempts remaining): %v", requestKey, request.retry, request)
 
 				if err := engine.startRequest(request); err != nil {
-					engine.log.Debugf("Retry request %v failed: %v", request, err)
+					engine.log.Debugf("Retry request %v failed: %v", requestKey, err)
 
 					// cleanup
-					delete(engine.requests, requestID)
+					delete(engine.requests, requestKey)
+				} else {
+					request.startTimeout(engine.timeoutChan, requestKey)
 				}
 			}
 		}

@@ -7,12 +7,8 @@ import (
 )
 
 type requestID uint32
-type requestKey struct {
-	id   requestID
-	addr string
-}
 
-type requestMap map[requestKey]*request
+type requestMap map[ioKey]*request
 
 type request struct {
 	send      IO
@@ -54,9 +50,16 @@ func (request *request) wait() error {
 	}
 }
 
-func (request *request) start(timeout time.Duration, timeoutChan chan requestID) {
-	request.timer = time.AfterFunc(timeout, func() {
-		timeoutChan <- request.id
+func (request *request) init(id requestID) ioKey {
+	request.id = id
+	request.send.PDU.RequestID = int(id)
+
+	return request.send.key()
+}
+
+func (request *request) startTimeout(timeoutChan chan ioKey, key ioKey) {
+	request.timer = time.AfterFunc(request.timeout, func() {
+		timeoutChan <- key
 	})
 }
 
