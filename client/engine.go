@@ -23,7 +23,7 @@ func makeEngine(transport Transport) Engine {
 
 		requestID:   1, // TODO: randomize
 		requests:    make(requestMap),
-		requestChan: make(chan *request),
+		requestChan: make(chan *Request),
 		timeoutChan: make(chan ioKey),
 		recvChan:    make(chan IO),
 	}
@@ -35,7 +35,7 @@ type Engine struct {
 
 	requestID   requestID
 	requests    requestMap
-	requestChan chan *request
+	requestChan chan *Request
 	timeoutChan chan ioKey
 
 	recvChan chan IO
@@ -87,7 +87,7 @@ func (engine *Engine) receiver() {
 	}
 }
 
-func (engine *Engine) sendRequest(request *request) error {
+func (engine *Engine) sendRequest(request *Request) error {
 	engine.log.Debugf("Send: %#v", request.send)
 
 	if err := engine.transport.Send(request.send); err != nil {
@@ -97,7 +97,7 @@ func (engine *Engine) sendRequest(request *request) error {
 	return nil
 }
 
-func (engine *Engine) startRequest(request *request) {
+func (engine *Engine) startRequest(request *Request) {
 	// initialize request with next request ID to get the request key used to track send/recv/timeout
 	requestKey := request.init(engine.nextRequestID())
 
@@ -186,7 +186,10 @@ func (engine *Engine) Run() error {
 	return engine.run()
 }
 
-func (engine *Engine) request(request *request) error {
+// Send request, wait for timeout or response
+// Returns error if send failed, request aborted on engine close, or request timeout
+// Also check request.Response() for SNMP-level errors
+func (engine *Engine) Request(request *Request) error {
 	engine.requestChan <- request
 
 	return request.wait()

@@ -5,7 +5,6 @@ import (
 	"github.com/qmsk/go-logging"
 	"github.com/qmsk/snmpbot/snmp"
 	"net"
-	"time"
 )
 
 func NewClient(engine *Engine, config Config) (*Client, error) {
@@ -42,34 +41,21 @@ func (client *Client) String() string {
 }
 
 func (client *Client) request(send IO) (IO, error) {
-	var request = &request{
-		send:      send,
-		timeout:   DefaultTimeout,
-		retry:     DefaultRetry,
-		startTime: time.Now(),
-		waitChan:  make(chan error, 1),
-	}
+	var request = NewRequest(client.options, send)
 
-	if client.options.Timeout != 0 {
-		request.timeout = client.options.Timeout
-	}
-	if client.options.Retry != 0 {
-		request.retry = client.options.Retry
-	}
-
-	if err := client.engine.request(request); err != nil {
+	if err := client.engine.Request(request); err != nil {
 		client.log.Infof("Request %v: %v", request, err)
 
-		return request.recv, err
+		return IO{}, err
 
-	} else if err := request.Error(); err != nil {
+	} else if recv, err := request.Result(); err != nil {
 		client.log.Infof("Request %v: %v", request, err)
 
-		return request.recv, err
+		return recv, err
 	} else {
 		client.log.Infof("Request %v", request)
 
-		return request.recv, nil
+		return recv, nil
 	}
 }
 
