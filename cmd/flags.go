@@ -47,7 +47,7 @@ func (options *Options) Parse() []string {
 }
 
 func (options Options) ClientEngine() (*client.Engine, error) {
-	return client.NewEngine(options.Client)
+	return client.NewUDPEngine(options.Client.UDP)
 }
 
 func (options Options) ClientConfig(url string) (client.Config, error) {

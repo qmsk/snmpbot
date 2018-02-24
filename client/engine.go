@@ -5,8 +5,8 @@ import (
 	"github.com/qmsk/go-logging"
 )
 
-func NewEngine(options Options) (*Engine, error) {
-	if udp, err := NewUDP(options.UDP); err != nil {
+func NewUDPEngine(udpOptions UDPOptions) (*Engine, error) {
+	if udp, err := NewUDP(udpOptions); err != nil {
 		return nil, err
 	} else {
 		var engine = makeEngine(udp)
