@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"github.com/qmsk/go-logging"
 	"github.com/qmsk/snmpbot/snmp"
 	"net"
 	"time"
@@ -16,6 +17,8 @@ func NewClient(engine *Engine, config Config) (*Client, error) {
 		client.addr = addr
 	}
 
+	client.log = logging.WithPrefix(log, fmt.Sprintf("Client<%v>", &client))
+
 	return &client, nil
 }
 
@@ -29,6 +32,7 @@ func makeClient(engine *Engine, options Options) Client {
 type Client struct {
 	engine  *Engine
 	options Options
+	log     logging.PrefixLogging
 
 	addr net.Addr // host or host:port
 }
@@ -54,16 +58,16 @@ func (client *Client) request(send IO) (IO, error) {
 	}
 
 	if err := client.engine.request(request); err != nil {
-		log.Infof("%v Request %v: %v", client, request, err)
+		client.log.Infof("Request %v: %v", request, err)
 
 		return request.recv, err
 
 	} else if err := request.Error(); err != nil {
-		log.Infof("%v Request %v: %v", client, request, err)
+		client.log.Infof("Request %v: %v", request, err)
 
 		return request.recv, err
 	} else {
-		log.Infof("%v, Request %v", client, request)
+		client.log.Infof("Request %v", request)
 
 		return request.recv, nil
 	}

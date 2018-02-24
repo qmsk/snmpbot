@@ -28,9 +28,9 @@ type request struct {
 
 func (request request) String() string {
 	if request.recvOK {
-		return fmt.Sprintf("%s<%s>@%d: %s", request.send.PDUType.String(), request.send.PDU.String(), request.id, request.recv.PDU.String())
+		return fmt.Sprintf("%s<%s>@%v[%d]: %s", request.send.PDUType.String(), request.send.PDU.String(), request.send.Addr, request.id, request.recv.PDU.String())
 	} else {
-		return fmt.Sprintf("%s<%s>@%d", request.send.PDUType.String(), request.send.PDU.String(), request.id)
+		return fmt.Sprintf("%s<%s>@%v[%d]", request.send.PDUType.String(), request.send.PDU.String(), request.send.Addr, request.id)
 	}
 }
 
@@ -94,7 +94,7 @@ type TimeoutError struct {
 }
 
 func (err TimeoutError) Error() string {
-	return fmt.Sprintf("SNMP %v timeout for %v after %v", err.transport, err.request, err.Duration)
+	return fmt.Sprintf("SNMP<%v> timeout for %v after %v", err.transport, err.request, err.Duration)
 }
 
 type SNMPError struct {

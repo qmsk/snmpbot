@@ -30,7 +30,7 @@ type testTransport struct {
 }
 
 func (transport *testTransport) String() string {
-	return "<test>"
+	return "testing"
 }
 
 func (transport *testTransport) Resolve(addr string) (net.Addr, error) {

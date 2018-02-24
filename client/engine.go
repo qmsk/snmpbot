@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"github.com/qmsk/go-logging"
 )
 
 func NewEngine(options Options) (*Engine, error) {
@@ -9,6 +10,8 @@ func NewEngine(options Options) (*Engine, error) {
 		return nil, err
 	} else {
 		var engine = makeEngine(udp)
+
+		engine.log = logging.WithPrefix(log, fmt.Sprintf("Engine<%v>", &engine))
 
 		return &engine, nil
 	}
@@ -26,6 +29,7 @@ func makeEngine(transport Transport) Engine {
 }
 
 type Engine struct {
+	log       logging.PrefixLogging
 	transport Transport
 
 	requestID   requestID
@@ -47,7 +51,7 @@ func (engine *Engine) nextRequestID() requestID {
 }
 
 func (engine *Engine) teardown() {
-	log.Debugf("%v teardown...", engine)
+	engine.log.Debugf("teardown...")
 
 	close(engine.requestChan)
 
@@ -65,16 +69,14 @@ func (engine *Engine) teardown() {
 func (engine *Engine) startRequest(request *request) error {
 	request.send.PDU.RequestID = int(request.id)
 
-	if err := engine.transport.Send(request.send); err != nil {
-		err = fmt.Errorf("SNMP %v send failed: %v", engine.transport, err)
+	engine.log.Debugf("Send: %#v", request.send)
 
-		log.Debugf("%v request %d fail: %v", engine, request.id, err)
+	if err := engine.transport.Send(request.send); err != nil {
+		err = fmt.Errorf("SNMP<%v> send failed: %v", engine.transport, err)
 
 		request.fail(err)
 
 		return err
-	} else {
-		log.Debugf("%v request %d...", engine, request.id)
 	}
 
 	request.start(request.timeout, engine.timeoutChan)
@@ -93,11 +95,11 @@ func (engine *Engine) run() error {
 
 		for {
 			if recv, err := engine.transport.Recv(); err != nil {
-				log.Errorf("%v recv: %v", engine, err)
+				engine.log.Errorf("Recv: %v", err)
 				recvErr = err
 				return
 			} else {
-				log.Debugf("%v recv: %#v", engine, recv)
+				engine.log.Debugf("Recv: %#v", recv)
 
 				recvChan <- recv
 			}
@@ -109,9 +111,11 @@ func (engine *Engine) run() error {
 		case request := <-engine.requestChan:
 			request.id = engine.nextRequestID()
 
-			log.Debugf("%v request %d send: %#v", engine, request.id, request.send)
+			if err := engine.startRequest(request); err != nil {
+				engine.log.Debugf("Start request %v failed: %v", request, err)
+			} else {
+				engine.log.Debugf("Start request: %v", request)
 
-			if err := engine.startRequest(request); err == nil {
 				engine.requests[request.id] = request
 			}
 
@@ -123,27 +127,32 @@ func (engine *Engine) run() error {
 			requestID := requestID(recv.PDU.RequestID)
 
 			if request, ok := engine.requests[requestID]; !ok {
-				log.Warnf("%v recv with unknown requestID=%d", engine, requestID)
+				engine.log.Debugf("Recv for unknown requestID=%d", requestID)
 			} else {
-				log.Debugf("%v request %d done", engine, requestID)
+				engine.log.Debugf("Request done: %v", request)
 				request.done(recv)
 				delete(engine.requests, requestID)
 			}
 
 		case requestID := <-engine.timeoutChan:
 			if request, ok := engine.requests[requestID]; !ok {
-				log.Debugf("%v timeout with expired requestID=%d", engine, requestID)
+				engine.log.Debugf("Timeout with expired requestID=%d", requestID)
+
 			} else if request.retry <= 0 {
-				log.Debugf("%v request %d timeout", engine, request.id)
+				engine.log.Debugf("Timeout request: %v", request)
 
 				request.failTimeout(engine.transport)
-				delete(engine.requests, requestID)
-			} else {
-				log.Debugf("%v request %d retry %d...", engine, request.id, request.retry)
 
+				delete(engine.requests, requestID)
+
+			} else {
 				request.retry--
 
+				engine.log.Debugf("Retry on timeout (%d attempts remaining): %v", request.retry, request)
+
 				if err := engine.startRequest(request); err != nil {
+					engine.log.Debugf("Retry request %v failed: %v", request, err)
+
 					// cleanup
 					delete(engine.requests, requestID)
 				}
@@ -153,7 +162,7 @@ func (engine *Engine) run() error {
 }
 
 func (engine *Engine) Run() error {
-	log.Debugf("%v Run...", engine)
+	engine.log.Debugf("Run...")
 
 	return engine.run()
 }
@@ -166,7 +175,7 @@ func (engine *Engine) request(request *request) error {
 
 // Closing the engine will cancel any requests, and cause Run() to return
 func (engine *Engine) Close() error {
-	log.Debugf("%v Close...", engine)
+	engine.log.Debugf("Close...")
 
 	return engine.transport.Close()
 }
