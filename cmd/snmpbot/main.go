@@ -15,6 +15,7 @@ type Options struct {
 	Server        server.Options
 	ServerLogging logging.Options
 	Web           web.Options
+	WebLogging    logging.Options
 }
 
 func (options *Options) InitFlags() {
@@ -22,9 +23,14 @@ func (options *Options) InitFlags() {
 		Module:   "server",
 		Defaults: &options.Options.Logging,
 	}
+	options.WebLogging = logging.Options{
+		Module:   "web",
+		Defaults: &options.Options.Logging,
+	}
 	options.Options.InitFlags()
 	options.Server.InitFlags()
 	options.ServerLogging.InitFlags()
+	options.WebLogging.InitFlags()
 
 	flag.StringVar(&options.Web.Listen, "http-listen", ":8286", "HTTP server listen: [HOST]:PORT")
 	flag.StringVar(&options.Web.Static, "http-static", "", "HTTP sever /static path: PATH")
@@ -34,6 +40,7 @@ func (options *Options) Apply() {
 	options.Server.SNMP = options.ClientConfig()
 
 	server.SetLogging(options.ServerLogging.MakeLogging())
+	web.SetLogging(options.WebLogging.MakeLogging())
 }
 
 var options Options
