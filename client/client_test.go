@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"github.com/qmsk/go-logging"
 	"github.com/qmsk/snmpbot/snmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -10,7 +11,7 @@ import (
 )
 
 func makeTestClient(t *testing.T) (*testTransport, *Client) {
-	testLogging(t)
+	SetLogging(logging.TestLogging(t))
 
 	var testTransport = testTransport{
 		recvChan: make(chan IO),

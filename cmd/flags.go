@@ -3,10 +3,10 @@ package cmd
 import (
 	"flag"
 	"fmt"
+	"github.com/qmsk/go-logging"
 	"github.com/qmsk/snmpbot/client"
 	"github.com/qmsk/snmpbot/mibs"
 	"github.com/qmsk/snmpbot/snmp"
-	"github.com/qmsk/snmpbot/util/logging"
 	"log"
 	"os"
 )

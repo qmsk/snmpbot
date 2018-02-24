@@ -2,11 +2,11 @@ package server
 
 import (
 	"fmt"
+	"github.com/qmsk/go-logging"
 	"github.com/qmsk/go-web"
 	"github.com/qmsk/snmpbot/api"
 	"github.com/qmsk/snmpbot/client"
 	"github.com/qmsk/snmpbot/mibs"
-	"github.com/qmsk/snmpbot/util/logging"
 )
 
 type HostConfig struct {

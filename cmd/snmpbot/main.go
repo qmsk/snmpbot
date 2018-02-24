@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/qmsk/go-logging"
 	"github.com/qmsk/go-web"
 	"github.com/qmsk/snmpbot/cmd"
 	"github.com/qmsk/snmpbot/server"
-	"github.com/qmsk/snmpbot/util/logging"
 )
 
 type Options struct {

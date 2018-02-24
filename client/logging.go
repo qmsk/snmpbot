@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/qmsk/snmpbot/util/logging"
+	"github.com/qmsk/go-logging"
 )
 
 var log logging.Logging
