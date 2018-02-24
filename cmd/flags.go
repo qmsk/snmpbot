@@ -19,7 +19,7 @@ type Options struct {
 }
 
 func (options *Options) InitFlags() {
-	options.Log.InitFlags()
+	options.Log.InitFlags("")
 
 	flag.StringVar(&options.MIBPath, "snmp-mibs", os.Getenv("SNMPBOT_MIBS"), "Load MIBs from PATH[:PATH[...]]")
 	flag.StringVar(&options.SNMP.Community, "snmp-community", "public", "Default SNMP community")
