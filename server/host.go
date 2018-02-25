@@ -52,6 +52,9 @@ func (host *Host) init(clientEngine *client.Engine, config HostConfig) error {
 	}
 
 	host.config = config
+	host.state = HostState{
+		Location: host.config.Location,
+	}
 
 	host.log.Infof("Config: %#v", host.config)
 
@@ -94,12 +97,9 @@ func (host *Host) probe() {
 				host.probedMIBs = append(host.probedMIBs, id.MIB)
 			}
 		}
-	}
 
-	host.state = HostState{
-		Online: true,
 		// TODO: probe system::sysLocation?
-		Location: host.config.Location,
+		host.state.Online = true
 	}
 }
 
@@ -110,7 +110,7 @@ func (host *Host) IsUp() bool {
 func (host *Host) start() {
 	host.log.Infof("Starting...")
 
-	// TODO: period re-probing in case host was offline when starting?
+	// TODO: periodic re-probing in case host was offline when starting?
 	go host.probe()
 }
 

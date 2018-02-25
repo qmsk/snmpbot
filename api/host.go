@@ -13,7 +13,7 @@ type HostIndex struct {
 	ID       string
 	SNMP     string
 	Online   bool
-	Location string
+	Location string `json:",omitempty"`
 
 	MIBs []MIBIndex
 }
