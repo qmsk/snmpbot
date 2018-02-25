@@ -6,14 +6,27 @@ import (
 	"github.com/qmsk/snmpbot/mibs"
 )
 
+type MIBs map[string]*mibs.MIB
+
+func AllMIBs() MIBs {
+	var mibMap = make(MIBs)
+
+	mibs.WalkMIBs(func(mib *mibs.MIB) {
+		mibMap[mib.Name] = mib
+	})
+
+	return mibMap
+}
+
 type mibsRoute struct {
+	mibs MIBs
 }
 
 func (route mibsRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
-		return mibsView{}, nil
-	} else if mib, err := mibs.ResolveMIB(name); err != nil {
-		return nil, web.Errorf(404, "%v", err)
+		return mibsView{route.mibs}, nil
+	} else if mib, ok := route.mibs[name]; !ok {
+		return nil, web.Errorf(404, "MIB not found: %v", name)
 	} else {
 		return mibView{mib}, nil
 	}
@@ -44,24 +57,25 @@ func (view mibView) GetREST() (web.Resource, error) {
 }
 
 type mibsView struct {
+	mibs MIBs
 }
 
-func (_ mibsView) makeAPIIndex() []api.MIBIndex {
+func (view mibsView) makeAPIIndex() []api.MIBIndex {
 	var index []api.MIBIndex
 
-	mibs.WalkMIBs(func(mib *mibs.MIB) {
+	for _, mib := range view.mibs {
 		index = append(index, mibView{mib}.makeAPIIndex())
-	})
+	}
 
 	return index
 }
 
-func (_ mibsView) makeAPI() []api.MIB {
+func (view mibsView) makeAPI() []api.MIB {
 	var rets []api.MIB
 
-	mibs.WalkMIBs(func(mib *mibs.MIB) {
+	for _, mib := range view.mibs {
 		rets = append(rets, mibView{mib}.makeAPI())
-	})
+	}
 
 	return rets
 }

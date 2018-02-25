@@ -9,6 +9,7 @@ import (
 func newEngine(clientEngine *client.Engine) *Engine {
 	return &Engine{
 		clientEngine: clientEngine,
+		mibs:         AllMIBs(),
 		hosts:        make(Hosts),
 	}
 }
@@ -17,6 +18,7 @@ type Engine struct {
 	clientEngine   *client.Engine
 	clientDefaults client.Options
 
+	mibs  MIBs
 	hosts Hosts
 }
 
@@ -42,6 +44,10 @@ func (engine *Engine) init(config Config) error {
 	}
 
 	return nil
+}
+
+func (engine *Engine) MIBs() MIBs {
+	return engine.mibs
 }
 
 func (engine *Engine) Hosts() Hosts {

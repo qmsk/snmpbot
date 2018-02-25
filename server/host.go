@@ -45,9 +45,11 @@ type Host struct {
 	id         HostID
 	config     HostConfig
 	log        logging.PrefixLogging
-	probedMIBs []*mibs.MIB
 	snmpClient *client.Client
+
+	probedMIBs []*mibs.MIB
 	state      HostState
+	started    bool
 }
 
 func (host *Host) String() string {
@@ -95,14 +97,14 @@ func (host *Host) makeMIBIDs() []mibs.ID {
 	return ids
 }
 
-func (host *Host) probe() {
+func (host *Host) probe() error {
 	var client = mibs.Client{host.snmpClient}
 	var ids = host.makeMIBIDs()
 
 	host.log.Infof("Probing MIBs: %v", ids)
 
 	if probed, err := client.ProbeMany(ids); err != nil {
-		host.log.Warnf("Failed to probe: %v", err)
+		return err
 	} else {
 		for _, id := range ids {
 			host.log.Debugf("Probed %v = %v", id, probed[id.Key()])
@@ -112,9 +114,12 @@ func (host *Host) probe() {
 			}
 		}
 
-		// TODO: probe system::sysLocation?
-		host.state.Online = true
 	}
+
+	// TODO: probe system::sysLocation?
+	host.state.Online = true
+
+	return nil
 }
 
 func (host *Host) IsUp() bool {
@@ -124,8 +129,14 @@ func (host *Host) IsUp() bool {
 func (host *Host) start() {
 	host.log.Infof("Starting...")
 
+	host.started = true
+
 	// TODO: periodic re-probing in case host was offline when starting?
-	go host.probe()
+	go func() {
+		if err := host.probe(); err != nil {
+			host.log.Warnf("Failed to probe: %v", err)
+		}
+	}()
 }
 
 func (host *Host) walkObjects(f func(*mibs.Object)) {
@@ -259,6 +270,12 @@ func (view hostView) makeAPI() api.Host {
 }
 
 func (view hostView) GetREST() (web.Resource, error) {
+	if !view.host.started {
+		// for dynamic-lookup hosts that have not yet been probed
+		if err := view.host.probe(); err != nil {
+			return nil, err
+		}
+	}
 	return view.makeAPI(), nil
 }
 
