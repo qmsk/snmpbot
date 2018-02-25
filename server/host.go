@@ -16,7 +16,7 @@ type HostConfig struct {
 	Location string
 
 	// optional, defaults to global config
-	SNMP *client.Options
+	SNMP *client.Options // TODO: rename to ClientOptions
 }
 
 func makeHost(id HostID) Host {
@@ -36,20 +36,13 @@ func newHost(engine *Engine, id HostID, config HostConfig) (*Host, error) {
 	}
 }
 
-type HostState struct {
-	Online   bool
-	Location string
-}
-
 type Host struct {
-	id         HostID
-	config     HostConfig
-	log        logging.PrefixLogging
-	snmpClient *client.Client
-
-	probedMIBs []*mibs.MIB
-	state      HostState
-	started    bool
+	id     HostID
+	log    logging.PrefixLogging
+	config HostConfig
+	client *client.Client
+	mibs   MIBs
+	online bool
 }
 
 func (host *Host) String() string {
@@ -68,68 +61,47 @@ func (host *Host) init(engine *Engine, config HostConfig) error {
 	}
 
 	host.config = config
-	host.state = HostState{
-		Location: host.config.Location,
-	}
+	host.mibs = engine.mibs
 
 	host.log.Infof("Config: %#v", host.config)
 
 	if clientConfig, err := client.ParseConfig(clientOptions, config.Host); err != nil {
 		return err
-	} else if snmpClient, err := client.NewClient(engine.clientEngine, clientConfig); err != nil {
+	} else if client, err := client.NewClient(engine.clientEngine, clientConfig); err != nil {
 		return fmt.Errorf("NewClient %v: %v", host, err)
 	} else {
-		host.log.Infof("Connected client: %v", snmpClient)
+		host.log.Infof("Connected client: %v", client)
 
-		host.snmpClient = snmpClient
+		host.client = client
 	}
 
 	return nil
 }
 
-func (host *Host) makeMIBIDs() []mibs.ID {
-	var ids []mibs.ID
-
-	mibs.WalkMIBs(func(mib *mibs.MIB) {
-		ids = append(ids, mib.ID)
-	})
-
-	return ids
-}
-
 func (host *Host) probe() error {
-	var client = mibs.Client{host.snmpClient}
-	var ids = host.makeMIBIDs()
+	var client = mibs.Client{host.client}
+	var mibs = host.mibs
 
-	host.log.Infof("Probing MIBs: %v", ids)
+	host.log.Infof("Probing MIBs: %v", mibs)
 
-	if probed, err := client.ProbeMany(ids); err != nil {
+	if probed, err := client.ProbeMany(mibs.ListIDs()); err != nil {
 		return err
 	} else {
-		for _, id := range ids {
-			host.log.Debugf("Probed %v = %v", id, probed[id.Key()])
-
-			if probed[id.Key()] {
-				host.probedMIBs = append(host.probedMIBs, id.MIB)
-			}
-		}
-
+		host.mibs = mibs.FilterProbed(probed)
 	}
 
 	// TODO: probe system::sysLocation?
-	host.state.Online = true
+	host.online = true
 
 	return nil
 }
 
 func (host *Host) IsUp() bool {
-	return host.state.Online
+	return host.online
 }
 
 func (host *Host) start() {
 	host.log.Infof("Starting...")
-
-	host.started = true
 
 	// TODO: periodic re-probing in case host was offline when starting?
 	go func() {
@@ -139,48 +111,16 @@ func (host *Host) start() {
 	}()
 }
 
-func (host *Host) walkObjects(f func(*mibs.Object)) {
-	for _, mib := range host.probedMIBs {
-		mib.Walk(func(id mibs.ID) {
-			if object := mib.Object(id); object != nil {
-				f(object)
-			}
-		})
-	}
-}
-
-func (host *Host) walkTables(f func(*mibs.Table)) {
-	for _, mib := range host.probedMIBs {
-		mib.Walk(func(id mibs.ID) {
-			if table := mib.Table(id); table != nil {
-				f(table)
-			}
-		})
-	}
+func (host *Host) MIBs() MIBs {
+	return host.mibs
 }
 
 func (host *Host) Objects() Objects {
-	var objects = make(Objects)
-
-	host.walkObjects(func(object *mibs.Object) {
-		if object.NotAccessible {
-			return
-		}
-
-		objects.add(object)
-	})
-
-	return objects
+	return host.mibs.Objects()
 }
 
 func (host *Host) Tables() Tables {
-	var tables = make(Tables)
-
-	host.walkTables(func(table *mibs.Table) {
-		tables.add(table)
-	})
-
-	return tables
+	return host.mibs.Tables()
 }
 
 func (host *Host) resolveObject(name string) (*mibs.Object, error) {
@@ -192,7 +132,7 @@ func (host *Host) resolveTable(name string) (*mibs.Table, error) {
 }
 
 func (host *Host) getClient() (mibs.Client, error) {
-	return mibs.Client{host.snmpClient}, nil
+	return mibs.Client{host.client}, nil
 }
 
 type hostRoute struct {
@@ -222,10 +162,10 @@ type hostView struct {
 }
 
 func (view hostView) makeMIBs() []api.MIBIndex {
-	var mibs = make([]api.MIBIndex, len(view.host.probedMIBs))
+	var mibs []api.MIBIndex
 
-	for i, mib := range view.host.probedMIBs {
-		mibs[i] = mibView{mib}.makeAPIIndex()
+	for _, mib := range view.host.MIBs() {
+		mibs = append(mibs, mibView{mib}.makeAPIIndex())
 	}
 
 	return mibs
@@ -234,9 +174,9 @@ func (view hostView) makeMIBs() []api.MIBIndex {
 func (view hostView) makeObjects() []api.ObjectIndex {
 	var objects []api.ObjectIndex
 
-	view.host.walkObjects(func(object *mibs.Object) {
+	for _, object := range view.host.Objects() {
 		objects = append(objects, objectView{object}.makeAPIIndex())
-	})
+	}
 
 	return objects
 }
@@ -244,9 +184,9 @@ func (view hostView) makeObjects() []api.ObjectIndex {
 func (view hostView) makeTables() []api.TableIndex {
 	var tables []api.TableIndex
 
-	view.host.walkTables(func(table *mibs.Table) {
+	for _, table := range view.host.Tables() {
 		tables = append(tables, tableView{table}.makeAPIIndex())
-	})
+	}
 
 	return tables
 }
@@ -254,9 +194,9 @@ func (view hostView) makeTables() []api.TableIndex {
 func (view hostView) makeAPIIndex() api.HostIndex {
 	return api.HostIndex{
 		ID:       string(view.host.id),
-		SNMP:     view.host.snmpClient.String(),
-		Online:   view.host.state.Online,
-		Location: view.host.state.Location,
+		SNMP:     view.host.client.String(),
+		Location: view.host.config.Location,
+		Online:   view.host.online,
 		MIBs:     view.makeMIBs(),
 	}
 }
@@ -270,12 +210,6 @@ func (view hostView) makeAPI() api.Host {
 }
 
 func (view hostView) GetREST() (web.Resource, error) {
-	if !view.host.started {
-		// for dynamic-lookup hosts that have not yet been probed
-		if err := view.host.probe(); err != nil {
-			return nil, err
-		}
-	}
 	return view.makeAPI(), nil
 }
 

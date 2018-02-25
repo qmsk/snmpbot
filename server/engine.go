@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"github.com/qmsk/snmpbot/client"
-	"github.com/qmsk/snmpbot/mibs"
 )
 
 func newEngine(clientEngine *client.Engine) *Engine {
@@ -64,26 +63,13 @@ func (engine *Engine) Hosts() Hosts {
 }
 
 func (engine *Engine) Objects() Objects {
-	var objects = make(Objects)
-
-	mibs.WalkObjects(func(object *mibs.Object) {
-		if object.NotAccessible {
-			return
-		}
-		objects.add(object)
-	})
-
-	return objects
+	// TODO: limit by MIBs?
+	return AllObjects()
 }
 
 func (engine *Engine) Tables() Tables {
-	var tables = make(Tables)
-
-	mibs.WalkTables(func(table *mibs.Table) {
-		tables.add(table)
-	})
-
-	return tables
+	// TODO: limit by MIBs?
+	return AllTables()
 }
 
 func (engine *Engine) QueryObjects(q ObjectQuery) <-chan ObjectResult {

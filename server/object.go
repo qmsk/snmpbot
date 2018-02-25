@@ -9,6 +9,19 @@ import (
 
 type ObjectID string
 
+func AllObjects() Objects {
+	var objects = make(Objects)
+
+	mibs.WalkObjects(func(object *mibs.Object) {
+		if object.NotAccessible {
+			return
+		}
+		objects.add(object)
+	})
+
+	return objects
+}
+
 func MakeObjects(args ...*mibs.Object) Objects {
 	var objects = make(Objects, len(args))
 

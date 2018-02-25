@@ -9,6 +9,16 @@ import (
 
 type TableID string
 
+func AllTables() Tables {
+	var tables = make(Tables)
+
+	mibs.WalkTables(func(table *mibs.Table) {
+		tables.add(table)
+	})
+
+	return tables
+}
+
 func MakeTables(args ...*mibs.Table) Tables {
 	var tables = make(Tables)
 

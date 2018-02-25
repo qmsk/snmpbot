@@ -54,6 +54,8 @@ func (route hostsRoute) Index(name string) (web.Resource, error) {
 	} else {
 		if host, err := newHost(route.engine, HostID(name), HostConfig{}); err != nil {
 			return nil, err
+		} else if err := host.probe(); err != nil {
+			return nil, err
 		} else {
 			return hostRoute{route.engine, host}, nil
 		}

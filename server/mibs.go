@@ -18,6 +18,57 @@ func AllMIBs() MIBs {
 	return mibMap
 }
 
+func (mibMap MIBs) ListIDs() []mibs.ID {
+	var list = make([]mibs.ID, 0, len(mibMap))
+
+	for _, mib := range mibMap {
+		list = append(list, mib.ID)
+	}
+
+	return list
+}
+
+func (mibMap MIBs) FilterProbed(probed map[mibs.IDKey]bool) MIBs {
+	var probedMibs = make(MIBs)
+
+	for id, mib := range mibMap {
+		if probed[mib.ID.Key()] {
+			probedMibs[id] = mib
+		}
+	}
+
+	return probedMibs
+}
+
+func (mibMap MIBs) Objects() Objects {
+	var objects = make(Objects)
+
+	mibs.WalkObjects(func(object *mibs.Object) {
+		if _, ok := mibMap[object.MIB.Name]; !ok {
+			return
+		}
+		if object.NotAccessible {
+			return
+		}
+		objects.add(object)
+	})
+
+	return objects
+}
+
+func (mibMap MIBs) Tables() Tables {
+	var tables = make(Tables)
+
+	mibs.WalkTables(func(table *mibs.Table) {
+		if _, ok := mibMap[table.MIB.Name]; !ok {
+			return
+		}
+		tables.add(table)
+	})
+
+	return tables
+}
+
 type mibsRoute struct {
 	mibs MIBs
 }
