@@ -49,10 +49,14 @@ type hostsRoute struct {
 func (route hostsRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
 		return hostsView{route.hosts}, nil
-	} else if host, ok := route.hosts[HostID(name)]; !ok {
-		return nil, nil
-	} else {
+	} else if host, ok := route.hosts[HostID(name)]; ok {
 		return hostRoute{route.engine, host}, nil
+	} else {
+		if host, err := newHost(route.engine, HostID(name), HostConfig{}); err != nil {
+			return nil, err
+		} else {
+			return hostRoute{route.engine, host}, nil
+		}
 	}
 }
 
