@@ -14,21 +14,31 @@ func newEngine(clientEngine *client.Engine) *Engine {
 }
 
 type Engine struct {
-	clientEngine *client.Engine
-	hosts        Hosts
+	clientEngine   *client.Engine
+	clientDefaults client.Options
+
+	hosts Hosts
+}
+
+func (engine *Engine) addHost(id HostID, config HostConfig) error {
+	if host, err := newHost(engine, id, config); err != nil {
+		return err
+	} else {
+		host.start()
+
+		engine.hosts[id] = host
+	}
+
+	return nil
 }
 
 func (engine *Engine) init(config Config) error {
-	for hostName, hostConfig := range config.Hosts {
-		var host = newHost(HostID(hostName))
+	engine.clientDefaults = config.SNMP
 
-		if err := host.init(engine.clientEngine, hostConfig); err != nil {
+	for hostName, hostConfig := range config.Hosts {
+		if err := engine.addHost(HostID(hostName), hostConfig); err != nil {
 			return fmt.Errorf("Failed to load host %v: %v", hostName, err)
 		}
-
-		host.start()
-
-		engine.hosts[host.id] = host
 	}
 
 	return nil

@@ -41,10 +41,6 @@ func (config *Config) LoadTOML(path string) error {
 	}
 
 	for hostID, hostConfig := range config.Hosts {
-		if hostConfig.SNMP == nil {
-			hostConfig.SNMP = &config.SNMP
-		}
-
 		config.Hosts[hostID] = hostConfig
 	}
 

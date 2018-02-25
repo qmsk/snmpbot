@@ -19,11 +19,21 @@ type HostConfig struct {
 	SNMP *client.Options
 }
 
-func newHost(id HostID) *Host {
+func makeHost(id HostID) Host {
 	host := Host{id: id}
 	host.log = logging.WithPrefix(log, fmt.Sprintf("Host<%v>", id))
 
-	return &host
+	return host
+}
+
+func newHost(engine *Engine, id HostID, config HostConfig) (*Host, error) {
+	var host = makeHost(id)
+
+	if err := host.init(engine, config); err != nil {
+		return nil, err
+	} else {
+		return &host, nil
+	}
 }
 
 type HostState struct {
@@ -44,8 +54,12 @@ func (host *Host) String() string {
 	return fmt.Sprintf("%v", host.id)
 }
 
-func (host *Host) init(clientEngine *client.Engine, config HostConfig) error {
-	var clientOptions = *config.SNMP
+func (host *Host) init(engine *Engine, config HostConfig) error {
+	var clientOptions = engine.clientDefaults
+
+	if config.SNMP != nil {
+		clientOptions = *config.SNMP
+	}
 
 	if config.Host == "" {
 		config.Host = string(host.id)
@@ -60,7 +74,7 @@ func (host *Host) init(clientEngine *client.Engine, config HostConfig) error {
 
 	if clientConfig, err := client.ParseConfig(clientOptions, config.Host); err != nil {
 		return err
-	} else if snmpClient, err := client.NewClient(clientEngine, clientConfig); err != nil {
+	} else if snmpClient, err := client.NewClient(engine.clientEngine, clientConfig); err != nil {
 		return fmt.Errorf("NewClient %v: %v", host, err)
 	} else {
 		host.log.Infof("Connected client: %v", snmpClient)
