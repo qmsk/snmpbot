@@ -12,7 +12,7 @@ type IndexMap map[IDKey]Value
 func (indexSyntax IndexSyntax) UnpackIndex(index []int) (IndexValues, error) {
 	if indexSyntax == nil {
 		if len(index) == 1 && index[0] == 0 {
-			return nil, nil
+			return IndexValues{}, nil
 		} else {
 			return nil, fmt.Errorf("Unexpected leaf index: %v", index)
 		}
