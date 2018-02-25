@@ -139,11 +139,23 @@ func (view objectView) instanceFromResult(result ObjectResult) api.ObjectInstanc
 		object.Index = view.makeObjectIndex(result.IndexValues)
 	}
 
-	if result.Error != nil {
-		object.Error = &api.Error{result.Error}
+	return object
+}
+
+func (view objectView) errorFromResult(result ObjectResult) api.ObjectError {
+	var ret = api.ObjectError{
+		HostID: string(result.Host.id),
+		Value:  result.Value,
 	}
 
-	return object
+	// XXX: should always match...?
+	if result.Object == view.object {
+		ret.Index = view.makeObjectIndex(result.IndexValues)
+	}
+
+	ret.Error = api.Error{result.Error}
+
+	return ret
 }
 
 type objectsView struct {
@@ -177,7 +189,11 @@ func (handler *objectHandler) query() api.Object {
 		Hosts:   handler.hosts,
 		Objects: MakeObjects(handler.object),
 	}) {
-		object.Instances = append(object.Instances, objectView{result.Object}.instanceFromResult(result))
+		if result.Error != nil {
+			object.Errors = append(object.Errors, objectView{result.Object}.errorFromResult(result))
+		} else {
+			object.Instances = append(object.Instances, objectView{result.Object}.instanceFromResult(result))
+		}
 	}
 
 	return object
@@ -221,13 +237,12 @@ func (handler *objectsHandler) query() ([]*api.Object, error) {
 		Hosts:   handler.hosts,
 		Objects: handler.objects,
 	}) {
-		if result.Object != nil {
-			var object = objectMap[ObjectID(result.Object.Key())]
+		var object = objectMap[ObjectID(result.Object.Key())]
 
-			object.Instances = append(object.Instances, objectView{result.Object}.instanceFromResult(result))
+		if result.Error != nil {
+			object.Errors = append(object.Errors, objectView{result.Object}.errorFromResult(result))
 		} else {
-			// XXX: there is no place in the API to report non-object-specific errors, so we just drop them
-			log.Errorf("Query objects: Host %v: %v", result.Host, result.Error)
+			object.Instances = append(object.Instances, objectView{result.Object}.instanceFromResult(result))
 		}
 	}
 

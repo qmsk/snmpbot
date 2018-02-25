@@ -126,6 +126,13 @@ func (view tableView) entryFromResult(result TableResult) api.TableEntry {
 	return entry
 }
 
+func (view tableView) errorFromResult(result TableResult) api.TableError {
+	return api.TableError{
+		HostID: string(result.Host.id),
+		Error:  api.Error{result.Error},
+	}
+}
+
 type tablesView struct {
 	tables Tables
 }
@@ -173,7 +180,7 @@ func (handler *tableHandler) query() api.Table {
 		Tables: MakeTables(handler.table),
 	}) {
 		if result.Error != nil {
-			table.Error = &api.Error{result.Error} // TODO: multiple errors...
+			table.Errors = append(table.Errors, tableView{result.Table}.errorFromResult(result))
 		} else {
 			table.Entries = append(table.Entries, tableView{result.Table}.entryFromResult(result))
 		}
@@ -222,7 +229,7 @@ func (handler *tablesHandler) query() []*api.Table {
 		var table = tableMap[TableID(result.Table.Key())]
 
 		if result.Error != nil {
-			table.Error = &api.Error{result.Error} // TODO: multiple errors...
+			table.Errors = append(table.Errors, tableView{result.Table}.errorFromResult(result))
 		} else {
 			table.Entries = append(table.Entries, tableView{result.Table}.entryFromResult(result))
 		}

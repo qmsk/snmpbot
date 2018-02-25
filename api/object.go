@@ -22,7 +22,13 @@ type ObjectInstance struct {
 	HostID string
 	Index  ObjectIndexMap `json:",omitempty"`
 	Value  interface{}    `json:",omitempty"`
-	Error  *Error         `json:",omitempty"`
+}
+
+type ObjectError struct {
+	HostID string
+	Index  ObjectIndexMap `json:",omitempty"`
+	Value  interface{}    `json:",omitempty"`
+	Error  Error
 }
 
 // Object data
@@ -39,6 +45,7 @@ type ObjectInstance struct {
 type Object struct {
 	ObjectIndex
 	Instances []ObjectInstance
+	Errors    []ObjectError `json:",omitempty"`
 }
 
 type ObjectIndexMap map[string]interface{}

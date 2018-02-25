@@ -31,7 +31,9 @@ type ObjectQuery struct {
 }
 
 func (q *ObjectQuery) fail(host *Host, err error) {
-	q.resultChan <- ObjectResult{Host: host, Error: err}
+	for _, object := range q.Objects {
+		q.resultChan <- ObjectResult{Host: host, Object: object, Error: err}
+	}
 }
 
 func (q *ObjectQuery) queryHost(host *Host) error {

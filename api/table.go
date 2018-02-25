@@ -32,7 +32,7 @@ type Table struct {
 	TableIndex
 
 	Entries []TableEntry
-	Error   *Error `json:",omitempty"`
+	Errors  []TableError `json:",omitempty"`
 }
 
 type TableIndexMap map[string]interface{}
@@ -42,6 +42,11 @@ type TableEntry struct {
 	HostID  string `json:",omitempty"` // XXX: always?
 	Index   TableIndexMap
 	Objects TableObjectsMap
+}
+
+type TableError struct {
+	HostID string `json:",omitempty"`
+	Error  Error
 }
 
 // Optional URL ?query params
