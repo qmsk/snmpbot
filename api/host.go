@@ -26,7 +26,15 @@ type HostQuery struct {
 }
 
 //  * `POST /api/hosts/`
-type HostParams struct {
+type HostPUT struct {
+	ID        string `schema:"id"`
+	SNMP      string `schema:"snmp"`
+	Community string `schema:"community"`
+	Location  string `schema:"location"`
+}
+
+//  * `POST /api/hosts/`
+type HostPOST struct {
 	ID        string `schema:"id"`
 	SNMP      string `schema:"snmp"`
 	Community string `schema:"community"`

@@ -130,9 +130,10 @@ type hostRoute struct {
 	engine     *Engine
 	host       *Host
 	loadConfig *HostConfig
+	put        api.HostPUT
 }
 
-func (route hostRoute) Index(name string) (web.Resource, error) {
+func (route *hostRoute) Index(name string) (web.Resource, error) {
 	if route.loadConfig == nil {
 		// pre-configured host
 	} else if err := route.host.init(route.engine, *route.loadConfig); err != nil {
@@ -145,19 +146,49 @@ func (route hostRoute) Index(name string) (web.Resource, error) {
 	case "":
 		return hostView{route.engine, route.host}, nil
 	case "objects":
-		return hostObjectsRoute(route), nil
+		return hostObjectsRoute(*route), nil
 	case "tables":
-		return hostTablesRoute(route), nil
+		return hostTablesRoute(*route), nil
 	default:
 		return nil, nil
 	}
 }
 
-func (route hostRoute) GetREST() (web.Resource, error) {
+func (route *hostRoute) GetREST() (web.Resource, error) {
 	return hostView{host: route.host}.makeAPIIndex(), nil
 }
 
-func (route hostRoute) DeleteREST() (web.Resource, error) {
+func (route *hostRoute) IntoREST() interface{} {
+	return &route.put
+}
+
+func (route *hostRoute) makeHostConfig() HostConfig {
+	var options = route.engine.clientOptions
+
+	if route.put.Community != "" {
+		options.Community = route.put.Community
+	}
+
+	return HostConfig{
+		SNMP:          route.put.SNMP,
+		Location:      route.put.Location,
+		ClientOptions: &options,
+	}
+}
+
+func (route *hostRoute) PutREST() (web.Resource, error) {
+	var hostConfig = route.makeHostConfig()
+
+	if host, err := loadHost(route.engine, route.host.id, hostConfig); err != nil {
+		return nil, err
+	} else {
+		route.engine.AddHost(host) // replace
+
+		return hostView{host: host}.makeAPIIndex(), nil
+	}
+}
+
+func (route *hostRoute) DeleteREST() (web.Resource, error) {
 	if exists := route.engine.DelHost(route.host); !exists {
 		return nil, web.Errorf(404, "Host not configured: %v", route.host.id)
 	}

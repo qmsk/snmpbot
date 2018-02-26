@@ -364,6 +364,7 @@ Configure a new host. The new host will show up in `/hosts/` and can be queried 
 {
    "ID" : "edgeswitch-098730",
    "SNMP" : "public@172.28.2.2:161",
+   "Online": true,
    ...
 }
 ```
@@ -398,6 +399,34 @@ Query information about a specific configured host.
 ```
 
 ***Note***: Does not return anything useful for a dynamic host.
+
+#### `PUT /api/hosts/:id`
+
+Add or replace a configured host.
+
+```json
+{
+   "ID" : "edgeswitch-098730",
+   "SNMP" : "public@172.28.2.2:161",
+   "Online": true,
+   ...
+}
+```
+
+Response is as for `GET`.
+
+##### Request `Content-Type: application/json`
+```json
+{
+  "SNMP": "community@test.example.com",
+  "Location": "testing"
+}
+```
+
+##### Request `Content-Type: application/x-www-form-urlencoded`
+```
+snmp=community@test.example.com&location=testing
+```
 
 #### `DELETE /api/hosts/:id`
 
