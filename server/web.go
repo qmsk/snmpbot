@@ -24,7 +24,7 @@ func (route indexRoute) Index(name string) (web.Resource, error) {
 	case "tables":
 		return tablesRoute{route.engine}, nil
 	case "hosts":
-		return hostsRoute{route.engine, route.engine.hosts}, nil
+		return &hostsRoute{engine: route.engine, hosts: route.engine.hosts}, nil
 	default:
 		return nil, nil
 	}

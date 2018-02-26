@@ -18,6 +18,14 @@ type HostIndex struct {
 	MIBs []MIBIndex
 }
 
+// Optional URL ?query params
+//
+// 	* `GET /api/hosts/:host`
+type HostQuery struct {
+	Host      string `schema:"host"`
+	Community string `schema:"community"`
+}
+
 // Deep host metadata (individual MIB objects/tables)
 //
 // 	* `GET /api/hosts/:host => { ... }`

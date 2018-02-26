@@ -42,17 +42,35 @@ func (hosts Hosts) Filter(filters ...string) Hosts {
 }
 
 type hostsRoute struct {
-	engine *Engine
-	hosts  Hosts
+	engine    *Engine
+	hosts     Hosts
+	hostQuery api.HostQuery
 }
 
-func (route hostsRoute) Index(name string) (web.Resource, error) {
+func (route *hostsRoute) QueryREST() interface{} {
+	return &route.hostQuery
+}
+
+func (route *hostsRoute) hostConfig() HostConfig {
+	var options = route.engine.clientDefaults
+
+	if route.hostQuery.Community != "" {
+		options.Community = route.hostQuery.Community
+	}
+
+	return HostConfig{
+		Host: route.hostQuery.Host,
+		SNMP: &options,
+	}
+}
+
+func (route *hostsRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
 		return hostsView{route.hosts}, nil
 	} else if host, ok := route.hosts[HostID(name)]; ok {
 		return hostRoute{route.engine, host}, nil
 	} else {
-		if host, err := newHost(route.engine, HostID(name), HostConfig{}); err != nil {
+		if host, err := newHost(route.engine, HostID(name), route.hostConfig()); err != nil {
 			return nil, err
 		} else if err := host.probe(); err != nil {
 			return nil, err
