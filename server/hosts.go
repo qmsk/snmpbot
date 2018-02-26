@@ -90,7 +90,7 @@ func (view hostsView) makeAPIIndex() []api.HostIndex {
 	var items = make([]api.HostIndex, 0, len(view.hosts))
 
 	for _, host := range view.hosts {
-		items = append(items, hostView{host}.makeAPIIndex())
+		items = append(items, hostView{host: host}.makeAPIIndex())
 	}
 
 	return items
@@ -119,9 +119,11 @@ func (view *hostsView) makeHostConfig() HostConfig {
 }
 
 func (view *hostsView) PostREST() (web.Resource, error) {
-	if host, err := view.engine.AddHost(HostID(view.hostParams.ID), view.makeHostConfig()); err != nil {
+	if host, err := newHost(view.engine, HostID(view.hostParams.ID), view.makeHostConfig()); err != nil {
 		return nil, err
 	} else {
-		return hostView{host}.makeAPIIndex(), nil
+		view.engine.AddHost(host)
+
+		return hostView{host: host}.makeAPIIndex(), nil
 	}
 }

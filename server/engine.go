@@ -23,24 +23,15 @@ type Engine struct {
 	hostsMutex sync.Mutex
 }
 
-func (engine *Engine) newHost(id HostID, config HostConfig) (*Host, error) {
-	host, err := newHost(engine, id, config)
-	if err != nil {
-		return nil, err
-	}
-
-	host.start()
-
-	return host, nil
-}
-
 func (engine *Engine) loadConfig(config Config) error {
 	engine.clientOptions = config.ClientOptions
 
 	for hostName, hostConfig := range config.Hosts {
-		if host, err := engine.newHost(HostID(hostName), hostConfig); err != nil {
+		if host, err := newHost(engine, HostID(hostName), hostConfig); err != nil {
 			return fmt.Errorf("Failed to load host %v: %v", hostName, err)
 		} else {
+			host.start()
+
 			engine.hosts[host.id] = host
 		}
 	}
@@ -52,22 +43,23 @@ func (engine *Engine) MIBs() MIBs {
 	return engine.mibs
 }
 
-func (engine *Engine) AddHost(id HostID, config HostConfig) (*Host, error) {
-	if host, err := engine.newHost(id, config); err != nil {
-		return nil, err
-	} else {
-		engine.addHost(host)
-
-		return host, nil
-	}
-}
-
-func (engine *Engine) addHost(host *Host) {
+func (engine *Engine) AddHost(host *Host) {
 	engine.hostsMutex.Lock()
 	defer engine.hostsMutex.Unlock()
 
 	engine.hosts[host.id] = host
+}
 
+func (engine *Engine) DelHost(host *Host) bool {
+	engine.hostsMutex.Lock()
+	defer engine.hostsMutex.Unlock()
+
+	if _, exists := engine.hosts[host.id]; exists {
+		delete(engine.hosts, host.id)
+		return true
+	} else {
+		return false
+	}
 }
 
 func (engine *Engine) Hosts() Hosts {

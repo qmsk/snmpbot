@@ -28,9 +28,10 @@ type HostQuery struct {
 
 //  * `POST /api/hosts/`
 type HostParams struct {
-	HostQuery
-	ID       string `schema:"id"`
-	Location string `schema:"location"`
+	ID        string `schema:"id"`
+	SNMP      string `schema:"snmp"`
+	Community string `schema:"community"`
+	Location  string `schema:"location"`
 }
 
 // Deep host metadata (individual MIB objects/tables)

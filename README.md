@@ -413,6 +413,12 @@ Query a configured host using the ID.
 }
 ```
 
+#### `DELETE /api/hosts/:id`
+
+Remove a configured host.
+
+Returns HTTP 204 No Content.
+
 #### `GET /api/hosts/test/...?snmp=community@test.example.com`
 
 Query a dynamic host using an arbitrary `?snmp=[<community> "@"] <host>` target.

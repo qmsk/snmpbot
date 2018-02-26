@@ -143,7 +143,7 @@ type hostRoute struct {
 func (route hostRoute) Index(name string) (web.Resource, error) {
 	switch name {
 	case "":
-		return hostView{route.host}, nil
+		return hostView{route.engine, route.host}, nil
 	case "objects":
 		return hostObjectsRoute(route), nil
 	case "tables":
@@ -154,11 +154,20 @@ func (route hostRoute) Index(name string) (web.Resource, error) {
 }
 
 func (route hostRoute) GetREST() (web.Resource, error) {
-	return hostView{route.host}.makeAPIIndex(), nil
+	return hostView{host: route.host}.makeAPIIndex(), nil
+}
+
+func (route hostRoute) DeleteREST() (web.Resource, error) {
+	if exists := route.engine.DelHost(route.host); !exists {
+		return nil, web.Errorf(404, "Host not configured: %v", route.host.id)
+	}
+
+	return nil, nil
 }
 
 type hostView struct {
-	host *Host
+	engine *Engine
+	host   *Host
 }
 
 func (view hostView) makeMIBs() []api.MIBIndex {
