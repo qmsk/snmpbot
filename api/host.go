@@ -27,17 +27,18 @@ type HostQuery struct {
 
 // Dynamic host configuration
 //
-// The ID must be unique.
+// The host may or may not be configured yet.
 //
-//  * `POST /api/hosts/`
+//  * `PUT /api/hosts/:id`
 type HostPUT struct {
-	ID        string `schema:"id"`
 	SNMP      string `schema:"snmp"`
 	Community string `schema:"community"`
 	Location  string `schema:"location"`
 }
 
 // Dynamic host configuration
+//
+// The ID must be unique (must not already be configured).
 //
 //  * `POST /api/hosts/`
 type HostPOST struct {
