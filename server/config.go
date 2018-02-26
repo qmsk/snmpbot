@@ -32,8 +32,6 @@ type Config struct {
 }
 
 func (config *Config) LoadTOML(path string) error {
-	log.Infof("Load config from %v", path)
-
 	if tomlMeta, err := toml.DecodeFile(path, config); err != nil {
 		return err
 	} else if undecodedKeys := tomlMeta.Undecoded(); len(undecodedKeys) > 0 {

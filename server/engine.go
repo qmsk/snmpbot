@@ -33,7 +33,7 @@ func (engine *Engine) addHost(id HostID, config HostConfig) error {
 	return nil
 }
 
-func (engine *Engine) init(config Config) error {
+func (engine *Engine) loadConfig(config Config) error {
 	engine.clientOptions = config.ClientOptions
 
 	for hostName, hostConfig := range config.Hosts {

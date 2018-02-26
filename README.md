@@ -284,6 +284,10 @@ SNMP = "secret@erx-home"
 Location = "home"
 ```
 
+The configuration file is optional, dynamic hosts can be queried without any config, using `GET /hosts/...?snmp=community@host` (also `-snmp-community=...`).
+
+***NOTE***: The mass-querying `/objects/...` and `/tables/...` endpoints only query configured objects.
+
 ## API
 
 See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for the exact details
