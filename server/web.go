@@ -39,7 +39,7 @@ func (view indexView) makeAPIIndex() api.Index {
 		MIBs:         mibsView{view.engine.mibs}.makeAPIIndex(),
 		IndexObjects: objectsRoute{}.makeIndex(),
 		IndexTables:  tablesRoute{}.makeIndex(),
-		Hosts:        hostsView{view.engine.hosts}.makeAPIIndex(),
+		Hosts:        hostsView{hosts: view.engine.hosts}.makeAPIIndex(),
 	}
 }
 

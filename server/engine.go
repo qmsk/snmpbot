@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"github.com/qmsk/snmpbot/client"
+	"sync"
 )
 
 func newEngine(clientEngine *client.Engine) *Engine {
@@ -17,28 +18,30 @@ type Engine struct {
 	clientEngine  *client.Engine
 	clientOptions client.Options
 
-	mibs  MIBs
-	hosts Hosts
+	mibs       MIBs
+	hosts      Hosts
+	hostsMutex sync.Mutex
 }
 
-func (engine *Engine) addHost(id HostID, config HostConfig) error {
-	if host, err := newHost(engine, id, config); err != nil {
-		return err
-	} else {
-		host.start()
-
-		engine.hosts[id] = host
+func (engine *Engine) newHost(id HostID, config HostConfig) (*Host, error) {
+	host, err := newHost(engine, id, config)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	host.start()
+
+	return host, nil
 }
 
 func (engine *Engine) loadConfig(config Config) error {
 	engine.clientOptions = config.ClientOptions
 
 	for hostName, hostConfig := range config.Hosts {
-		if err := engine.addHost(HostID(hostName), hostConfig); err != nil {
+		if host, err := engine.newHost(HostID(hostName), hostConfig); err != nil {
 			return fmt.Errorf("Failed to load host %v: %v", hostName, err)
+		} else {
+			engine.hosts[host.id] = host
 		}
 	}
 
@@ -49,8 +52,29 @@ func (engine *Engine) MIBs() MIBs {
 	return engine.mibs
 }
 
+func (engine *Engine) AddHost(id HostID, config HostConfig) (*Host, error) {
+	if host, err := engine.newHost(id, config); err != nil {
+		return nil, err
+	} else {
+		engine.addHost(host)
+
+		return host, nil
+	}
+}
+
+func (engine *Engine) addHost(host *Host) {
+	engine.hostsMutex.Lock()
+	defer engine.hostsMutex.Unlock()
+
+	engine.hosts[host.id] = host
+
+}
+
 func (engine *Engine) Hosts() Hosts {
 	var hosts = make(Hosts)
+
+	engine.hostsMutex.Lock()
+	defer engine.hostsMutex.Unlock()
 
 	for hostID, host := range engine.hosts {
 		if !host.IsUp() {

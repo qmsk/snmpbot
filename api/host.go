@@ -26,6 +26,13 @@ type HostQuery struct {
 	Community string `schema:"community"`
 }
 
+//  * `POST /api/hosts/`
+type HostParams struct {
+	HostQuery
+	ID       string `schema:"id"`
+	Location string `schema:"location"`
+}
+
 // Deep host metadata (individual MIB objects/tables)
 //
 // 	* `GET /api/hosts/:host => { ... }`

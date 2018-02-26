@@ -66,7 +66,7 @@ func (route *hostsRoute) hostConfig() HostConfig {
 
 func (route *hostsRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
-		return hostsView{route.hosts}, nil
+		return &hostsView{engine: route.engine, hosts: route.hosts}, nil
 	} else if host, ok := route.hosts[HostID(name)]; ok {
 		return hostRoute{route.engine, host}, nil
 	} else {
@@ -81,7 +81,9 @@ func (route *hostsRoute) Index(name string) (web.Resource, error) {
 }
 
 type hostsView struct {
-	hosts Hosts
+	engine     *Engine
+	hosts      Hosts
+	hostParams api.HostParams
 }
 
 func (view hostsView) makeAPIIndex() []api.HostIndex {
@@ -94,6 +96,32 @@ func (view hostsView) makeAPIIndex() []api.HostIndex {
 	return items
 }
 
-func (view hostsView) GetREST() (web.Resource, error) {
+func (view *hostsView) GetREST() (web.Resource, error) {
 	return view.makeAPIIndex(), nil
+}
+
+func (view *hostsView) IntoREST() interface{} {
+	return &view.hostParams
+}
+
+func (view *hostsView) makeHostConfig() HostConfig {
+	var options = view.engine.clientOptions
+
+	if view.hostParams.Community != "" {
+		options.Community = view.hostParams.Community
+	}
+
+	return HostConfig{
+		SNMP:          view.hostParams.SNMP,
+		Location:      view.hostParams.Location,
+		ClientOptions: &options,
+	}
+}
+
+func (view *hostsView) PostREST() (web.Resource, error) {
+	if host, err := view.engine.AddHost(HostID(view.hostParams.ID), view.makeHostConfig()); err != nil {
+		return nil, err
+	} else {
+		return hostView{host}.makeAPIIndex(), nil
+	}
 }
