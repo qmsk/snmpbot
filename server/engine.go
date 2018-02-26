@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/qmsk/snmpbot/client"
 	"sync"
 )
@@ -27,16 +26,24 @@ func (engine *Engine) loadConfig(config Config) error {
 	engine.clientOptions = config.ClientOptions
 
 	for hostName, hostConfig := range config.Hosts {
-		if host, err := newHost(engine, HostID(hostName), hostConfig); err != nil {
-			return fmt.Errorf("Failed to load host %v: %v", hostName, err)
-		} else {
-			host.start()
-
-			engine.hosts[host.id] = host
-		}
+		go engine.loadHost(HostID(hostName), hostConfig)
 	}
 
 	return nil
+}
+
+func (engine *Engine) loadHost(id HostID, config HostConfig) {
+	host, err := loadHost(engine, id, config)
+
+	if err != nil {
+		log.Warnf("Failed to load host %v: %v", id, err)
+
+		host.err = err
+	} else {
+		log.Infof("Loaded host %v", id)
+	}
+
+	engine.AddHost(host)
 }
 
 func (engine *Engine) MIBs() MIBs {

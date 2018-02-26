@@ -19,20 +19,22 @@ type HostConfig struct {
 	ClientOptions *client.Options // TODO: rename to ClientOptions
 }
 
-func makeHost(id HostID) Host {
+func newHost(id HostID) *Host {
 	host := Host{id: id}
 	host.log = logging.WithPrefix(log, fmt.Sprintf("Host<%v>", id))
 
-	return host
+	return &host
 }
 
-func newHost(engine *Engine, id HostID, config HostConfig) (*Host, error) {
-	var host = makeHost(id)
+func loadHost(engine *Engine, id HostID, config HostConfig) (*Host, error) {
+	var host = newHost(id)
 
 	if err := host.init(engine, config); err != nil {
-		return nil, err
+		return host, err
+	} else if err := host.probe(engine.MIBs()); err != nil {
+		return host, err
 	} else {
-		return &host, nil
+		return host, nil
 	}
 }
 
@@ -41,7 +43,9 @@ type Host struct {
 	log    logging.PrefixLogging
 	config HostConfig
 	client *client.Client
+
 	mibs   MIBs
+	err    error
 	online bool
 }
 
@@ -61,7 +65,6 @@ func (host *Host) init(engine *Engine, config HostConfig) error {
 	}
 
 	host.config = config
-	host.mibs = engine.mibs
 
 	host.log.Infof("Config: %#v", host.config)
 
@@ -78,16 +81,15 @@ func (host *Host) init(engine *Engine, config HostConfig) error {
 	return nil
 }
 
-func (host *Host) probe() error {
+func (host *Host) probe(probeMIBs MIBs) error {
 	var client = mibs.Client{host.client}
-	var mibs = host.mibs
 
-	host.log.Infof("Probing MIBs: %v", mibs)
+	host.log.Infof("Probing MIBs: %v", probeMIBs)
 
-	if probed, err := client.ProbeMany(mibs.ListIDs()); err != nil {
+	if probed, err := client.ProbeMany(probeMIBs.ListIDs()); err != nil {
 		return err
 	} else {
-		host.mibs = mibs.FilterProbed(probed)
+		host.mibs = probeMIBs.FilterProbed(probed)
 	}
 
 	// TODO: probe system::sysLocation?
@@ -98,17 +100,6 @@ func (host *Host) probe() error {
 
 func (host *Host) IsUp() bool {
 	return host.online
-}
-
-func (host *Host) start() {
-	host.log.Infof("Starting...")
-
-	// TODO: periodic re-probing in case host was offline when starting?
-	go func() {
-		if err := host.probe(); err != nil {
-			host.log.Warnf("Failed to probe: %v", err)
-		}
-	}()
 }
 
 func (host *Host) MIBs() MIBs {
@@ -200,12 +191,21 @@ func (view hostView) makeTables() []api.TableIndex {
 	return tables
 }
 
+func (view hostView) makeAPIError() *api.Error {
+	if view.host.err != nil {
+		return &api.Error{view.host.err}
+	} else {
+		return nil
+	}
+}
+
 func (view hostView) makeAPIIndex() api.HostIndex {
 	return api.HostIndex{
 		ID:       string(view.host.id),
 		SNMP:     view.host.client.String(),
 		Location: view.host.config.Location,
 		Online:   view.host.online,
+		Error:    view.makeAPIError(),
 		MIBs:     view.makeMIBs(),
 	}
 }

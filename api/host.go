@@ -14,6 +14,7 @@ type HostIndex struct {
 	SNMP     string
 	Online   bool
 	Location string `json:",omitempty"`
+	Error    *Error `json:",omitempty"`
 
 	MIBs []MIBIndex
 }

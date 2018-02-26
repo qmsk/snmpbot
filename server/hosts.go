@@ -70,9 +70,7 @@ func (route *hostsRoute) Index(name string) (web.Resource, error) {
 	} else if host, ok := route.hosts[HostID(name)]; ok {
 		return hostRoute{route.engine, host}, nil
 	} else {
-		if host, err := newHost(route.engine, HostID(name), route.hostConfig()); err != nil {
-			return nil, err
-		} else if err := host.probe(); err != nil {
+		if host, err := loadHost(route.engine, HostID(name), route.hostConfig()); err != nil {
 			return nil, err
 		} else {
 			return hostRoute{route.engine, host}, nil
@@ -119,7 +117,7 @@ func (view *hostsView) makeHostConfig() HostConfig {
 }
 
 func (view *hostsView) PostREST() (web.Resource, error) {
-	if host, err := newHost(view.engine, HostID(view.hostParams.ID), view.makeHostConfig()); err != nil {
+	if host, err := loadHost(view.engine, HostID(view.hostParams.ID), view.makeHostConfig()); err != nil {
 		return nil, err
 	} else {
 		view.engine.AddHost(host)
