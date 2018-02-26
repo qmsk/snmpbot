@@ -27,6 +27,8 @@ type HostQuery struct {
 
 // Dynamic host configuration
 //
+// The ID must be unique.
+//
 //  * `POST /api/hosts/`
 type HostPUT struct {
 	ID        string `schema:"id"`

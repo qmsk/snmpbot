@@ -182,7 +182,7 @@ func (route *hostRoute) PutREST() (web.Resource, error) {
 	if host, err := loadHost(route.engine, route.host.id, hostConfig); err != nil {
 		return nil, err
 	} else {
-		route.engine.AddHost(host) // replace
+		route.engine.SetHost(host) // replace
 
 		return hostView{host: host}.makeAPIIndex(), nil
 	}

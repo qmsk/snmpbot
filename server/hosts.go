@@ -122,9 +122,9 @@ func (view *hostsView) makeHostConfig() HostConfig {
 func (view *hostsView) PostREST() (web.Resource, error) {
 	if host, err := loadHost(view.engine, HostID(view.post.ID), view.makeHostConfig()); err != nil {
 		return nil, err
+	} else if ok := view.engine.AddHost(host); !ok {
+		return nil, web.Errorf(409, "Host already configured: %v", host.id)
 	} else {
-		view.engine.AddHost(host)
-
 		return hostView{host: host}.makeAPIIndex(), nil
 	}
 }

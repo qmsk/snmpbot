@@ -371,6 +371,8 @@ Configure a new host. The new host will show up in `/hosts/` and can be queried 
 
 Response is as for `GET`.
 
+Returns HTTP 409 Conflict if the host is already configured. Use `PUT /v1/hosts/:id` instead.
+
 ##### Request `Content-Type: application/json`
 ```json
 {

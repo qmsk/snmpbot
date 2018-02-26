@@ -43,20 +43,36 @@ func (engine *Engine) loadHost(id HostID, config HostConfig) {
 		log.Infof("Loaded host %v", id)
 	}
 
-	engine.AddHost(host)
+	if !engine.AddHost(host) {
+		log.Errorf("Duplicate host %v!", id)
+	}
 }
 
 func (engine *Engine) MIBs() MIBs {
 	return engine.mibs
 }
 
-func (engine *Engine) AddHost(host *Host) {
+// Returns false if host already exists
+func (engine *Engine) AddHost(host *Host) bool {
+	engine.hostsMutex.Lock()
+	defer engine.hostsMutex.Unlock()
+
+	if _, exists := engine.hosts[host.id]; !exists {
+		engine.hosts[host.id] = host
+		return true
+	} else {
+		return false
+	}
+}
+
+func (engine *Engine) SetHost(host *Host) {
 	engine.hostsMutex.Lock()
 	defer engine.hostsMutex.Unlock()
 
 	engine.hosts[host.id] = host
 }
 
+// Returns false if host does not exist
 func (engine *Engine) DelHost(host *Host) bool {
 	engine.hostsMutex.Lock()
 	defer engine.hostsMutex.Unlock()
