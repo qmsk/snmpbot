@@ -298,24 +298,18 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
    "Hosts" : [
       {
          "ID" : "edgeswitch-098730",
-         "MIBs" : [
-            {
-               "ID" : "SNMPv2-MIB"
-            },
-            ...
-         ],
          "SNMP" : "public@172.28.2.2:161"
       },
       {
          "ID" : "erx-home",
-         "MIBs" : [
-            {
-               "ID" : "IF-MIB"
-            },
-            ...
-         ],
          "SNMP" : "secret@172.28.0.1:161"
       }
+   ],
+   "MIBs" : [
+      {
+         "ID" : "IF-MIB"
+      },
+      ...
    ],
    "Tables" : [
       {
@@ -356,12 +350,6 @@ Query configured hosts.
 [
    {
       "ID" : "edgeswitch-098730",
-      "MIBs" : [
-         {
-            "ID" : "SNMPv2-MIB"
-         },
-         ...
-      ],
       "SNMP" : "public@172.28.2.2:161"
    },
    ...
@@ -402,14 +390,10 @@ Query a configured host using the ID.
 
 ```json
 {
-   "MIBs" : [
-      {
-         "ID" : "SNMPv2-MIB"
-      },
-      ...
-   ],
    "ID" : "edgeswitch-098730",
-   "SNMP" : "public@172.28.2.2:161"
+   "SNMP" : "public@172.28.2.2:161",
+   "Location": "testing",
+   "Online": true
 }
 ```
 

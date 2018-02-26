@@ -15,8 +15,6 @@ type HostIndex struct {
 	Online   bool
 	Location string `json:",omitempty"`
 	Error    *Error `json:",omitempty"`
-
-	MIBs []MIBIndex
 }
 
 // Optional URL ?query params
@@ -41,6 +39,7 @@ type HostParams struct {
 type Host struct {
 	HostIndex
 
+	MIBs    []MIBIndex
 	Objects []ObjectIndex
 	Tables  []TableIndex
 }

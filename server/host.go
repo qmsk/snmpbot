@@ -206,13 +206,13 @@ func (view hostView) makeAPIIndex() api.HostIndex {
 		Location: view.host.config.Location,
 		Online:   view.host.online,
 		Error:    view.makeAPIError(),
-		MIBs:     view.makeMIBs(),
 	}
 }
 
 func (view hostView) makeAPI() api.Host {
 	return api.Host{
 		HostIndex: view.makeAPIIndex(),
+		MIBs:      view.makeMIBs(),
 		Objects:   view.makeObjects(),
 		Tables:    view.makeTables(),
 	}
