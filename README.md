@@ -385,7 +385,7 @@ Query a configured host using the ID.
 }
 ```
 
-#### `GET /api/hosts/test?snmp=community@test.example.com`
+#### `GET /api/hosts/test/...?snmp=community@test.example.com`
 
 Query a dynamic host using an arbitrary `?snmp=[<community> "@"] <host>` target.
 
@@ -404,7 +404,9 @@ The `[<community> "@"]` is optional, and defaults to the `-config` => `[ClientOp
 }
 ```
 
-The response includes the probed MIBs.
+The given SNMP host will be probed for supported MIBs.
+
+***NOTE***: The `?snmp=` query parameter works for all host API paths, but is ignored for configured hosts.
 
 #### `GET /api/hosts/:host/`
 
