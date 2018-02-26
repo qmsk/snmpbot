@@ -57,6 +57,8 @@ SMI support for MIBs
 
 [![](https://godoc.org/github.com/qmsk/snmpbot/server?status.svg)](http://godoc.org/github.com/qmsk/snmpbot/server)
 
+SNMP manager with REST API.
+
 ## CLI Commands
 
 These are mostly meant for testing.
@@ -274,10 +276,12 @@ Loaded using `snmpbot -config`
 
 ```toml
 [hosts.edgeswitch-098730]
-Host = "public@edgeswitch-098730"
+SNMP = "public@edgeswitch-098730"
+Location = "test"
 
 [hosts.erx-home]
-Host = "secret@erx-home"
+SNMP = "secret@erx-home"
+Location = "home"
 ```
 
 ## API
