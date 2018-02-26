@@ -385,6 +385,8 @@ Query a configured host using the ID.
 
 Query a dynamic host using an arbitrary `?snmp=[<community> "@"] <host>` target.
 
+The `[<community> "@"]` is optional, and defaults to the `-config` => `[ClientOptions] Community=` or `-snmp-community`.
+
 ```json
 {
    "MIBs" : [
