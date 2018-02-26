@@ -27,8 +27,8 @@ func (err ConfigKeysError) Error() string {
 }
 
 type Config struct {
-	SNMP  client.Options
-	Hosts map[string]HostConfig
+	ClientOptions client.Options
+	Hosts         map[string]HostConfig
 }
 
 func (config *Config) LoadTOML(path string) error {

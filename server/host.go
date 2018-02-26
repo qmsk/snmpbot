@@ -10,13 +10,13 @@ import (
 )
 
 type HostConfig struct {
-	Host string
+	SNMP string
 
 	// optional metadata
 	Location string
 
 	// optional, defaults to global config
-	SNMP *client.Options // TODO: rename to ClientOptions
+	ClientOptions *client.Options // TODO: rename to ClientOptions
 }
 
 func makeHost(id HostID) Host {
@@ -50,14 +50,14 @@ func (host *Host) String() string {
 }
 
 func (host *Host) init(engine *Engine, config HostConfig) error {
-	var clientOptions = engine.clientDefaults
+	var clientOptions = engine.clientOptions
 
-	if config.SNMP != nil {
-		clientOptions = *config.SNMP
+	if config.ClientOptions != nil {
+		clientOptions = *config.ClientOptions
 	}
 
-	if config.Host == "" {
-		config.Host = string(host.id)
+	if config.SNMP == "" {
+		config.SNMP = string(host.id)
 	}
 
 	host.config = config
@@ -65,7 +65,7 @@ func (host *Host) init(engine *Engine, config HostConfig) error {
 
 	host.log.Infof("Config: %#v", host.config)
 
-	if clientConfig, err := client.ParseConfig(clientOptions, config.Host); err != nil {
+	if clientConfig, err := client.ParseConfig(clientOptions, config.SNMP); err != nil {
 		return err
 	} else if client, err := client.NewClient(engine.clientEngine, clientConfig); err != nil {
 		return fmt.Errorf("NewClient %v: %v", host, err)

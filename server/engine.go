@@ -14,8 +14,8 @@ func newEngine(clientEngine *client.Engine) *Engine {
 }
 
 type Engine struct {
-	clientEngine   *client.Engine
-	clientDefaults client.Options
+	clientEngine  *client.Engine
+	clientOptions client.Options
 
 	mibs  MIBs
 	hosts Hosts
@@ -34,7 +34,7 @@ func (engine *Engine) addHost(id HostID, config HostConfig) error {
 }
 
 func (engine *Engine) init(config Config) error {
-	engine.clientDefaults = config.SNMP
+	engine.clientOptions = config.ClientOptions
 
 	for hostName, hostConfig := range config.Hosts {
 		if err := engine.addHost(HostID(hostName), hostConfig); err != nil {

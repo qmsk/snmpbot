@@ -16,7 +16,7 @@ func (options *Options) InitFlags() {
 
 func (options Options) LoadConfig(clientOptions client.Options) (Config, error) {
 	var config = Config{
-		SNMP: clientOptions,
+		ClientOptions: clientOptions,
 	}
 
 	if err := config.LoadTOML(options.ConfigFile); err != nil {

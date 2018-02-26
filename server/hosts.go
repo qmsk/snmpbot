@@ -52,15 +52,15 @@ func (route *hostsRoute) QueryREST() interface{} {
 }
 
 func (route *hostsRoute) hostConfig() HostConfig {
-	var options = route.engine.clientDefaults
+	var options = route.engine.clientOptions
 
 	if route.hostQuery.Community != "" {
 		options.Community = route.hostQuery.Community
 	}
 
 	return HostConfig{
-		Host: route.hostQuery.SNMP,
-		SNMP: &options,
+		SNMP:          route.hostQuery.SNMP,
+		ClientOptions: &options,
 	}
 }
 
