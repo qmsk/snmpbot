@@ -212,7 +212,7 @@ func (handler *objectHandler) query() api.Object {
 	return object
 }
 
-func (handler *objectHandler) QuerySchema() interface{} {
+func (handler *objectHandler) QueryREST() interface{} {
 	return &handler.params
 }
 
@@ -262,7 +262,7 @@ func (handler *objectsHandler) query() ([]*api.Object, error) {
 	return objects, err
 }
 
-func (handler *objectsHandler) QuerySchema() interface{} {
+func (handler *objectsHandler) QueryREST() interface{} {
 	return &handler.params
 }
 

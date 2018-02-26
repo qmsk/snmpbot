@@ -199,7 +199,7 @@ func (handler *tableHandler) query() api.Table {
 	return table
 }
 
-func (handler *tableHandler) QuerySchema() interface{} {
+func (handler *tableHandler) QueryREST() interface{} {
 	return &handler.params
 }
 
@@ -248,7 +248,7 @@ func (handler *tablesHandler) query() []*api.Table {
 	return tables
 }
 
-func (handler *tablesHandler) QuerySchema() interface{} {
+func (handler *tablesHandler) QueryREST() interface{} {
 	return &handler.params
 }
 
