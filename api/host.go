@@ -25,6 +25,8 @@ type HostQuery struct {
 	Community string `schema:"community"`
 }
 
+// Dynamic host configuration
+//
 //  * `POST /api/hosts/`
 type HostPUT struct {
 	ID        string `schema:"id"`
@@ -33,6 +35,8 @@ type HostPUT struct {
 	Location  string `schema:"location"`
 }
 
+// Dynamic host configuration
+//
 //  * `POST /api/hosts/`
 type HostPOST struct {
 	ID        string `schema:"id"`
