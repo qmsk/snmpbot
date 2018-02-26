@@ -4,11 +4,11 @@ type IndexHosts struct {
 	Hosts []HostIndex
 }
 
-// Shallow host metadata (only MIB IDs)
+// Shallow host metadata (only configuration)
 //
 // 	* `GET /api/ => { "Hosts": [ { ... } ] }`
-// 	* `GET /api/hosts => { "Hosts": [ { ... } ] }`
 // 	* `GET /api/hosts/ => [ { ... } ]`
+// 	* `GET /api/hosts/:id => { ... }`
 type HostIndex struct {
 	ID       string
 	SNMP     string
@@ -48,9 +48,9 @@ type HostPOST struct {
 	Location  string `schema:"location"`
 }
 
-// Deep host metadata (individual MIB objects/tables)
+// Deep host metadata (individual mibs/objects/tables)
 //
-// 	* `GET /api/hosts/:host => { ... }`
+// 	* `GET /api/hosts/:host/ => { ... }`
 type Host struct {
 	HostIndex
 
