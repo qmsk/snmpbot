@@ -386,7 +386,7 @@ id=test&snmp=community@test.example.com&location=testing
 
 #### `GET /api/hosts/:id`
 
-Query a configured host using the ID.
+Query information about a specific configured host.
 
 ```json
 {
@@ -396,6 +396,8 @@ Query a configured host using the ID.
    "Online": true
 }
 ```
+
+***Note***: Does not return anything useful for a dynamic host.
 
 #### `DELETE /api/hosts/:id`
 

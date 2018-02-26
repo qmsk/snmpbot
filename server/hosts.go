@@ -51,7 +51,7 @@ func (route *hostsRoute) QueryREST() interface{} {
 	return &route.hostQuery
 }
 
-func (route *hostsRoute) hostConfig() HostConfig {
+func (route *hostsRoute) makeHostConfig() HostConfig {
 	var options = route.engine.clientOptions
 
 	if route.hostQuery.Community != "" {
@@ -68,13 +68,16 @@ func (route *hostsRoute) Index(name string) (web.Resource, error) {
 	if name == "" {
 		return &hostsView{engine: route.engine, hosts: route.hosts}, nil
 	} else if host, ok := route.hosts[HostID(name)]; ok {
-		return hostRoute{route.engine, host}, nil
+		return hostRoute{engine: route.engine, host: host}, nil
 	} else {
-		if host, err := loadHost(route.engine, HostID(name), route.hostConfig()); err != nil {
-			return nil, err
-		} else {
-			return hostRoute{route.engine, host}, nil
-		}
+		var host = newHost(HostID(name))
+		var hostConfig = route.makeHostConfig()
+
+		return hostRoute{
+			engine:     route.engine,
+			host:       host,
+			loadConfig: &hostConfig, // apply at route lookup
+		}, nil
 	}
 }
 

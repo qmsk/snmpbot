@@ -127,11 +127,20 @@ func (host *Host) getClient() (mibs.Client, error) {
 }
 
 type hostRoute struct {
-	engine *Engine
-	host   *Host
+	engine     *Engine
+	host       *Host
+	loadConfig *HostConfig
 }
 
 func (route hostRoute) Index(name string) (web.Resource, error) {
+	if route.loadConfig == nil {
+		// pre-configured host
+	} else if err := route.host.init(route.engine, *route.loadConfig); err != nil {
+		return nil, err
+	} else if err := route.host.probe(route.engine.MIBs()); err != nil {
+		return nil, err
+	}
+
 	switch name {
 	case "":
 		return hostView{route.engine, route.host}, nil
@@ -191,18 +200,26 @@ func (view hostView) makeTables() []api.TableIndex {
 	return tables
 }
 
+func (view hostView) makeAPISNMP() string {
+	if view.host.client == nil {
+		return ""
+	}
+
+	return view.host.client.String()
+}
+
 func (view hostView) makeAPIError() *api.Error {
-	if view.host.err != nil {
-		return &api.Error{view.host.err}
-	} else {
+	if view.host.err == nil {
 		return nil
 	}
+
+	return &api.Error{view.host.err}
 }
 
 func (view hostView) makeAPIIndex() api.HostIndex {
 	return api.HostIndex{
 		ID:       string(view.host.id),
-		SNMP:     view.host.client.String(),
+		SNMP:     view.makeAPISNMP(),
 		Location: view.host.config.Location,
 		Online:   view.host.online,
 		Error:    view.makeAPIError(),
