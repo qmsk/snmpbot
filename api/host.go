@@ -22,7 +22,7 @@ type HostIndex struct {
 //
 // 	* `GET /api/hosts/:host`
 type HostQuery struct {
-	Host      string `schema:"host"`
+	SNMP      string `schema:"snmp"`
 	Community string `schema:"community"`
 }
 

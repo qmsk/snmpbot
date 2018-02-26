@@ -59,7 +59,7 @@ func (route *hostsRoute) hostConfig() HostConfig {
 	}
 
 	return HostConfig{
-		Host: route.hostQuery.Host,
+		Host: route.hostQuery.SNMP,
 		SNMP: &options,
 	}
 }
