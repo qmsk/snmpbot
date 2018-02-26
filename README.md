@@ -288,7 +288,7 @@ Location = "home"
 
 See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for the exact details
 
-#### `/api/`
+#### `GET /api/`
 ```json
 {
    "Hosts" : [
@@ -344,7 +344,9 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 }
 ```
 
-#### `/api/hosts/`
+#### `GET /api/hosts/`
+
+Query configured hosts.
 
 ```json
 [
@@ -362,7 +364,10 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 ]
 ```
 
-#### `/api/hosts/:id`
+#### `GET /api/hosts/:id`
+
+Query a configured host using the ID.
+
 ```json
 {
    "MIBs" : [
@@ -376,7 +381,29 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 }
 ```
 
-#### `/api/hosts/:host/`
+#### `GET /api/hosts/test?snmp=community@test.example.com`
+
+Query a dynamic host using an arbitrary `?snmp=[<community> "@"] <host>` target.
+
+```json
+{
+   "MIBs" : [
+      {
+         "ID" : "SNMPv2-MIB"
+      },
+      ...
+   ],
+   "ID" : "test",
+   "SNMP" : "community@192.0.2.1:161"
+}
+```
+
+The response includes the probed MIBs.
+
+#### `GET /api/hosts/:host/`
+
+Query host with information about tables/objects for probed MIBs.
+
 ```json
 {
    "ID" : "edgeswitch-098730",
@@ -417,7 +444,10 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 }
 ```
 
-#### `/api/hosts/:host/tables/?table=LLDP-MIB::*`
+#### `GET /api/hosts/:host/tables/?table=LLDP-MIB::*`
+
+Query matching tables from probed mibs for a specific host (dynamic or configured).
+
 ```json
 [
    {
@@ -485,7 +515,12 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 ]
 ```
 
-#### `/api/hosts/:host/tables/:table`
+***Note***: The queried tables must belong to a probed MIB.
+
+#### `GET /api/hosts/:host/tables/:table`
+
+Query an arbitrary table for a specific host (dynamic or configured).
+
 ```json
 {
    "ObjectKeys" : [
@@ -501,7 +536,12 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 }
 ```
 
-#### `/api/hosts/:host/objects/?object=system::sysDescr&object=interfaces::ifDescr`
+***Note***: The queried table does not necessarily need to belong to a probed MIB.
+
+#### `GET /api/hosts/:host/objects/?object=system::sysDescr&object=interfaces::ifDescr`
+
+Query matching objects from probed MIBs for a specific host (dynamic or configured).
+
 ```json
    {
       "IndexKeys" : [
@@ -538,7 +578,12 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 ]
 ```
 
-#### `/api/hosts/:host/objects/system::sysDescr`
+***Note***: The queried object must belong to a probed MIB.
+
+#### `GET /api/hosts/:host/objects/system::sysDescr`
+
+Query an arbitrary object for a specific host (configured or dynamic).
+
 ```json
 {
    "Instances" : [
@@ -551,7 +596,12 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 }
 ```
 
-#### `/api/tables/?table=LLDP-MIB::lldpRemTable&table=Q-BRIDGE-MIB::dot1qTpFdbTable`
+***Note***: The queried object does not necessarily need to belong to a probed MIB.
+
+#### `GET /api/tables/?table=LLDP-MIB::lldpRemTable&table=Q-BRIDGE-MIB::dot1qTpFdbTable`
+
+Query matching tables across all hosts. Use `?host=test-*` to filter queried hosts.
+
 ```json
 [
    {
@@ -565,9 +615,14 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 ]
 ```
 
-***NOTE***: Each table contains entries from all hosts for that SNMP table: Different `Entries` in the same table can have different `HostID` values.
+***Note***: Only configured hosts are queried.
 
-#### `/api/tables/interfaces::ifTable`
+***Note***: Each table contains entries from all hosts for that SNMP table: Different `Entries` in the same table can have different `HostID` values.
+
+#### `GET /api/tables/interfaces::ifTable?host=test-*`
+
+Query specific table across all hosts. Use `?host=test-*` to filter queried hosts.
+
 ```json
 {
    "ID" : "interfaces::ifTable",
@@ -625,7 +680,14 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 }
 ```
 
-#### `/api/objects/?object=system::*`
+***Note***: Only configured hosts are queried.
+
+***Note***: The table contains entries from all hosts for that SNMP table: Different `Entries` in the same table can have different `HostID` values.
+
+#### `GET /api/objects/?object=system::*`
+
+Query matching objects across all hosts. Use `?host=test-*` to filter queried hosts.
+
 ```json
 [
    {
@@ -658,7 +720,12 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 ]
 ```
 
-#### `/api/objects/interfaces::ifDescr`
+***Note***: Only configured hosts are queried.
+
+#### `GET /api/objects/interfaces::ifDescr`
+
+Query specific object across all hosts. Use `?host=test-*` to filter queried hosts.
+
 ```json
 {
    "IndexKeys" : [
@@ -685,7 +752,12 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
 }
 ```
 
-#### `/api/objects/interfaces::ifDescr?host=edgeswitch-*`
+***Note***: Only configured hosts are queried.
+
+#### `GET /api/objects/interfaces::ifDescr?host=edgeswitch-*`
+
+Query specific object across all hosts. Use `?host=...` to filter queried hosts.
+
 ```json
 {
    "Instances" : [
@@ -725,3 +797,5 @@ See the [`api`](https://godoc.org/github.com/qmsk/snmpbot/api) package docs for 
    ]
 }
 ```
+
+***Note***: Only configured hosts are queried.
