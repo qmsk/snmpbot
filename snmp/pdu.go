@@ -5,8 +5,17 @@ import (
 	"fmt"
 )
 
+type PDUError struct {
+	ErrorStatus ErrorStatus
+	VarBind     VarBind
+}
+
 type PDU interface {
 	GetRequestID() int
+	SetRequestID(int)
+
+	GetError() PDUError
+
 	Pack(PDUType) (asn1.RawValue, error)
 }
 

@@ -20,6 +20,9 @@ func (pdu *GenericPDU) unpack(raw asn1.RawValue) error {
 func (pdu GenericPDU) GetRequestID() int {
 	return pdu.RequestID
 }
+func (pdu GenericPDU) SetRequestID(id int) {
+	pdu.RequestID = id
+}
 
 func (pdu GenericPDU) String() string {
 	if pdu.ErrorStatus != 0 {
@@ -35,11 +38,18 @@ func (pdu GenericPDU) String() string {
 	return strings.Join(varBinds, ", ")
 }
 
-func (pdu GenericPDU) ErrorVarBind() VarBind {
-	if pdu.ErrorIndex < len(pdu.VarBinds) {
-		return pdu.VarBinds[pdu.ErrorIndex]
+func (pdu GenericPDU) GetVarBind(index int) VarBind {
+	if index < len(pdu.VarBinds) {
+		return pdu.VarBinds[index]
 	} else {
 		return VarBind{}
+	}
+}
+
+func (pdu GenericPDU) GetError() PDUError {
+	return PDUError{
+		ErrorStatus: pdu.ErrorStatus,
+		VarBind:     pdu.GetVarBind(pdu.ErrorIndex),
 	}
 }
 

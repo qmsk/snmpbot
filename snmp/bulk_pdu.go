@@ -19,6 +19,13 @@ func (pdu *BulkPDU) unpack(raw asn1.RawValue) error {
 func (pdu BulkPDU) GetRequestID() int {
 	return pdu.RequestID
 }
+func (pdu BulkPDU) SetRequestID(id int) {
+	pdu.RequestID = id
+}
+
+func (pdu BulkPDU) GetError() PDUError {
+	return PDUError{}
+}
 
 func (pdu BulkPDU) Pack(pduType PDUType) (asn1.RawValue, error) {
 	return packSequence(asn1.ClassContextSpecific, int(pduType),
