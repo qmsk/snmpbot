@@ -4,7 +4,7 @@ import (
 	"github.com/qmsk/snmpbot/snmp"
 )
 
-// split into multipl GetNext requests of options.MaxVars
+// split into multiple GetNext requests of options.MaxVars
 //
 // TODO: automatically handle snmp.TooBigError?
 func (client *Client) walkNext(oids ...snmp.OID) ([]snmp.VarBind, error) {
@@ -48,17 +48,18 @@ func (client *Client) walkNext(oids ...snmp.OID) ([]snmp.VarBind, error) {
 //
 // Returns once all entry varBinds are outside of the requested OIDs.
 // Exception: walking without any entry OIDs will walk the scalar OIDs exactly once.
+//
 // Splits into multiple requests if the number of OIDs exceeds options.MaxVars.
-func (client *Client) Walk(scalarOIDs []snmp.OID, entryOIDs []snmp.OID, walkFunc func(...snmp.VarBind) error) error {
-	var rootOIDs = make([]snmp.OID, len(scalarOIDs)+len(entryOIDs))
-	var walkOIDs = make([]snmp.OID, len(scalarOIDs)+len(entryOIDs))
-	var entryOffset = len(scalarOIDs)
+func (client *Client) Walk(scalars []snmp.OID, entries []snmp.OID, walkFunc func(scalars []snmp.VarBind, entries []snmp.VarBind) error) error {
+	var rootOIDs = make([]snmp.OID, len(scalars)+len(entries))
+	var walkOIDs = make([]snmp.OID, len(scalars)+len(entries))
+	var entryOffset = len(scalars)
 
-	for i, oid := range scalarOIDs {
+	for i, oid := range scalars {
 		rootOIDs[i] = oid
 		walkOIDs[i] = oid
 	}
-	for i, oid := range entryOIDs {
+	for i, oid := range entries {
 		rootOIDs[entryOffset+i] = oid
 		walkOIDs[entryOffset+i] = oid
 	}
@@ -73,6 +74,9 @@ func (client *Client) Walk(scalarOIDs []snmp.OID, entryOIDs []snmp.OID, walkFunc
 			return err
 		}
 
+		var scalarVars = make([]snmp.VarBind, len(scalars))
+		var entryVars = make([]snmp.VarBind, len(entries))
+
 		// count entry vars that made progress
 		var entryCount = 0
 
@@ -81,24 +85,29 @@ func (client *Client) Walk(scalarOIDs []snmp.OID, entryOIDs []snmp.OID, walkFunc
 
 			if errorValue := varBind.ErrorValue(); errorValue == snmp.EndOfMibViewValue {
 				// explicit SNMPv2 break
-				continue
 			} else if oid.Equals(walkOIDs[i]) || rootOIDs[i].Index(oid) == nil {
 				// not making progress, or walked out of tree
-				varBinds[i] = snmp.MakeVarBind(rootOIDs[i], snmp.EndOfMibViewValue)
-			} else if i < entryOffset {
-				// this is a scalar object, do not walk
-			} else {
-				// walk entry objects
-				walkOIDs[i] = oid
+				varBind = snmp.MakeVarBind(rootOIDs[i], snmp.EndOfMibViewValue)
+			} else if i >= len(scalars) {
+				// making progress on entry objects
 				entryCount++
+				walkOIDs[i] = oid
+			}
+
+			if i >= entryOffset {
+				entryVars[i-entryOffset] = varBind
+			} else {
+				scalarVars[i] = varBind
 			}
 		}
 
-		if entryCount > 0 || (scalarCount == 0 && len(entryOIDs) == 0) {
-			if err := walkFunc(varBinds...); err != nil {
+		if entryCount > 0 || (scalarCount == 0 && len(entries) == 0) {
+			if err := walkFunc(scalarVars, entryVars); err != nil {
 				return err
 			}
-		} else {
+		}
+
+		if entryCount == 0 {
 			// not making any progress
 			break
 		}
@@ -107,4 +116,10 @@ func (client *Client) Walk(scalarOIDs []snmp.OID, entryOIDs []snmp.OID, walkFunc
 	}
 
 	return nil
+}
+
+func (client *Client) WalkTable(entries []snmp.OID, walkFunc func(entries []snmp.VarBind) error) error {
+	return client.Walk(nil, entries, func(scalars []snmp.VarBind, entries []snmp.VarBind) error {
+		return walkFunc(entries)
+	})
 }
