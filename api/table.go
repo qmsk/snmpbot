@@ -56,7 +56,8 @@ type TableError struct {
 // 	* `GET /api/tables/:table`
 // 	* `GET /api/hosts/:host/tables/:table`
 type TableQuery struct {
-	Hosts []string `schema:"host"`
+	Hosts   []string `schema:"host"`
+	Objects []string `schema:"object"`
 }
 
 // Optional URL ?query params
@@ -66,6 +67,7 @@ type TableQuery struct {
 // 	* `GET /api/tables/`
 // 	* `GET /api/hosts/:host/tables/`
 type TablesQuery struct {
-	Hosts  []string `schema:"host"`
-	Tables []string `schema:"table"`
+	Hosts   []string `schema:"host"`
+	Tables  []string `schema:"table"`
+	Objects []string `schema:"object"`
 }

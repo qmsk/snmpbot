@@ -7,6 +7,30 @@ import (
 	"path"
 )
 
+func FilterTableObjects(table *mibs.Table, filters ...string) *mibs.Table {
+	var filteredTable = mibs.Table{
+		ID:          table.ID,
+		IndexSyntax: table.IndexSyntax,
+	}
+
+	for _, entryObject := range table.EntrySyntax {
+		var match = false
+		var name = entryObject.String()
+
+		for _, filter := range filters {
+			if matched, _ := path.Match(filter, name); matched {
+				match = true
+			}
+		}
+
+		if match {
+			filteredTable.EntrySyntax = append(filteredTable.EntrySyntax, entryObject)
+		}
+	}
+
+	return &filteredTable
+}
+
 type TableID string
 
 func AllTables() Tables {
@@ -61,6 +85,23 @@ func (tables Tables) Filter(filters ...string) Tables {
 		if match {
 			filtered[tableID] = table
 		}
+	}
+
+	return filtered
+}
+
+func (tables Tables) FilterObjects(filters ...string) Tables {
+	var filtered = make(Tables)
+
+	for tableID, table := range tables {
+		table = FilterTableObjects(table, filters...)
+
+		if len(table.EntrySyntax) == 0 {
+			// no table objects matched, elide
+			continue
+		}
+
+		filtered[tableID] = table
 	}
 
 	return filtered
@@ -207,6 +248,9 @@ func (handler *tableHandler) GetREST() (web.Resource, error) {
 	if handler.params.Hosts != nil {
 		handler.hosts = handler.hosts.Filter(handler.params.Hosts...)
 	}
+	if handler.params.Objects != nil {
+		handler.table = FilterTableObjects(handler.table, handler.params.Objects...)
+	}
 
 	return handler.query(), nil
 }
@@ -258,6 +302,9 @@ func (handler *tablesHandler) GetREST() (web.Resource, error) {
 	}
 	if handler.params.Tables != nil {
 		handler.tables = handler.tables.Filter(handler.params.Tables...)
+	}
+	if handler.params.Objects != nil {
+		handler.tables = handler.tables.FilterObjects(handler.params.Objects...)
 	}
 
 	return handler.query(), nil
