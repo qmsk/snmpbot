@@ -259,3 +259,156 @@ func TestGetNothing(t *testing.T) {
 		}
 	})
 }
+
+func TestGetRequestGetBulk(t *testing.T) {
+	var scalarOID = snmp.OID{1, 3, 6, 1, 2, 1, 1, 4}
+	var entryOIDs = []snmp.OID{
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 2},
+	}
+
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		transport.On("GetBulkRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetBulkRequestType,
+			PDU: snmp.BulkPDU{
+				NonRepeaters:   1,
+				MaxRepetitions: int(DefaultMaxRepetitions),
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, nil),
+					snmp.MakeVarBind(entryOIDs[0], nil),
+					snmp.MakeVarBind(entryOIDs[1], nil),
+				},
+			},
+		}).Return(error(nil), IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetResponseType,
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, 0),
+					snmp.MakeVarBind(entryOIDs[0].Extend(1), 1),
+					snmp.MakeVarBind(entryOIDs[1].Extend(1), 2),
+					snmp.MakeVarBind(entryOIDs[0].Extend(2), 3),
+					snmp.MakeVarBind(entryOIDs[1].Extend(2), 4),
+				},
+			},
+		})
+
+		scalarVars, entryVarsList, err := client.GetBulk([]snmp.OID{scalarOID}, entryOIDs)
+		if err != nil {
+			t.Errorf("GetBulk(%v, %v): %v", scalarOID, entryOIDs, err)
+		}
+
+		assert.Equal(t, []snmp.VarBind{snmp.MakeVarBind(scalarOID, 0)}, scalarVars)
+		assert.Equal(t, [][]snmp.VarBind{
+			[]snmp.VarBind{
+				snmp.MakeVarBind(entryOIDs[0].Extend(1), 1),
+				snmp.MakeVarBind(entryOIDs[1].Extend(1), 2),
+			},
+			[]snmp.VarBind{
+				snmp.MakeVarBind(entryOIDs[0].Extend(2), 3),
+				snmp.MakeVarBind(entryOIDs[1].Extend(2), 4),
+			},
+		}, entryVarsList)
+	})
+}
+
+func TestGetRequestGetBulkShort(t *testing.T) {
+	var scalarOID = snmp.OID{1, 3, 6, 1, 2, 1, 1, 4}
+	var entryOIDs = []snmp.OID{
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 2},
+	}
+
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		transport.On("GetBulkRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetBulkRequestType,
+			PDU: snmp.BulkPDU{
+				NonRepeaters:   1,
+				MaxRepetitions: int(DefaultMaxRepetitions),
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, nil),
+					snmp.MakeVarBind(entryOIDs[0], nil),
+					snmp.MakeVarBind(entryOIDs[1], nil),
+				},
+			},
+		}).Return(error(nil), IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetResponseType,
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, 0),
+				},
+			},
+		})
+
+		_, _, err := client.GetBulk([]snmp.OID{scalarOID}, entryOIDs)
+
+		assert.EqualError(t, err, "Invalid bulk response for 1+2 => 1 vars")
+	})
+}
+
+func TestGetRequestGetBulkOdd(t *testing.T) {
+	var scalarOID = snmp.OID{1, 3, 6, 1, 2, 1, 1, 4}
+	var entryOIDs = []snmp.OID{
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 2},
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 3},
+	}
+
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		transport.On("GetBulkRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetBulkRequestType,
+			PDU: snmp.BulkPDU{
+				NonRepeaters:   1,
+				MaxRepetitions: int(DefaultMaxRepetitions),
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, nil),
+					snmp.MakeVarBind(entryOIDs[0], nil),
+					snmp.MakeVarBind(entryOIDs[1], nil),
+				},
+			},
+		}).Return(error(nil), IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetResponseType,
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, 0),
+					snmp.MakeVarBind(entryOIDs[0].Extend(1), 1),
+					snmp.MakeVarBind(entryOIDs[1].Extend(1), 2),
+					snmp.MakeVarBind(entryOIDs[2].Extend(1), 3),
+				},
+			},
+		})
+
+		_, _, err := client.GetBulk([]snmp.OID{scalarOID}, entryOIDs[0:2])
+
+		assert.EqualError(t, err, "Invalid bulk response for 1+2 => 4 vars")
+	})
+}

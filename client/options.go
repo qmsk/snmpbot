@@ -7,18 +7,20 @@ import (
 )
 
 const (
-	SNMPVersion    = snmp.SNMPv2c
-	DefaultTimeout = 1 * time.Second
-	DefaultRetry   = uint(3)
-	DefaultMaxVars = uint(10)
+	SNMPVersion           = snmp.SNMPv2c
+	DefaultTimeout        = 1 * time.Second
+	DefaultRetry          = uint(3)
+	DefaultMaxVars        = uint(10)
+	DefaultMaxRepetitions = uint(10)
 )
 
 type Options struct {
-	Community string
-	Timeout   time.Duration
-	Retry     uint
-	UDP       UDPOptions
-	MaxVars   uint
+	Community      string
+	Timeout        time.Duration
+	Retry          uint
+	UDP            UDPOptions
+	MaxVars        uint
+	MaxRepetitions uint
 }
 
 func (options *Options) InitFlags() {
@@ -27,4 +29,5 @@ func (options *Options) InitFlags() {
 	flag.UintVar(&options.Retry, "snmp-retry", 0, "SNMP request retry")
 	flag.UintVar(&options.UDP.Size, "snmp-udp-size", UDPSize, "Maximum UDP recv size")
 	flag.UintVar(&options.MaxVars, "snmp-maxvars", DefaultMaxVars, "Maximum request VarBinds")
+	flag.UintVar(&options.MaxRepetitions, "snmp-maxrepetitions", DefaultMaxRepetitions, "Maximum repetitions for GetBulk")
 }
