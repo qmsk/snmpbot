@@ -49,19 +49,19 @@ type Request struct {
 
 func (request Request) String() string {
 	if request.recvOK {
-		return fmt.Sprintf("%s<%s>@%v[%d]: %s", request.send.PDUType.String(), request.send.PDU.String(), request.send.Addr, request.id, request.recv.PDU.String())
+		return fmt.Sprintf("%v<%v>@%v[%d] => %v", request.send.PDUType, request.send.PDU, request.send.Addr, request.id, request.recv.PDU)
 	} else {
-		return fmt.Sprintf("%s<%s>@%v[%d]", request.send.PDUType.String(), request.send.PDU.String(), request.send.Addr, request.id)
+		return fmt.Sprintf("%v<%v>@%v[%d]", request.send.PDUType, request.send.PDU, request.send.Addr, request.id)
 	}
 }
 
 // Return any SNMPError, or nil
 func (request *Request) error() error {
-	if request.recv.PDU.ErrorStatus != 0 {
+	if pduError := request.recv.PDU.GetError(); pduError.ErrorStatus != 0 {
 		return SNMPError{
-			RequestType:  request.send.PDUType,
-			ResponseType: request.recv.PDUType,
-			ResponsePDU:  request.recv.PDU,
+			RequestType:   request.send.PDUType,
+			ResponseType:  request.recv.PDUType,
+			ResponseError: pduError,
 		}
 	} else {
 		return nil
@@ -88,7 +88,7 @@ func (request *Request) wait() error {
 
 func (request *Request) init(id requestID) ioKey {
 	request.id = id
-	request.send.PDU.RequestID = int(id)
+	request.send.PDU.SetRequestID(int(id))
 
 	return request.send.key()
 }
@@ -137,11 +137,11 @@ func (err TimeoutError) Error() string {
 }
 
 type SNMPError struct {
-	RequestType  snmp.PDUType
-	ResponseType snmp.PDUType
-	ResponsePDU  snmp.PDU
+	RequestType   snmp.PDUType
+	ResponseType  snmp.PDUType
+	ResponseError snmp.PDUError
 }
 
 func (err SNMPError) Error() string {
-	return fmt.Sprintf("SNMP %v error: %v @ %v", err.RequestType, err.ResponsePDU.ErrorStatus, err.ResponsePDU.ErrorVarBind())
+	return fmt.Sprintf("SNMP %v error: %v @ %v", err.RequestType, err.ResponseError.ErrorStatus, err.ResponseError.VarBind)
 }

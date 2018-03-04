@@ -29,7 +29,7 @@ type IO struct {
 
 func (io IO) key() ioKey {
 	return ioKey{
-		id:        io.PDU.RequestID,
+		id:        io.PDU.GetRequestID(),
 		community: string(io.Packet.Community),
 		addr:      io.Addr.String(),
 	}

@@ -59,7 +59,7 @@ func (client *Client) request(send IO) (IO, error) {
 	}
 }
 
-func (client *Client) requestRead(requestType snmp.PDUType, varBinds []snmp.VarBind) (snmp.PDUType, []snmp.VarBind, error) {
+func (client *Client) requestGeneric(requestType snmp.PDUType, varBinds []snmp.VarBind) (snmp.PDUType, []snmp.VarBind, error) {
 	var maxVars = DefaultMaxVars
 	var retType snmp.PDUType
 	var retVars = make([]snmp.VarBind, len(varBinds))
@@ -71,7 +71,6 @@ func (client *Client) requestRead(requestType snmp.PDUType, varBinds []snmp.VarB
 			Community: []byte(client.options.Community),
 		},
 		PDUType: requestType,
-		PDU:     snmp.PDU{},
 	}
 
 	if client.options.MaxVars > 0 {
@@ -87,17 +86,21 @@ func (client *Client) requestRead(requestType snmp.PDUType, varBinds []snmp.VarB
 			reqLen++
 		}
 
-		send.PDU.VarBinds = reqVars[:reqLen]
+		send.PDU = snmp.GenericPDU{
+			VarBinds: reqVars[:reqLen],
+		}
 
 		// TODO: handle snmp.TooBigError
 		if recv, err := client.request(send); err != nil {
-			return recv.PDUType, recv.PDU.VarBinds, err
-		} else if len(recv.PDU.VarBinds) > len(reqVars) {
-			return retType, retVars, fmt.Errorf("Invalid %v with %d vars for %v with %d vars", recv.PDUType, len(recv.PDU.VarBinds), requestType, len(retVars))
+			return recv.PDUType, nil, err
+		} else if responsePDU, ok := recv.PDU.(snmp.GenericPDU); !ok {
+			return recv.PDUType, nil, fmt.Errorf("Invalid %v with PDU of type %T", recv.PDUType, recv.PDU)
+		} else if len(responsePDU.VarBinds) > len(reqVars) {
+			return retType, retVars, fmt.Errorf("Invalid %v with %d vars for %v with %d vars", recv.PDUType, len(responsePDU.VarBinds), requestType, len(retVars))
 		} else {
 			retType = recv.PDUType
 
-			for _, varBind := range recv.PDU.VarBinds {
+			for _, varBind := range responsePDU.VarBinds {
 				retVars[retLen] = varBind
 				retLen++
 				reqLen++
@@ -117,7 +120,7 @@ func (client *Client) Get(oids ...snmp.OID) ([]snmp.VarBind, error) {
 
 	if len(oids) == 0 {
 		return nil, nil
-	} else if responseType, responseVars, err := client.requestRead(snmp.GetRequestType, requestVars); err != nil {
+	} else if responseType, responseVars, err := client.requestGeneric(snmp.GetRequestType, requestVars); err != nil {
 		return responseVars, err
 	} else if responseType != snmp.GetResponseType {
 		return responseVars, fmt.Errorf("Unexpected response type %v for GetRequest", responseType)
@@ -137,7 +140,7 @@ func (client *Client) GetNext(oids ...snmp.OID) ([]snmp.VarBind, error) {
 
 	if len(oids) == 0 {
 		return nil, nil
-	} else if responseType, responseVars, err := client.requestRead(snmp.GetNextRequestType, requestVars); err != nil {
+	} else if responseType, responseVars, err := client.requestGeneric(snmp.GetNextRequestType, requestVars); err != nil {
 		return responseVars, err
 	} else if responseType != snmp.GetResponseType {
 		return responseVars, fmt.Errorf("Unexpected response type %v for GetNextRequest", responseType)

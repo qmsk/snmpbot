@@ -95,7 +95,7 @@ func TestGetSendError(t *testing.T) {
 				Community: []byte("public"),
 			},
 			PDUType: snmp.GetRequestType,
-			PDU: snmp.PDU{
+			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, nil),
 				},
@@ -121,7 +121,7 @@ func TestGetRecvWrongAddr(t *testing.T) {
 				Community: []byte("public"),
 			},
 			PDUType: snmp.GetRequestType,
-			PDU: snmp.PDU{
+			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, nil),
 				},
@@ -133,7 +133,7 @@ func TestGetRecvWrongAddr(t *testing.T) {
 				Community: []byte("public"),
 			},
 			PDUType: snmp.GetResponseType,
-			PDU: snmp.PDU{
+			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, 1),
 				},
@@ -161,7 +161,7 @@ func TestGetRecvWrongCommunity(t *testing.T) {
 				Community: []byte("public"),
 			},
 			PDUType: snmp.GetRequestType,
-			PDU: snmp.PDU{
+			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, nil),
 				},
@@ -173,7 +173,7 @@ func TestGetRecvWrongCommunity(t *testing.T) {
 				Community: []byte("not-public"),
 			},
 			PDUType: snmp.GetResponseType,
-			PDU: snmp.PDU{
+			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, 1),
 				},

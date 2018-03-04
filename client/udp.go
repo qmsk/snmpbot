@@ -123,13 +123,9 @@ func (udp *UDP) send(buf []byte, addr net.Addr) error {
 }
 
 func (udp *UDP) Send(send IO) error {
-	if rawPDU, err := send.PDU.Pack(send.PDUType); err != nil {
+	if err := send.Packet.PackPDU(send.PDUType, send.PDU); err != nil {
 		return err
-	} else {
-		send.Packet.RawPDU = rawPDU
-	}
-
-	if buf, err := send.Packet.Marshal(); err != nil {
+	} else if buf, err := send.Packet.Marshal(); err != nil {
 		return err
 	} else if err := udp.send(buf, send.Addr); err != nil {
 		return err
@@ -155,12 +151,13 @@ func (udp *UDP) Recv() (recv IO, err error) {
 
 	if err := recv.Packet.Unmarshal(buf); err != nil {
 		return recv, fmt.Errorf("packet.Unmarshal: %v", err)
-	} else {
-		recv.PDUType = recv.Packet.PDUType()
 	}
 
-	if err := recv.PDU.Unpack(recv.Packet.RawPDU); err != nil {
+	if pduType, pdu, err := recv.Packet.UnpackPDU(); err != nil {
 		return recv, err
+	} else {
+		recv.PDUType = pduType
+		recv.PDU = pdu
 	}
 
 	return recv, nil
