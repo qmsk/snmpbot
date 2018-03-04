@@ -8,7 +8,7 @@ import (
 )
 
 const UDPPort = "161"
-const UDPSize uint = 1500
+const UDPSize uint = 64 * 1024
 
 type UDPOptions struct {
 	Size uint

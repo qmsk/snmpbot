@@ -10,7 +10,7 @@ const (
 	SNMPVersion           = snmp.SNMPv2c
 	DefaultTimeout        = 1 * time.Second
 	DefaultRetry          = uint(3)
-	DefaultMaxVars        = uint(10)
+	DefaultMaxVars        = uint(50)
 	DefaultMaxRepetitions = uint(10)
 )
 
