@@ -31,7 +31,9 @@ type VarBind struct {
 }
 
 func (varBind VarBind) String() string {
-	if value, err := varBind.Value(); err != nil {
+	if len(varBind.Name) == 0 {
+		return fmt.Sprintf(".")
+	} else if value, err := varBind.Value(); err != nil {
 		return fmt.Sprintf("!%v", varBind.Name)
 	} else if value != nil {
 		return fmt.Sprintf("%v=%v", varBind.Name, value)
