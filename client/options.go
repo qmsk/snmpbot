@@ -27,7 +27,7 @@ type Options struct {
 func (options *Options) InitFlags() {
 	flag.StringVar(&options.Community, "snmp-community", "public", "Default SNMP community")
 	flag.DurationVar(&options.Timeout, "snmp-timeout", DefaultTimeout, "SNMP request timeout")
-	flag.UintVar(&options.Retry, "snmp-retry", 0, "SNMP request retry")
+	flag.UintVar(&options.Retry, "snmp-retry", DefaultRetry, "SNMP request retry")
 	flag.UintVar(&options.UDP.Size, "snmp-udp-size", UDPSize, "Maximum UDP recv size")
 	flag.UintVar(&options.MaxVars, "snmp-maxvars", DefaultMaxVars, "Maximum request VarBinds")
 	flag.UintVar(&options.MaxRepetitions, "snmp-maxrepetitions", DefaultMaxRepetitions, "Maximum repetitions for GetBulk")
