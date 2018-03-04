@@ -75,10 +75,17 @@ func (engine *Engine) receiver() {
 
 	for {
 		if recv, err := engine.transport.Recv(); err != nil {
-			engine.log.Errorf("Recv: %v", err)
+			if protocolErr, ok := err.(ProtocolError); ok {
+				engine.log.Warnf("Recv: %v", protocolErr)
 
-			engine.recvErr = err
-			return
+				continue
+			} else {
+				engine.log.Errorf("Recv: %v", err)
+
+				engine.recvErr = err
+
+				return
+			}
 		} else {
 			engine.log.Debugf("Recv: %#v", recv)
 
