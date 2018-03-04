@@ -8,6 +8,15 @@ import (
 
 type OID []int
 
+// panic on ParseOID errors
+func MustParseOID(str string) OID {
+	if oid, err := ParseOID(str); err != nil {
+		panic(err)
+	} else {
+		return oid
+	}
+}
+
 func ParseOID(str string) (OID, error) {
 	if str == "" {
 		return nil, nil
