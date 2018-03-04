@@ -23,11 +23,11 @@ func snmpprobe(client *mibs.Client, ids ...mibs.ID) error {
 		})
 	}
 
-	for _, id := range ids {
-		if ok, err := client.Probe(id); err != nil {
-			return err
-		} else {
-			fmt.Printf("%v = %v\n", id, ok)
+	if probed, err := client.Probe(ids); err != nil {
+		return err
+	} else {
+		for i, ok := range probed {
+			fmt.Printf("%v = %v\n", ids[i], ok)
 		}
 	}
 

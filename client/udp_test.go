@@ -49,8 +49,8 @@ func (testServer *testServer) get(oid snmp.OID) (snmp.VarBind, error) {
 	return varBind, nil
 }
 
-func (testServer *testServer) handleGet(pdu snmp.PDU) (snmp.PDU, error) {
-	var response = snmp.PDU{
+func (testServer *testServer) handleGet(pdu snmp.GenericPDU) (snmp.PDU, error) {
+	var response = snmp.GenericPDU{
 		RequestID: pdu.RequestID,
 		VarBinds:  make([]snmp.VarBind, len(pdu.VarBinds)),
 	}
@@ -78,7 +78,7 @@ func (testServer *testServer) handle(recv IO) (send IO, err error) {
 	switch recv.PDUType {
 	case snmp.GetRequestType:
 		send.PDUType = snmp.GetResponseType
-		send.PDU, err = testServer.handleGet(recv.PDU)
+		send.PDU, err = testServer.handleGet(recv.PDU.(snmp.GenericPDU))
 	default:
 		return send, fmt.Errorf("Invalid request PDU type: %v", recv.PDUType)
 	}

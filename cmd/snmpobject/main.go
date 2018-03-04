@@ -24,7 +24,7 @@ func snmpobject(client *mibs.Client, id mibs.ID) error {
 		return fmt.Errorf("Not an object: %v", id)
 	}
 
-	return client.WalkObjects(func(object *mibs.Object, indexValues mibs.IndexValues, value mibs.Value, err error) error {
+	return client.WalkObjects([]*mibs.Object{object}, func(object *mibs.Object, indexValues mibs.IndexValues, value mibs.Value, err error) error {
 		if err != nil {
 			log.Printf("%v: %v", object, err)
 		} else {
@@ -32,7 +32,7 @@ func snmpobject(client *mibs.Client, id mibs.ID) error {
 		}
 
 		return nil
-	}, object)
+	})
 }
 
 func main() {

@@ -4,7 +4,6 @@ import (
 	"encoding/asn1"
 	"fmt"
 	"net"
-	"strings"
 	"time"
 )
 
@@ -135,41 +134,6 @@ const (
 	OpaqueType      ApplicationValueType = 4
 	Counter64Type   ApplicationValueType = 6
 )
-
-type Packet struct {
-	Version   Version
-	Community []byte
-	RawPDU    asn1.RawValue
-}
-
-type PDU struct {
-	RequestID   int
-	ErrorStatus ErrorStatus
-	ErrorIndex  int
-	VarBinds    []VarBind
-}
-
-func (pdu PDU) String() string {
-	if pdu.ErrorStatus != 0 {
-		return fmt.Sprintf("!%v", pdu.ErrorStatus)
-	}
-
-	var varBinds = make([]string, len(pdu.VarBinds))
-
-	for i, varBind := range pdu.VarBinds {
-		varBinds[i] = varBind.String()
-	}
-
-	return strings.Join(varBinds, ", ")
-}
-
-func (pdu PDU) ErrorVarBind() VarBind {
-	if pdu.ErrorIndex < len(pdu.VarBinds) {
-		return pdu.VarBinds[pdu.ErrorIndex]
-	} else {
-		return VarBind{}
-	}
-}
 
 // SNMPv1 Trap-PDU
 type TrapPDU struct {

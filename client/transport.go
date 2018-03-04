@@ -29,7 +29,7 @@ type IO struct {
 
 func (io IO) key() ioKey {
 	return ioKey{
-		id:        io.PDU.RequestID,
+		id:        io.PDU.GetRequestID(),
 		community: string(io.Packet.Community),
 		addr:      io.Addr.String(),
 	}
@@ -37,7 +37,20 @@ func (io IO) key() ioKey {
 
 type Transport interface {
 	Resolve(addr string) (net.Addr, error)
+
+	// Returns ProtocolError in case of soft failures
 	Send(IO) error
+
+	// Returns ProtocolError in case of soft failures
 	Recv() (IO, error)
 	Close() error
+}
+
+// soft application-layer errors, transport itself is still working
+type ProtocolError struct {
+	err error
+}
+
+func (err ProtocolError) Error() string {
+	return err.err.Error()
 }

@@ -8,7 +8,7 @@ import (
 )
 
 const UDPPort = "161"
-const UDPSize uint = 1500
+const UDPSize uint = 64 * 1024
 
 type UDPOptions struct {
 	Size uint
@@ -123,14 +123,10 @@ func (udp *UDP) send(buf []byte, addr net.Addr) error {
 }
 
 func (udp *UDP) Send(send IO) error {
-	if rawPDU, err := send.PDU.Pack(send.PDUType); err != nil {
-		return err
-	} else {
-		send.Packet.RawPDU = rawPDU
-	}
-
-	if buf, err := send.Packet.Marshal(); err != nil {
-		return err
+	if err := send.Packet.PackPDU(send.PDUType, send.PDU); err != nil {
+		return ProtocolError{fmt.Errorf("packet.PackPDU: %v", err)}
+	} else if buf, err := send.Packet.Marshal(); err != nil {
+		return ProtocolError{fmt.Errorf("packet.Marshal: %v", err)}
 	} else if err := udp.send(buf, send.Addr); err != nil {
 		return err
 	}
@@ -147,20 +143,21 @@ func (udp *UDP) Recv() (recv IO, err error) {
 	} else if size == 0 {
 		return recv, io.EOF
 	} else if flags&syscall.MSG_TRUNC != 0 {
-		return recv, fmt.Errorf("Packet truncated (>%d bytes)", udp.size)
+		return recv, ProtocolError{fmt.Errorf("Packet truncated (>%d bytes)", udp.size)}
 	} else {
 		recv.Addr = addr
 		buf = buf[:size]
 	}
 
 	if err := recv.Packet.Unmarshal(buf); err != nil {
-		return recv, fmt.Errorf("packet.Unmarshal: %v", err)
-	} else {
-		recv.PDUType = recv.Packet.PDUType()
+		return recv, ProtocolError{fmt.Errorf("packet.Unmarshal: %v", err)}
 	}
 
-	if err := recv.PDU.Unpack(recv.Packet.RawPDU); err != nil {
-		return recv, err
+	if pduType, pdu, err := recv.Packet.UnpackPDU(); err != nil {
+		return recv, ProtocolError{fmt.Errorf("packet.UnpackPDU: %v", err)}
+	} else {
+		recv.PDUType = pduType
+		recv.PDU = pdu
 	}
 
 	return recv, nil

@@ -28,16 +28,8 @@ func (mibMap MIBs) ListIDs() []mibs.ID {
 	return list
 }
 
-func (mibMap MIBs) FilterProbed(probed map[mibs.IDKey]bool) MIBs {
-	var probedMibs = make(MIBs)
-
-	for id, mib := range mibMap {
-		if probed[mib.ID.Key()] {
-			probedMibs[id] = mib
-		}
-	}
-
-	return probedMibs
+func (mibMap MIBs) Add(mib *mibs.MIB) {
+	mibMap[mib.Name] = mib
 }
 
 func (mibMap MIBs) Objects() Objects {

@@ -29,29 +29,12 @@ func unpack(raw asn1.RawValue, value interface{}) error {
 	return nil
 }
 
-func (packet *Packet) Unmarshal(buf []byte) error {
-	if _, err := ber.Unmarshal(buf, packet); err != nil {
+func unmarshal(data []byte, obj interface{}) error {
+	if _, err := ber.Unmarshal(data, obj); err != nil {
 		return err
 	} else {
-		// ignore trailing bytes
-	}
-
-	if packet.RawPDU.Class != asn1.ClassContextSpecific {
-		return fmt.Errorf("unexpected PDU: ASN.1 class %d", packet.RawPDU.Class)
+		// XXX: ignore trailing bytes
 	}
 
 	return nil
-}
-
-func (packet *Packet) PDUType() PDUType {
-	// assuming packet.PDU.Class == asn1.ClassContextSpecific
-	return PDUType(packet.RawPDU.Tag)
-}
-
-func (pdu *PDU) Unpack(raw asn1.RawValue) error {
-	if raw.Class != asn1.ClassContextSpecific {
-		return fmt.Errorf("unexpected PDU: ASN.1 class=%d tag=%d", raw.Class, raw.Tag)
-	}
-
-	return unpack(raw, pdu)
 }

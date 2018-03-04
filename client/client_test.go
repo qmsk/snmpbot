@@ -5,7 +5,6 @@ import (
 	"github.com/qmsk/go-logging"
 	"github.com/qmsk/snmpbot/snmp"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 )
@@ -95,7 +94,7 @@ func TestGetSendError(t *testing.T) {
 				Community: []byte("public"),
 			},
 			PDUType: snmp.GetRequestType,
-			PDU: snmp.PDU{
+			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, nil),
 				},
@@ -121,7 +120,7 @@ func TestGetRecvWrongAddr(t *testing.T) {
 				Community: []byte("public"),
 			},
 			PDUType: snmp.GetRequestType,
-			PDU: snmp.PDU{
+			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, nil),
 				},
@@ -133,7 +132,7 @@ func TestGetRecvWrongAddr(t *testing.T) {
 				Community: []byte("public"),
 			},
 			PDUType: snmp.GetResponseType,
-			PDU: snmp.PDU{
+			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, 1),
 				},
@@ -161,7 +160,7 @@ func TestGetRecvWrongCommunity(t *testing.T) {
 				Community: []byte("public"),
 			},
 			PDUType: snmp.GetRequestType,
-			PDU: snmp.PDU{
+			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, nil),
 				},
@@ -173,7 +172,7 @@ func TestGetRecvWrongCommunity(t *testing.T) {
 				Community: []byte("not-public"),
 			},
 			PDUType: snmp.GetResponseType,
-			PDU: snmp.PDU{
+			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, 1),
 				},
@@ -205,7 +204,7 @@ func TestGetRequestErrorValue(t *testing.T) {
 	})
 }
 
-func TestGetRequestBig(t *testing.T) {
+func TestGetRequestTooBig(t *testing.T) {
 	var oids = []snmp.OID{
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0},
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
@@ -213,35 +212,40 @@ func TestGetRequestBig(t *testing.T) {
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 3},
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 4},
 	}
-	var values = [][]byte{
-		[]byte("qmsk-snmp test 0"),
-		[]byte("qmsk-snmp test 1"),
-		[]byte("qmsk-snmp test 2"),
-		[]byte("qmsk-snmp test 3"),
-		[]byte("qmsk-snmp test 4"),
-	}
 
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
-		client.options.MaxVars = 2
+		transport.On("GetRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetRequestType,
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(oids[0], nil),
+					snmp.MakeVarBind(oids[1], nil),
+					snmp.MakeVarBind(oids[2], nil),
+					snmp.MakeVarBind(oids[3], nil),
+					snmp.MakeVarBind(oids[4], nil),
+				},
+			},
+		}).Return(error(nil), IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetResponseType,
+			PDU: snmp.GenericPDU{
+				ErrorStatus: snmp.TooBigError,
+			},
+		})
 
-		transport.mockGetMany("test", []snmp.OID{oids[0], oids[1]}, []snmp.VarBind{
-			snmp.MakeVarBind(oids[0], values[0]),
-			snmp.MakeVarBind(oids[1], values[1]),
-		})
-		transport.mockGetMany("test", []snmp.OID{oids[2], oids[3]}, []snmp.VarBind{
-			snmp.MakeVarBind(oids[2], values[2]),
-			snmp.MakeVarBind(oids[3], values[3]),
-		})
-		transport.mockGetMany("test", []snmp.OID{oids[4]}, []snmp.VarBind{
-			snmp.MakeVarBind(oids[4], values[4]),
-		})
-
-		if varBinds, err := client.Get(oids...); err != nil {
-			t.Fatalf("Get(%v): %v", oids, err)
+		if varBinds, err := client.Get(oids...); err == nil {
+			t.Errorf("Get(%v): %v", oids, varBinds)
 		} else {
-			for i, oid := range oids {
-				assertVarBind(t, varBinds, i, oid, values[i])
-			}
+			assert.EqualError(t, err, "SNMP GetRequest error: SNMP PDU Error: TooBig @ .")
 		}
 	})
 }
@@ -256,81 +260,253 @@ func TestGetNothing(t *testing.T) {
 	})
 }
 
-func TestWalk(t *testing.T) {
-	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1} // IF-MIB::ifName
-	var varBinds = []snmp.VarBind{
-		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, []byte("if1")),
-		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, []byte("if2")),
-		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 2, 1}, snmp.Counter32(0)),
+func TestGetBulkMaxRepetitions(t *testing.T) {
+	var tests = []struct {
+		options Options
+		scalars uint
+		entries uint
+		result  int
+	}{
+		{options: Options{MaxVars: 10, MaxRepetitions: 10}, scalars: 0, entries: 1, result: 10},
+		{options: Options{MaxVars: 10, MaxRepetitions: 10}, scalars: 0, entries: 5, result: 2},
+		{options: Options{MaxVars: 10, MaxRepetitions: 10}, scalars: 0, entries: 6, result: 1},
+		{options: Options{MaxVars: 10, MaxRepetitions: 10}, scalars: 0, entries: 10, result: 1},
+		{options: Options{MaxVars: 10, MaxRepetitions: 10}, scalars: 0, entries: 11, result: 1},
+		{options: Options{MaxVars: 10, MaxRepetitions: 10}, scalars: 5, entries: 5, result: 1},
+		{options: Options{MaxVars: 100, MaxRepetitions: 10}, scalars: 0, entries: 5, result: 10},
+	}
+
+	for _, test := range tests {
+		var client = Client{options: test.options}
+
+		assert.Equalf(t, test.result, int(client.getBulkMaxRepetitions(test.scalars, test.entries)), "%#v", test)
+	}
+}
+
+func TestGetRequestGetBulk(t *testing.T) {
+	var scalarOID = snmp.OID{1, 3, 6, 1, 2, 1, 1, 4}
+	var entryOIDs = []snmp.OID{
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 2},
 	}
 
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
-		transport.mockGetNext("test", oid, varBinds[0])
-		transport.mockGetNext("test", varBinds[0].OID(), varBinds[1])
-		transport.mockGetNext("test", varBinds[1].OID(), varBinds[2])
+		client.options.MaxVars = 20
+		client.options.MaxRepetitions = 5
 
-		if err := client.Walk(func(varBinds ...snmp.VarBind) error {
+		transport.On("GetBulkRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetBulkRequestType,
+			PDU: snmp.BulkPDU{
+				NonRepeaters:   1,
+				MaxRepetitions: 5,
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, nil),
+					snmp.MakeVarBind(entryOIDs[0], nil),
+					snmp.MakeVarBind(entryOIDs[1], nil),
+				},
+			},
+		}).Return(error(nil), IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetResponseType,
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, 0),
+					snmp.MakeVarBind(entryOIDs[0].Extend(1), 1),
+					snmp.MakeVarBind(entryOIDs[1].Extend(1), 2),
+					snmp.MakeVarBind(entryOIDs[0].Extend(2), 3),
+					snmp.MakeVarBind(entryOIDs[1].Extend(2), 4),
+				},
+			},
+		})
 
-			return nil
-		}, oid); err != nil {
-			t.Fatalf("Walk(%v): %v", oid, err)
+		scalarVars, entryVarsList, err := client.GetBulk([]snmp.OID{scalarOID}, entryOIDs)
+		if err != nil {
+			t.Errorf("GetBulk(%v, %v): %v", scalarOID, entryOIDs, err)
 		}
+
+		assert.Equal(t, []snmp.VarBind{snmp.MakeVarBind(scalarOID, 0)}, scalarVars)
+		assert.Equal(t, [][]snmp.VarBind{
+			[]snmp.VarBind{
+				snmp.MakeVarBind(entryOIDs[0].Extend(1), 1),
+				snmp.MakeVarBind(entryOIDs[1].Extend(1), 2),
+			},
+			[]snmp.VarBind{
+				snmp.MakeVarBind(entryOIDs[0].Extend(2), 3),
+				snmp.MakeVarBind(entryOIDs[1].Extend(2), 4),
+			},
+		}, entryVarsList)
 	})
 }
 
-func TestWalkV2(t *testing.T) {
-	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1} // IF-MIB::ifName
-	var varBinds = []snmp.VarBind{
-		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, []byte("if1")),
-		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, []byte("if2")),
-		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1, 1}, snmp.EndOfMibViewValue),
+func TestGetRequestGetBulkOne(t *testing.T) {
+	var scalarOID = snmp.OID{1, 3, 6, 1, 2, 1, 1, 4}
+	var entryOIDs = []snmp.OID{
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 2},
 	}
 
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
-		transport.mockGetNext("test", oid, varBinds[0])
-		transport.mockGetNext("test", varBinds[0].OID(), varBinds[1])
-		transport.mockGetNext("test", varBinds[1].OID(), varBinds[2])
+		client.options.MaxVars = 20
+		client.options.MaxRepetitions = 5
 
-		if err := client.Walk(func(varBinds ...snmp.VarBind) error {
+		transport.On("GetBulkRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetBulkRequestType,
+			PDU: snmp.BulkPDU{
+				NonRepeaters:   1,
+				MaxRepetitions: 5,
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, nil),
+					snmp.MakeVarBind(entryOIDs[0], nil),
+					snmp.MakeVarBind(entryOIDs[1], nil),
+				},
+			},
+		}).Return(error(nil), IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetResponseType,
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, 0),
+					snmp.MakeVarBind(entryOIDs[0].Extend(1), 1),
+					snmp.MakeVarBind(entryOIDs[1].Extend(1), 2),
+				},
+			},
+		})
 
-			return nil
-		}, oid); err != nil {
-			t.Fatalf("Walk(%v): %v", oid, err)
+		scalarVars, entryVarsList, err := client.GetBulk([]snmp.OID{scalarOID}, entryOIDs)
+		if err != nil {
+			t.Errorf("GetBulk(%v, %v): %v", scalarOID, entryOIDs, err)
 		}
+
+		assert.Equal(t, []snmp.VarBind{snmp.MakeVarBind(scalarOID, 0)}, scalarVars)
+		assert.Equal(t, [][]snmp.VarBind{
+			[]snmp.VarBind{
+				snmp.MakeVarBind(entryOIDs[0].Extend(1), 1),
+				snmp.MakeVarBind(entryOIDs[1].Extend(1), 2),
+			},
+		}, entryVarsList)
 	})
 }
 
-func TestWalkPartial(t *testing.T) {
-	var oid1 = snmp.OID{1, 3, 6, 1, 2, 1, 17, 7, 1, 2, 2, 1, 1} // Q-BRIDGE-MIB::dot1qTpFdbAddress (not-accessible)
-	var oid2 = snmp.OID{1, 3, 6, 1, 2, 1, 17, 7, 1, 2, 2, 1, 2} // Q-BRIDGE-MIB::dot1qTpFdbPort
-
-	var errBind = snmp.MakeVarBind(oid1, snmp.EndOfMibViewValue)
-	var varBinds = []snmp.VarBind{
-		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 17, 7, 1, 2, 2, 1, 2, 1, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11}, int(1)),
-		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 17, 7, 1, 2, 2, 1, 2, 1, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22}, int(3)),
-		snmp.MakeVarBind(snmp.OID{1, 3, 6, 1, 2, 1, 17, 7, 1, 2, 2, 1, 3, 1, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11}, int(1)),
+func TestGetRequestGetBulkShort(t *testing.T) {
+	var scalarOID = snmp.OID{1, 3, 6, 1, 2, 1, 1, 4}
+	var entryOIDs = []snmp.OID{
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 2},
 	}
 
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
-		var walkMock mock.Mock
-		defer walkMock.AssertExpectations(t)
+		client.options.MaxVars = 20
+		client.options.MaxRepetitions = 5
 
-		transport.mockGetNextMulti("test", []snmp.OID{oid1, oid2}, []snmp.VarBind{varBinds[0], varBinds[0]})
-		walkMock.On("walk[1/2]", errBind)
-		walkMock.On("walk[2/2]", varBinds[0])
-		transport.mockGetNextMulti("test", []snmp.OID{oid1, varBinds[0].OID()}, []snmp.VarBind{varBinds[0], varBinds[1]})
-		walkMock.On("walk[1/2]", errBind)
-		walkMock.On("walk[2/2]", varBinds[1])
-		transport.mockGetNextMulti("test", []snmp.OID{oid1, varBinds[1].OID()}, []snmp.VarBind{varBinds[0], varBinds[2]})
+		transport.On("GetBulkRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetBulkRequestType,
+			PDU: snmp.BulkPDU{
+				NonRepeaters:   1,
+				MaxRepetitions: 5,
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, nil),
+					snmp.MakeVarBind(entryOIDs[0], nil),
+					snmp.MakeVarBind(entryOIDs[1], nil),
+				},
+			},
+		}).Return(error(nil), IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetResponseType,
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, 0),
+				},
+			},
+		})
 
-		if err := client.Walk(func(varBinds ...snmp.VarBind) error {
-			for i, varBind := range varBinds {
-				walkMock.MethodCalled(fmt.Sprintf("walk[%d/%d]", i+1, len(varBinds)), varBind)
-			}
+		_, _, err := client.GetBulk([]snmp.OID{scalarOID}, entryOIDs)
 
-			return nil
-		}, oid1, oid2); err != nil {
-			t.Fatalf("Walk(%v, %v): %v", oid1, oid2, err)
+		assert.EqualError(t, err, "Invalid bulk response for 1+2 => 1 vars")
+	})
+}
+
+func TestGetRequestGetBulkOdd(t *testing.T) {
+	var scalarOID = snmp.OID{1, 3, 6, 1, 2, 1, 1, 4}
+	var entryOIDs = []snmp.OID{
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
+		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 2},
+	}
+
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		client.options.MaxVars = 5
+		client.options.MaxRepetitions = 5
+
+		transport.On("GetBulkRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetBulkRequestType,
+			PDU: snmp.BulkPDU{
+				NonRepeaters:   1,
+				MaxRepetitions: 2,
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, nil),
+					snmp.MakeVarBind(entryOIDs[0], nil),
+					snmp.MakeVarBind(entryOIDs[1], nil),
+				},
+			},
+		}).Return(error(nil), IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetResponseType,
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(scalarOID, 0),
+					snmp.MakeVarBind(entryOIDs[0].Extend(1), 1),
+					snmp.MakeVarBind(entryOIDs[1].Extend(1), 2),
+					snmp.MakeVarBind(entryOIDs[0].Extend(1), 3),
+				},
+			},
+		})
+
+		scalarVars, entryVarsList, err := client.GetBulk([]snmp.OID{scalarOID}, entryOIDs)
+		if err != nil {
+			t.Errorf("GetBulk(%v, %v): %v", scalarOID, entryOIDs, err)
 		}
+
+		assert.Equal(t, []snmp.VarBind{snmp.MakeVarBind(scalarOID, 0)}, scalarVars)
+		assert.Equal(t, [][]snmp.VarBind{
+			[]snmp.VarBind{
+				snmp.MakeVarBind(entryOIDs[0].Extend(1), 1),
+				snmp.MakeVarBind(entryOIDs[1].Extend(1), 2),
+			},
+		}, entryVarsList)
 	})
 }

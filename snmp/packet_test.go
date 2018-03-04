@@ -1,6 +1,7 @@
 package snmp
 
 import (
+	"encoding/asn1"
 	"encoding/hex"
 	"github.com/stretchr/testify/assert"
 	"regexp"
@@ -17,19 +18,33 @@ func decodeTestPacket(str string) []byte {
 	}
 }
 
+// prepare a VarBind for use with assert.Equal() in tests
+func testVarBind(oid OID, value interface{}) VarBind {
+	varBind := MakeVarBind(oid, value)
+
+	if varBind.RawValue.Bytes == nil {
+		varBind.RawValue.Bytes = []byte{}
+	}
+
+	if data, err := asn1.Marshal(varBind.RawValue); err != nil {
+		panic(err)
+	} else {
+		varBind.RawValue.FullBytes = data
+	}
+
+	return varBind
+}
+
 type packetTest struct {
 	bytes   []byte
 	packet  Packet
 	pduType PDUType
 	pdu     PDU
-	values  []interface{} // for unmarshal
 }
 
 func testPacketMarshal(t *testing.T, test packetTest) {
-	if packedPDU, err := test.pdu.Pack(test.pduType); err != nil {
+	if err := test.packet.PackPDU(test.pduType, test.pdu); err != nil {
 		t.Fatalf("pdu.pack: %v", err)
-	} else {
-		test.packet.RawPDU = packedPDU
 	}
 
 	if bytes, err := test.packet.Marshal(); err != nil {
@@ -43,44 +58,31 @@ func testPacketUnmarshal(t *testing.T, test packetTest) {
 	var packet Packet
 	var pdu PDU
 
-	if err := packet.Unmarshal(test.bytes); err != nil {
-		t.Errorf("packet.unmarshal: %v", err)
+	err := packet.Unmarshal(test.bytes)
+	if err != nil {
+		t.Errorf("packet.Unmarshal: %v", err)
 		return
 	}
 
-	if err := pdu.Unpack(packet.RawPDU); err != nil {
-		t.Errorf("pdu.unpack: %v", err)
+	pduType, pdu, err := packet.UnpackPDU()
+	if err != nil {
+		t.Errorf("packet.UnpackPDU: %v", err)
 		return
 	}
 
 	assert.Equal(t, test.packet.Version, packet.Version)
 	assert.Equal(t, test.packet.Community, packet.Community)
-	assert.Equal(t, test.pduType, packet.PDUType())
-	assert.Equal(t, test.pdu.RequestID, pdu.RequestID)
-	assert.Equal(t, test.pdu.ErrorStatus, pdu.ErrorStatus)
-	assert.Equal(t, test.pdu.ErrorIndex, pdu.ErrorIndex)
-
-	for i, varBind := range pdu.VarBinds {
-		if i >= len(test.pdu.VarBinds) {
-			t.Errorf("extra varBind[%d]: %#v", i, varBind)
-			continue
-		}
-
-		assert.Equal(t, test.pdu.VarBinds[i].Name, varBind.Name, "VarBinds[i].Name", i)
-
-		if value, err := varBind.Value(); err != nil {
-			t.Errorf("varBind[%d].Value: %s", i, err)
-			continue
-		} else if i >= len(test.values) {
-			t.Fatalf("missing test.values for varBind[%d]", i)
-		} else {
-			assert.Equal(t, test.values[i], value, "VarBinds[i].Value", i)
-		}
-	}
+	assert.Equal(t, test.pduType, pduType)
+	assert.Equal(t, test.pdu, pdu)
 }
 
-func TestPacketMarshal(t *testing.T) {
-	testPacketMarshal(t, packetTest{
+func testPacket(t *testing.T, test packetTest) {
+	testPacketMarshal(t, test)
+	testPacketUnmarshal(t, test)
+}
+
+func TestPacketGetRequest(t *testing.T) {
+	testPacket(t, packetTest{
 		bytes: decodeTestPacket(`
 			30 21 											-- SEQUENCE
 			02 01 01 										-- INTEGER version
@@ -99,17 +101,17 @@ func TestPacketMarshal(t *testing.T) {
 			Community: []byte("public"),
 		},
 		pduType: GetNextRequestType,
-		pdu: PDU{
+		pdu: GenericPDU{
 			RequestID: 1337,
 			VarBinds: []VarBind{
-				MakeVarBind(OID{1, 3, 6}, nil),
+				testVarBind(OID{1, 3, 6}, nil),
 			},
 		},
 	})
 }
 
-func TestPacketUnmarshal(t *testing.T) {
-	testPacketUnmarshal(t, packetTest{
+func TestPacketGetResponse(t *testing.T) {
+	testPacket(t, packetTest{
 		bytes: decodeTestPacket(`
         30 38 02 01 01 04 06 70 75 62 6c 69 63 a2 2b 02
         04 01 7a 6d f3 02 01 00 02 01 00 30 1d 30 1b 06
@@ -121,20 +123,17 @@ func TestPacketUnmarshal(t *testing.T) {
 			Community: []byte("public"),
 		},
 		pduType: GetResponseType,
-		pdu: PDU{
+		pdu: GenericPDU{
 			RequestID: 24800755,
 			VarBinds: []VarBind{
-				MakeVarBind(OID{1, 3, 6, 1, 2, 1, 1, 5, 0}, []byte("UBNT EdgeSwitch")),
+				testVarBind(OID{1, 3, 6, 1, 2, 1, 1, 5, 0}, []byte("UBNT EdgeSwitch")),
 			},
-		},
-		values: []interface{}{
-			[]byte("UBNT EdgeSwitch"),
 		},
 	})
 }
 
-func TestPacketMarshalCounter32(t *testing.T) {
-	testPacketMarshal(t, packetTest{
+func TestPacketCounter32(t *testing.T) {
+	testPacket(t, packetTest{
 		bytes: decodeTestPacket(`
 			30 30 02 01 01 04 06 70 75 62 6c 69 63 a2 23 02
 			04 29 9e 37 ef 02 01 00 02 01 00 30 15 30 13 06
@@ -146,42 +145,17 @@ func TestPacketMarshalCounter32(t *testing.T) {
 			Community: []byte("public"),
 		},
 		pduType: GetResponseType,
-		pdu: PDU{
+		pdu: GenericPDU{
 			RequestID: 698234863,
 			VarBinds: []VarBind{
-				MakeVarBind(OID{1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1}, Counter32(2833025851)),
+				testVarBind(OID{1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1}, Counter32(2833025851)),
 			},
 		},
 	})
 }
 
-func TestPacketUnmarshalCounter32(t *testing.T) {
-	testPacketUnmarshal(t, packetTest{
-		bytes: decodeTestPacket(`
-			30 30 02 01 01 04 06 70 75 62 6c 69 63 a2 23 02
-			04 29 9e 37 ef 02 01 00 02 01 00 30 15 30 13 06
-			0a 2b 06 01 02 01 02 02 01 0a 01 41 05 00 a8 dc
-			8b 3b
-		`),
-		packet: Packet{
-			Version:   SNMPv2c,
-			Community: []byte("public"),
-		},
-		pduType: GetResponseType,
-		pdu: PDU{
-			RequestID: 698234863,
-			VarBinds: []VarBind{
-				MakeVarBind(OID{1, 3, 6, 1, 2, 1, 2, 2, 1, 10, 1}, Counter32(2833025851)),
-			},
-		},
-		values: []interface{}{
-			Counter32(2833025851),
-		},
-	})
-}
-
-func TestPacketUnmarshalNoSuchInstance(t *testing.T) {
-	testPacketUnmarshal(t, packetTest{
+func TestPacketNoSuchInstance(t *testing.T) {
+	testPacket(t, packetTest{
 		bytes: decodeTestPacket(`
 			30 29 02 01 01 04 06 70 75 62 6c 69 63 a2 1c 02
 			04 47 6b 38 88 02 01 00 02 01 00 30 0e 30 0c 06
@@ -192,13 +166,36 @@ func TestPacketUnmarshalNoSuchInstance(t *testing.T) {
 			Community: []byte("public"),
 		},
 		pduType: GetResponseType,
-		pdu: PDU{
+		pdu: GenericPDU{
 			RequestID: 1198209160,
 			VarBinds: []VarBind{
-				MakeVarBind(OID{1, 3, 6, 1, 2, 1, 1, 5, 1}, NoSuchInstanceValue),
+				testVarBind(OID{1, 3, 6, 1, 2, 1, 1, 5, 1}, NoSuchInstanceValue),
 			},
 		},
-		values: []interface{}{
-			NoSuchInstanceValue,
-		}})
+	})
+}
+
+func TestPacketGetBulk(t *testing.T) {
+	testPacket(t, packetTest{
+		bytes: decodeTestPacket(`
+			30 39 02 01 01 04 06 70 75 62 6c 69 63 a5 2c 02
+			04 2c 6a 76 19 02 01 00 02 01 0a 30 1e 30 0d 06
+			09 2b 06 01 02 01 02 02 01 01 05 00 30 0d 06 09
+			2b 06 01 02 01 02 02 01 02 05 00
+		`),
+		packet: Packet{
+			Version:   SNMPv2c,
+			Community: []byte("public"),
+		},
+		pduType: GetBulkRequestType,
+		pdu: BulkPDU{
+			RequestID:      745174553,
+			NonRepeaters:   0,
+			MaxRepetitions: 10,
+			VarBinds: []VarBind{
+				testVarBind(MustParseOID(".1.3.6.1.2.1.2.2.1.1"), nil),
+				testVarBind(MustParseOID(".1.3.6.1.2.1.2.2.1.2"), nil),
+			},
+		},
+	})
 }

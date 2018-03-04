@@ -83,16 +83,23 @@ func (host *Host) init(engine *Engine, config HostConfig) error {
 
 func (host *Host) probe(probeMIBs MIBs) error {
 	var client = mibs.Client{host.client}
+	var ids = probeMIBs.ListIDs()
+	var mibs = make(MIBs)
 
 	host.log.Infof("Probing MIBs: %v", probeMIBs)
 
-	if probed, err := client.ProbeMany(probeMIBs.ListIDs()); err != nil {
+	if probed, err := client.Probe(ids); err != nil {
 		return err
 	} else {
-		host.mibs = probeMIBs.FilterProbed(probed)
+		for i, ok := range probed {
+			if ok {
+				mibs.Add(ids[i].MIB)
+			}
+		}
 	}
 
 	// TODO: probe system::sysLocation?
+	host.mibs = mibs
 	host.online = true
 
 	return nil

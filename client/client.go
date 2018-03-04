@@ -59,11 +59,7 @@ func (client *Client) request(send IO) (IO, error) {
 	}
 }
 
-func (client *Client) requestRead(requestType snmp.PDUType, varBinds []snmp.VarBind) (snmp.PDUType, []snmp.VarBind, error) {
-	var maxVars = DefaultMaxVars
-	var retType snmp.PDUType
-	var retVars = make([]snmp.VarBind, len(varBinds))
-	var retLen = uint(0)
+func (client *Client) requestPDU(requestType snmp.PDUType, pdu snmp.PDU, responseType snmp.PDUType) ([]snmp.VarBind, error) {
 	var send = IO{
 		Addr: client.addr,
 		Packet: snmp.Packet{
@@ -71,79 +67,165 @@ func (client *Client) requestRead(requestType snmp.PDUType, varBinds []snmp.VarB
 			Community: []byte(client.options.Community),
 		},
 		PDUType: requestType,
-		PDU:     snmp.PDU{},
+		PDU:     pdu,
 	}
+
+	if recv, err := client.request(send); err != nil {
+		return nil, err
+	} else if recv.PDUType != responseType {
+		return nil, fmt.Errorf("Invalid %v response type, expected %v, got %v", requestType, responseType, recv.PDUType)
+	} else if responsePDU, ok := recv.PDU.(snmp.GenericPDU); !ok {
+		return nil, fmt.Errorf("Invalid %v response type, expected %v, got %v with PDU of type %T", requestType, responseType, recv.PDUType, recv.PDU)
+	} else {
+		return responsePDU.VarBinds, nil
+	}
+}
+
+func (client *Client) requestGeneric(requestType snmp.PDUType, varBinds []snmp.VarBind, responseType snmp.PDUType) ([]snmp.VarBind, error) {
+	var pdu = snmp.GenericPDU{
+		VarBinds: varBinds,
+	}
+
+	if len(varBinds) == 0 {
+		return nil, nil
+	} else if varBinds, err := client.requestPDU(requestType, pdu, responseType); err != nil {
+		return nil, err
+	} else if len(varBinds) != len(varBinds) {
+		return varBinds, fmt.Errorf("Invalid %v response, expected %d vars, got %v with %d vars", requestType, len(varBinds), responseType, len(varBinds))
+	} else {
+		return varBinds, nil
+	}
+}
+
+// Split request OIDs into multiple requests of options.MaxVars each.
+//
+// Override response varbinds outside of rootOIDs with snmp.EndOfMibViewValue
+//
+// TODO: automatically handle snmp.TooBigError?
+func (client *Client) requestSplit(requestType snmp.PDUType, varBinds []snmp.VarBind, responseType snmp.PDUType) ([]snmp.VarBind, error) {
+	var maxVars = DefaultMaxVars
+	var retVars = make([]snmp.VarBind, len(varBinds))
+	var retLen = uint(0)
 
 	if client.options.MaxVars > 0 {
 		maxVars = client.options.MaxVars
 	}
 
 	for retLen < uint(len(varBinds)) {
+		var reqOffset = retLen
 		var reqVars = make([]snmp.VarBind, maxVars)
 		var reqLen = uint(0)
 
 		for retLen+reqLen < uint(len(varBinds)) && reqLen < maxVars {
-			reqVars[reqLen] = varBinds[retLen+reqLen]
+			reqVars[reqLen] = varBinds[reqOffset+reqLen]
 			reqLen++
 		}
 
-		send.PDU.VarBinds = reqVars[:reqLen]
-
-		// TODO: handle snmp.TooBigError
-		if recv, err := client.request(send); err != nil {
-			return recv.PDUType, recv.PDU.VarBinds, err
-		} else if len(recv.PDU.VarBinds) > len(reqVars) {
-			return retType, retVars, fmt.Errorf("Invalid %v with %d vars for %v with %d vars", recv.PDUType, len(recv.PDU.VarBinds), requestType, len(retVars))
+		if varBinds, err := client.requestGeneric(requestType, reqVars[:reqLen], responseType); err != nil {
+			return nil, err
 		} else {
-			retType = recv.PDUType
-
-			for _, varBind := range recv.PDU.VarBinds {
+			for _, varBind := range varBinds {
 				retVars[retLen] = varBind
 				retLen++
-				reqLen++
 			}
 		}
 	}
 
-	return retType, retVars, nil
+	return retVars, nil
+}
+
+func makeGetVars(oids []snmp.OID) []snmp.VarBind {
+	var varBinds = make([]snmp.VarBind, len(oids))
+
+	for i, oid := range oids {
+		varBinds[i] = snmp.MakeVarBind(oid, nil)
+	}
+
+	return varBinds
 }
 
 func (client *Client) Get(oids ...snmp.OID) ([]snmp.VarBind, error) {
-	var requestVars = make([]snmp.VarBind, len(oids))
-
-	for i, oid := range oids {
-		requestVars[i] = snmp.MakeVarBind(oid, nil)
-	}
-
-	if len(oids) == 0 {
-		return nil, nil
-	} else if responseType, responseVars, err := client.requestRead(snmp.GetRequestType, requestVars); err != nil {
-		return responseVars, err
-	} else if responseType != snmp.GetResponseType {
-		return responseVars, fmt.Errorf("Unexpected response type %v for GetRequest", responseType)
-	} else if len(responseVars) != len(oids) {
-		return nil, fmt.Errorf("Incorrect number of response vars %d for GetRequest with %d OIDs", len(responseVars), len(oids))
-	} else {
-		return responseVars, nil
-	}
+	return client.requestGeneric(snmp.GetRequestType, makeGetVars(oids), snmp.GetResponseType)
 }
 
 func (client *Client) GetNext(oids ...snmp.OID) ([]snmp.VarBind, error) {
-	var requestVars = make([]snmp.VarBind, len(oids))
+	return client.requestGeneric(snmp.GetNextRequestType, makeGetVars(oids), snmp.GetResponseType)
+}
 
-	for i, oid := range oids {
-		requestVars[i] = snmp.MakeVarBind(oid, nil)
+func (client *Client) GetNextSplit(oids []snmp.OID) ([]snmp.VarBind, error) {
+	return client.requestSplit(snmp.GetNextRequestType, makeGetVars(oids), snmp.GetResponseType)
+}
+
+func (client *Client) getBulkMaxRepetitions(scalarsLen uint, entriesLen uint) uint {
+	var maxRepetitions = DefaultMaxRepetitions
+	var maxVars = DefaultMaxVars
+
+	if client.options.MaxRepetitions != 0 {
+		maxRepetitions = client.options.MaxRepetitions
+	}
+	if client.options.MaxVars != 0 {
+		maxVars = client.options.MaxVars
 	}
 
-	if len(oids) == 0 {
-		return nil, nil
-	} else if responseType, responseVars, err := client.requestRead(snmp.GetNextRequestType, requestVars); err != nil {
-		return responseVars, err
-	} else if responseType != snmp.GetResponseType {
-		return responseVars, fmt.Errorf("Unexpected response type %v for GetNextRequest", responseType)
-	} else if len(responseVars) != len(oids) {
-		return nil, fmt.Errorf("Incorrect number of response vars %d for GetRequest with %d OIDs", len(responseVars), len(oids))
+	if scalarsLen >= maxVars || entriesLen >= maxVars-scalarsLen {
+		return 1
+	} else if scalarsLen+maxRepetitions*entriesLen > maxVars {
+		return (maxVars - scalarsLen) / entriesLen
 	} else {
-		return responseVars, nil
+		return maxRepetitions
+	}
+}
+
+func makeBulkVars(scalars []snmp.OID, entries []snmp.OID) []snmp.VarBind {
+	var varBinds = make([]snmp.VarBind, len(scalars)+len(entries))
+
+	for i, oid := range scalars {
+		varBinds[i] = snmp.MakeVarBind(oid, nil)
+	}
+	for i, oid := range entries {
+		varBinds[len(scalars)+i] = snmp.MakeVarBind(oid, nil)
+	}
+
+	return varBinds
+}
+
+func unpackBulkVars(scalarCount int, entryLen int, varBinds []snmp.VarBind) ([]snmp.VarBind, [][]snmp.VarBind, error) {
+	var scalarVars = varBinds[:scalarCount]
+	var entryCount = (len(varBinds) - scalarCount) / entryLen
+	var entryList = make([][]snmp.VarBind, entryCount)
+
+	if len(varBinds) < scalarCount+entryLen {
+		return nil, nil, fmt.Errorf("Invalid bulk response for %d+%d => %d vars", scalarCount, entryLen, len(varBinds))
+	}
+
+	for i := 0; i < entryCount; i++ {
+		var enrtryVars = make([]snmp.VarBind, entryLen)
+
+		for j := 0; j < entryLen; j++ {
+			enrtryVars[j] = varBinds[scalarCount+i*entryLen+j]
+		}
+
+		entryList[i] = enrtryVars
+	}
+
+	return scalarVars, entryList, nil
+
+}
+
+func (client *Client) GetBulk(scalars []snmp.OID, entries []snmp.OID) ([]snmp.VarBind, [][]snmp.VarBind, error) {
+	var pdu = snmp.BulkPDU{
+		NonRepeaters:   len(scalars),
+		MaxRepetitions: int(client.getBulkMaxRepetitions(uint(len(scalars)), uint(len(entries)))),
+		VarBinds:       makeBulkVars(scalars, entries),
+	}
+
+	if len(pdu.VarBinds) == 0 {
+		return nil, nil, nil
+	}
+
+	if varBinds, err := client.requestPDU(snmp.GetBulkRequestType, pdu, snmp.GetResponseType); err != nil {
+		return nil, nil, err
+	} else {
+		return unpackBulkVars(len(scalars), len(entries), varBinds)
 	}
 }
