@@ -425,7 +425,6 @@ func TestGetRequestGetBulkOdd(t *testing.T) {
 	var entryOIDs = []snmp.OID{
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 2},
-		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 3},
 	}
 
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
@@ -457,13 +456,22 @@ func TestGetRequestGetBulkOdd(t *testing.T) {
 					snmp.MakeVarBind(scalarOID, 0),
 					snmp.MakeVarBind(entryOIDs[0].Extend(1), 1),
 					snmp.MakeVarBind(entryOIDs[1].Extend(1), 2),
-					snmp.MakeVarBind(entryOIDs[2].Extend(1), 3),
+					snmp.MakeVarBind(entryOIDs[0].Extend(1), 3),
 				},
 			},
 		})
 
-		_, _, err := client.GetBulk([]snmp.OID{scalarOID}, entryOIDs[0:2])
+		scalarVars, entryVarsList, err := client.GetBulk([]snmp.OID{scalarOID}, entryOIDs)
+		if err != nil {
+			t.Errorf("GetBulk(%v, %v): %v", scalarOID, entryOIDs, err)
+		}
 
-		assert.EqualError(t, err, "Invalid bulk response for 1+2 => 4 vars")
+		assert.Equal(t, []snmp.VarBind{snmp.MakeVarBind(scalarOID, 0)}, scalarVars)
+		assert.Equal(t, [][]snmp.VarBind{
+			[]snmp.VarBind{
+				snmp.MakeVarBind(entryOIDs[0].Extend(1), 1),
+				snmp.MakeVarBind(entryOIDs[1].Extend(1), 2),
+			},
+		}, entryVarsList)
 	})
 }

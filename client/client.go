@@ -174,7 +174,7 @@ func unpackBulkVars(scalarCount int, entryLen int, varBinds []snmp.VarBind) ([]s
 	var entryCount = (len(varBinds) - scalarCount) / entryLen
 	var entryList = make([][]snmp.VarBind, entryCount)
 
-	if len(varBinds) < scalarCount+entryLen || scalarCount+entryCount*entryLen != len(varBinds) {
+	if len(varBinds) < scalarCount+entryLen {
 		return nil, nil, fmt.Errorf("Invalid bulk response for %d+%d => %d vars", scalarCount, entryLen, len(varBinds))
 	}
 
