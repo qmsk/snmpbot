@@ -97,6 +97,43 @@ func (client *Client) requestGeneric(requestType snmp.PDUType, varBinds []snmp.V
 	}
 }
 
+// Split request OIDs into multiple requests of options.MaxVars each.
+//
+// Override response varbinds outside of rootOIDs with snmp.EndOfMibViewValue
+//
+// TODO: automatically handle snmp.TooBigError?
+func (client *Client) requestSplit(requestType snmp.PDUType, varBinds []snmp.VarBind, responseType snmp.PDUType) ([]snmp.VarBind, error) {
+	var maxVars = DefaultMaxVars
+	var retVars = make([]snmp.VarBind, len(varBinds))
+	var retLen = uint(0)
+
+	if client.options.MaxVars > 0 {
+		maxVars = client.options.MaxVars
+	}
+
+	for retLen < uint(len(varBinds)) {
+		var reqOffset = retLen
+		var reqVars = make([]snmp.VarBind, maxVars)
+		var reqLen = uint(0)
+
+		for retLen+reqLen < uint(len(varBinds)) && reqLen < maxVars {
+			reqVars[reqLen] = varBinds[reqOffset+reqLen]
+			reqLen++
+		}
+
+		if varBinds, err := client.requestGeneric(requestType, reqVars[:reqLen], responseType); err != nil {
+			return nil, err
+		} else {
+			for _, varBind := range varBinds {
+				retVars[retLen] = varBind
+				retLen++
+			}
+		}
+	}
+
+	return retVars, nil
+}
+
 func makeGetVars(oids []snmp.OID) []snmp.VarBind {
 	var varBinds = make([]snmp.VarBind, len(oids))
 
@@ -113,6 +150,10 @@ func (client *Client) Get(oids ...snmp.OID) ([]snmp.VarBind, error) {
 
 func (client *Client) GetNext(oids ...snmp.OID) ([]snmp.VarBind, error) {
 	return client.requestGeneric(snmp.GetNextRequestType, makeGetVars(oids), snmp.GetResponseType)
+}
+
+func (client *Client) GetNextSplit(oids []snmp.OID) ([]snmp.VarBind, error) {
+	return client.requestSplit(snmp.GetNextRequestType, makeGetVars(oids), snmp.GetResponseType)
 }
 
 func makeBulkVars(scalars []snmp.OID, entries []snmp.OID) []snmp.VarBind {

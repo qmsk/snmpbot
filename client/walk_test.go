@@ -2,7 +2,7 @@ package client
 
 import (
 	"github.com/qmsk/snmpbot/snmp"
-	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -12,6 +12,7 @@ type walkResult struct {
 }
 
 type walkTest struct {
+	useBulk bool
 	scalars []snmp.OID
 	entries []snmp.OID
 
@@ -19,26 +20,30 @@ type walkTest struct {
 }
 
 func testWalk(t *testing.T, client *Client, test walkTest) {
-	var walkMock mock.Mock
-	defer walkMock.AssertExpectations(t)
+	var results = []walkResult{}
 
-	for _, result := range test.results {
+	for i, result := range test.results {
 		if result.scalars == nil {
 			result.scalars = []snmp.VarBind{}
 		}
 		if result.entries == nil {
 			result.entries = []snmp.VarBind{}
 		}
-		walkMock.On("walk", result.scalars, result.entries).Once()
+
+		test.results[i] = result
 	}
 
+	client.options.NoBulk = !test.useBulk
+
 	if err := client.WalkWithScalars(test.scalars, test.entries, func(scalars []snmp.VarBind, entries []snmp.VarBind) error {
-		walkMock.MethodCalled("walk", scalars, entries)
+		results = append(results, walkResult{scalars, entries})
 
 		return nil
 	}); err != nil {
 		t.Fatalf("Walk(%v, %v): %v", test.scalars, test.entries, err)
 	}
+
+	assert.Equal(t, test.results, results)
 }
 
 func TestWalkTable(t *testing.T) {
@@ -207,6 +212,106 @@ func TestWalkMany(t *testing.T) {
 			entries: oids,
 			results: []walkResult{
 				{entries: varBinds},
+			},
+		})
+	})
+}
+
+func TestWalkBulk(t *testing.T) {
+	var ifNumber = snmp.MustParseOID(".1.3.6.1.2.1.2.1")                 // IF-MIB::ifNumber
+	var ifIndex = snmp.MustParseOID(".1.3.6.1.2.1.2.2.1.1")              // IF-MIB::ifIndex
+	var ifName = snmp.MustParseOID(".1.3.6.1.2.1.31.1.1.1.1")            // IF-MIB::ifName
+	var ifDescr = snmp.MustParseOID(".1.3.6.1.2.1.2.2.1.2.1")            // IF-MIB::ifDescr
+	var ifInMulticastPkts = snmp.MustParseOID(".1.3.6.1.2.1.31.1.1.1.2") // IF-MIB::ifInMulticastPkts
+
+	var numberVar = snmp.MakeVarBind(ifNumber.Extend(0), int(2))
+	var indexVars = []snmp.VarBind{
+		snmp.MakeVarBind(ifIndex.Extend(1), 1),
+		snmp.MakeVarBind(ifIndex.Extend(2), 2),
+		snmp.MakeVarBind(ifDescr.Extend(1), []byte("foo")),
+	}
+	var nameVars = []snmp.VarBind{
+		snmp.MakeVarBind(ifName.Extend(1), []byte("if1")),
+		snmp.MakeVarBind(ifName.Extend(2), []byte("if2")),
+		snmp.MakeVarBind(ifInMulticastPkts.Extend(1), 0),
+	}
+
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		transport.On("GetBulkRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetBulkRequestType,
+			PDU: snmp.BulkPDU{
+				NonRepeaters:   1,
+				MaxRepetitions: int(DefaultMaxRepetitions),
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(ifNumber, nil),
+					snmp.MakeVarBind(ifIndex, nil),
+					snmp.MakeVarBind(ifName, nil),
+				},
+			},
+		}).Return(error(nil), IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetResponseType,
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					numberVar,
+					indexVars[0],
+					nameVars[0],
+					indexVars[1],
+					nameVars[1],
+				},
+			},
+		})
+
+		transport.On("GetBulkRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetBulkRequestType,
+			PDU: snmp.BulkPDU{
+				NonRepeaters:   1,
+				MaxRepetitions: int(DefaultMaxRepetitions),
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(ifNumber, nil),
+					snmp.MakeVarBind(ifIndex.Extend(2), nil),
+					snmp.MakeVarBind(ifName.Extend(2), nil),
+				},
+			},
+		}).Return(error(nil), IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetResponseType,
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					numberVar,
+					indexVars[2],
+					nameVars[2],
+				},
+			},
+		})
+
+		log.Debugf("testWalk...")
+
+		testWalk(t, client, walkTest{
+			useBulk: true,
+			scalars: []snmp.OID{ifNumber},
+			entries: []snmp.OID{ifIndex, ifName},
+			results: []walkResult{
+				{scalars: []snmp.VarBind{numberVar}, entries: []snmp.VarBind{indexVars[0], nameVars[0]}},
+				{scalars: []snmp.VarBind{numberVar}, entries: []snmp.VarBind{indexVars[1], nameVars[1]}},
 			},
 		})
 	})

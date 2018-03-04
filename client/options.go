@@ -21,6 +21,7 @@ type Options struct {
 	UDP            UDPOptions
 	MaxVars        uint
 	MaxRepetitions uint
+	NoBulk         bool
 }
 
 func (options *Options) InitFlags() {
@@ -30,4 +31,5 @@ func (options *Options) InitFlags() {
 	flag.UintVar(&options.UDP.Size, "snmp-udp-size", UDPSize, "Maximum UDP recv size")
 	flag.UintVar(&options.MaxVars, "snmp-maxvars", DefaultMaxVars, "Maximum request VarBinds")
 	flag.UintVar(&options.MaxRepetitions, "snmp-maxrepetitions", DefaultMaxRepetitions, "Maximum repetitions for GetBulk")
+	flag.BoolVar(&options.NoBulk, "snmp-nobulk", false, "Do not use GetBulk requests")
 }
