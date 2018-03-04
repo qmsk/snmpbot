@@ -18,7 +18,7 @@ func (client Client) Probe(ids []ID) ([]bool, error) {
 		oids[i] = id.OID
 	}
 
-	if varBinds, err := client.WalkNext(oids, oids); err != nil {
+	if varBinds, err := client.WalkScalars(oids); err != nil {
 		return probed, err
 	} else {
 		for i, varBind := range varBinds {

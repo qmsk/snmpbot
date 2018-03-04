@@ -136,3 +136,17 @@ func (client *Client) Walk(oids []snmp.OID, walkFunc func(varBinds []snmp.VarBin
 		return walkFunc(entries)
 	})
 }
+
+// Perform a single GetNext walk step, returning either objects underneath given oid, or EndOfMibViewValue
+func (client *Client) WalkScalars(oids []snmp.OID) ([]snmp.VarBind, error) {
+	// request splitting
+	if varBinds, err := client.GetNextSplit(oids); err != nil {
+		return nil, err
+	} else {
+		if !walkScalarVars(oids, varBinds) {
+			// no scalar vars matched !?
+		}
+
+		return varBinds, err
+	}
+}
