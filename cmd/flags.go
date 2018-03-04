@@ -70,6 +70,31 @@ func (options Options) ParseClientIDs(engine *client.Engine, args []string) (*cl
 	}
 }
 
+func (options Options) runEngine(engine *client.Engine) {
+	if err := engine.Run(); err != nil {
+		log.Fatalf("FATAL client:Engine.Run: %v", err)
+	} else {
+		log.Fatalf("FATAL client:Engine.Run: stopped")
+	}
+}
+
+func (options Options) withEngine(engine *client.Engine, f func() error) error {
+	go options.runEngine(engine)
+	defer engine.Close()
+
+	return f()
+}
+
+func (options Options) WithEngine(args []string, f func(*client.Engine) error) error {
+	if engine, err := options.ClientEngine(); err != nil {
+		return err
+	} else {
+		return options.withEngine(engine, func() error {
+			return f(engine)
+		})
+	}
+}
+
 func (options Options) WithClientOIDs(args []string, f func(*client.Client, ...snmp.OID) error) error {
 	if engine, err := options.ClientEngine(); err != nil {
 		return err
@@ -82,10 +107,9 @@ func (options Options) WithClientOIDs(args []string, f func(*client.Client, ...s
 			oids[i] = id.OID
 		}
 
-		go engine.Run()
-		defer engine.Close()
-
-		return f(client, oids...)
+		return options.withEngine(engine, func() error {
+			return f(client, oids...)
+		})
 	}
 }
 
@@ -95,12 +119,11 @@ func (options Options) WithClientIDs(args []string, f func(*mibs.Client, ...mibs
 	} else if snmpClient, ids, err := options.ParseClientIDs(engine, args); err != nil {
 		return err
 	} else {
-		go engine.Run()
-		defer engine.Close()
-
 		var client = &mibs.Client{snmpClient}
 
-		return f(client, ids...)
+		return options.withEngine(engine, func() error {
+			return f(client, ids...)
+		})
 	}
 }
 
@@ -110,18 +133,17 @@ func (options Options) WithClientID(args []string, f func(*mibs.Client, mibs.ID)
 	} else if snmpClient, ids, err := options.ParseClientIDs(engine, args); err != nil {
 		return err
 	} else {
-		go engine.Run()
-		defer engine.Close()
-
 		var client = &mibs.Client{snmpClient}
 
-		for _, id := range ids {
-			if err := f(client, id); err != nil {
-				return err
+		return options.withEngine(engine, func() error {
+			for _, id := range ids {
+				if err := f(client, id); err != nil {
+					return err
+				}
 			}
-		}
 
-		return nil
+			return nil
+		})
 	}
 }
 

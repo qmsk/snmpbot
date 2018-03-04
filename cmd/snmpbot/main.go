@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/qmsk/go-logging"
 	"github.com/qmsk/go-web"
+	"github.com/qmsk/snmpbot/client"
 	"github.com/qmsk/snmpbot/cmd"
 	"github.com/qmsk/snmpbot/server"
 )
@@ -61,17 +62,14 @@ func main() {
 	options.Main(func(args []string) error {
 		options.Apply()
 
-		if clientEngine, err := options.ClientEngine(); err != nil {
-			return fmt.Errorf("Failed to start client engine: %v", err)
-		} else if config, err := options.Server.LoadConfig(options.Client); err != nil {
-			return fmt.Errorf("Failed to load server config: %v", err)
-		} else if serverEngine, err := options.Server.Engine(clientEngine, config); err != nil {
-			return fmt.Errorf("Failed to load server: %v", err)
-		} else {
-			go clientEngine.Run()
-			defer clientEngine.Close()
-
-			return run(serverEngine)
-		}
+		return options.WithEngine(args, func(engine *client.Engine) error {
+			if config, err := options.Server.LoadConfig(options.Client); err != nil {
+				return fmt.Errorf("Failed to load server config: %v", err)
+			} else if serverEngine, err := options.Server.Engine(engine, config); err != nil {
+				return fmt.Errorf("Failed to load server: %v", err)
+			} else {
+				return run(serverEngine)
+			}
+		})
 	})
 }
