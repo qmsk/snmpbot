@@ -22,6 +22,7 @@ type packetTest struct {
 	packet  Packet
 	pduType PDUType
 	pdu     PDU
+	bulkPDU BulkPDU
 	values  []interface{} // for unmarshal
 }
 
@@ -36,6 +37,26 @@ func testPacketMarshal(t *testing.T, test packetTest) {
 		t.Fatalf("packet.marshal: %v", err)
 	} else {
 		assert.Equal(t, test.bytes, bytes)
+	}
+}
+
+func testPacketValues(t *testing.T, test packetTest, varBinds []VarBind) {
+	for i, varBind := range varBinds {
+		if i >= len(test.pdu.VarBinds) {
+			t.Errorf("extra varBind[%d]: %#v", i, varBind)
+			continue
+		}
+
+		assert.Equal(t, test.pdu.VarBinds[i].Name, varBind.Name, "VarBinds[i].Name", i)
+
+		if value, err := varBind.Value(); err != nil {
+			t.Errorf("varBind[%d].Value: %s", i, err)
+			continue
+		} else if i >= len(test.values) {
+			t.Fatalf("missing test.values for varBind[%d]", i)
+		} else {
+			assert.Equal(t, test.values[i], value, "VarBinds[i].Value", i)
+		}
 	}
 }
 
@@ -60,22 +81,20 @@ func testPacketUnmarshal(t *testing.T, test packetTest) {
 	assert.Equal(t, test.pdu.ErrorStatus, pdu.ErrorStatus)
 	assert.Equal(t, test.pdu.ErrorIndex, pdu.ErrorIndex)
 
-	for i, varBind := range pdu.VarBinds {
-		if i >= len(test.pdu.VarBinds) {
-			t.Errorf("extra varBind[%d]: %#v", i, varBind)
-			continue
-		}
+	testPacketValues(t, test, pdu.VarBinds)
+}
 
-		assert.Equal(t, test.pdu.VarBinds[i].Name, varBind.Name, "VarBinds[i].Name", i)
+func testBulkPacketMarshal(t *testing.T, test packetTest) {
+	if packedPDU, err := test.bulkPDU.Pack(test.pduType); err != nil {
+		t.Fatalf("pdu.pack: %v", err)
+	} else {
+		test.packet.RawPDU = packedPDU
+	}
 
-		if value, err := varBind.Value(); err != nil {
-			t.Errorf("varBind[%d].Value: %s", i, err)
-			continue
-		} else if i >= len(test.values) {
-			t.Fatalf("missing test.values for varBind[%d]", i)
-		} else {
-			assert.Equal(t, test.values[i], value, "VarBinds[i].Value", i)
-		}
+	if bytes, err := test.packet.Marshal(); err != nil {
+		t.Fatalf("packet.marshal: %v", err)
+	} else {
+		assert.Equal(t, test.bytes, bytes)
 	}
 }
 
@@ -201,4 +220,29 @@ func TestPacketUnmarshalNoSuchInstance(t *testing.T) {
 		values: []interface{}{
 			NoSuchInstanceValue,
 		}})
+}
+
+func TestPacketMarshalGetBulk(t *testing.T) {
+	testBulkPacketMarshal(t, packetTest{
+		bytes: decodeTestPacket(`
+			30 39 02 01 01 04 06 70 75 62 6c 69 63 a5 2c 02
+			04 2c 6a 76 19 02 01 00 02 01 0a 30 1e 30 0d 06
+			09 2b 06 01 02 01 02 02 01 01 05 00 30 0d 06 09
+			2b 06 01 02 01 02 02 01 02 05 00
+		`),
+		packet: Packet{
+			Version:   SNMPv2c,
+			Community: []byte("public"),
+		},
+		pduType: GetBulkRequestType,
+		bulkPDU: BulkPDU{
+			RequestID:      745174553,
+			NonRepeaters:   0,
+			MaxRepetitions: 10,
+			VarBinds: []VarBind{
+				MakeVarBind(MustParseOID(".1.3.6.1.2.1.2.2.1.1"), nil),
+				MakeVarBind(MustParseOID(".1.3.6.1.2.1.2.2.1.2"), nil),
+			},
+		},
+	})
 }
