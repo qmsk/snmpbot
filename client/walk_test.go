@@ -8,7 +8,8 @@ import (
 )
 
 type walkTest struct {
-	oids         []snmp.OID
+	scalarOIDs   []snmp.OID
+	entryOIDs    []snmp.OID
 	walkVarBinds [][]snmp.VarBind
 }
 
@@ -20,12 +21,12 @@ func testWalk(t *testing.T, client *Client, test walkTest) {
 		walkMock.On("walk", varBinds).Once()
 	}
 
-	if err := client.Walk(func(varBinds ...snmp.VarBind) error {
+	if err := client.Walk(test.scalarOIDs, test.entryOIDs, func(varBinds ...snmp.VarBind) error {
 		walkMock.MethodCalled("walk", varBinds)
 
 		return nil
-	}, test.oids...); err != nil {
-		t.Fatalf("Walk(%v): %v", test.oids, err)
+	}); err != nil {
+		t.Fatalf("Walk(%v, %v): %v", test.scalarOIDs, test.entryOIDs, err)
 	}
 }
 
@@ -43,10 +44,56 @@ func TestWalk(t *testing.T) {
 		transport.mockGetNext("test", varBinds[1].OID(), varBinds[2])
 
 		testWalk(t, client, walkTest{
-			oids: []snmp.OID{oid},
+			entryOIDs: []snmp.OID{oid},
 			walkVarBinds: [][]snmp.VarBind{
 				[]snmp.VarBind{varBinds[0]},
 				[]snmp.VarBind{varBinds[1]},
+			},
+		})
+	})
+}
+
+func TestWalkScalars(t *testing.T) {
+	var oid = snmp.MustParseOID(".1.3.6.1.2.1.2.1") // IF-MIB::ifNumber
+	var varBinds = []snmp.VarBind{
+		snmp.MakeVarBind(oid.Extend(0), int(2)),
+	}
+
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		transport.mockGetNext("test", oid, varBinds[0])
+
+		testWalk(t, client, walkTest{
+			scalarOIDs: []snmp.OID{oid},
+			walkVarBinds: [][]snmp.VarBind{
+				[]snmp.VarBind{varBinds[0]},
+			},
+		})
+	})
+}
+
+func TestWalkMixed(t *testing.T) {
+	var ifNumber = snmp.MustParseOID(".1.3.6.1.2.1.2.1")                 // IF-MIB::ifNumber
+	var ifName = snmp.MustParseOID(".1.3.6.1.2.1.31.1.1.1.1")            // IF-MIB::ifName
+	var ifInMulticastPkts = snmp.MustParseOID(".1.3.6.1.2.1.31.1.1.1.2") // IF-MIB::ifInMulticastPkts
+
+	var varBind = snmp.MakeVarBind(ifNumber.Extend(0), int(2))
+	var varBinds = []snmp.VarBind{
+		snmp.MakeVarBind(ifName.Extend(1), []byte("if1")),
+		snmp.MakeVarBind(ifName.Extend(2), []byte("if2")),
+		snmp.MakeVarBind(ifInMulticastPkts, snmp.Counter32(0)),
+	}
+
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		transport.mockGetNextMulti("test", []snmp.OID{ifNumber, ifName}, []snmp.VarBind{varBind, varBinds[0]})
+		transport.mockGetNextMulti("test", []snmp.OID{ifNumber, ifName.Extend(1)}, []snmp.VarBind{varBind, varBinds[1]})
+		transport.mockGetNextMulti("test", []snmp.OID{ifNumber, ifName.Extend(2)}, []snmp.VarBind{varBind, varBinds[2]})
+
+		testWalk(t, client, walkTest{
+			scalarOIDs: []snmp.OID{ifNumber},
+			entryOIDs:  []snmp.OID{ifName},
+			walkVarBinds: [][]snmp.VarBind{
+				[]snmp.VarBind{varBind, varBinds[0]},
+				[]snmp.VarBind{varBind, varBinds[1]},
 			},
 		})
 	})
@@ -66,7 +113,7 @@ func TestWalkV2(t *testing.T) {
 		transport.mockGetNext("test", varBinds[1].OID(), varBinds[2])
 
 		testWalk(t, client, walkTest{
-			oids: []snmp.OID{oid},
+			entryOIDs: []snmp.OID{oid},
 			walkVarBinds: [][]snmp.VarBind{
 				[]snmp.VarBind{varBinds[0]},
 				[]snmp.VarBind{varBinds[1]},
@@ -98,13 +145,13 @@ func TestWalkPartial(t *testing.T) {
 		walkMock.On("walk[2/2]", varBinds[1])
 		transport.mockGetNextMulti("test", []snmp.OID{oid1, varBinds[1].OID()}, []snmp.VarBind{varBinds[0], varBinds[2]})
 
-		if err := client.Walk(func(varBinds ...snmp.VarBind) error {
+		if err := client.Walk([]snmp.OID{}, []snmp.OID{oid1, oid2}, func(varBinds ...snmp.VarBind) error {
 			for i, varBind := range varBinds {
 				walkMock.MethodCalled(fmt.Sprintf("walk[%d/%d]", i+1, len(varBinds)), varBind)
 			}
 
 			return nil
-		}, oid1, oid2); err != nil {
+		}); err != nil {
 			t.Fatalf("Walk(%v, %v): %v", oid1, oid2, err)
 		}
 	})
@@ -154,7 +201,7 @@ func TestWalkMany(t *testing.T) {
 		})
 
 		testWalk(t, client, walkTest{
-			oids: oids,
+			entryOIDs: oids,
 			walkVarBinds: [][]snmp.VarBind{
 				varBinds,
 			},
