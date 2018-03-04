@@ -19,28 +19,47 @@ func (entrySyntax EntrySyntax) OIDs() []snmp.OID {
 	return oids
 }
 
-func (entrySyntax EntrySyntax) Unpack(varBinds []snmp.VarBind) (EntryValues, error) {
+func indexEquals(expected []int, index []int) bool {
+	if len(expected) != len(index) {
+		return false
+	}
+
+	for i, x := range expected {
+		if index[i] != x {
+			return false
+		}
+	}
+
+	return true
+}
+
+// Returns nil entries for objects with error values
+func (entrySyntax EntrySyntax) Unpack(varBinds []snmp.VarBind) ([]int, EntryValues, error) {
 	var entryValues = make(EntryValues, len(entrySyntax))
+	var entryIndex []int
+
+	if len(varBinds) != len(entrySyntax) {
+		return nil, nil, fmt.Errorf("Invalid VarBinds[%v] for entry syntax: %v", varBinds, entrySyntax)
+	}
 
 	for i, entryObject := range entrySyntax {
 		var varBind = varBinds[i]
 
 		if err := varBind.ErrorValue(); err != nil {
-			// XXX: skip unsupported columns?
-		}
-
-		if index := entryObject.OID.Index(varBind.OID()); index == nil {
-			return nil, fmt.Errorf("Invalid VarBind[%v] OID for %v: %v", varBind.OID(), entryObject, entryObject.OID)
-		}
-
-		if value, err := entryObject.Unpack(varBind); err != nil {
-			return nil, fmt.Errorf("Invalid VarBind[%v] Value for %v: %v", varBind.OID(), entryObject, err)
+			// skip unsupported columns
+		} else if index := entryObject.OID.Index(varBind.OID()); index == nil {
+			return entryIndex, nil, fmt.Errorf("Invalid VarBind[%v] OID for %v: %v", varBind.OID(), entryObject, entryObject.OID)
+		} else if entryIndex != nil && !indexEquals(entryIndex, index) {
+			return entryIndex, nil, fmt.Errorf("Mismatching VarBind[%v] OID for %v: expected index", varBind.OID(), entryObject, entryIndex)
+		} else if value, err := entryObject.Unpack(varBind); err != nil {
+			return entryIndex, nil, fmt.Errorf("Invalid VarBind[%v] Value for %v: %v", varBind.OID(), entryObject, err)
 		} else {
+			entryIndex = index
 			entryValues[i] = value
 		}
 	}
 
-	return entryValues, nil
+	return entryIndex, entryValues, nil
 }
 
 func (entrySyntax EntrySyntax) Map(varBinds []snmp.VarBind) (EntryMap, error) {
@@ -79,14 +98,7 @@ func (table Table) EntryOIDs() []snmp.OID {
 }
 
 func (table Table) Unpack(varBinds []snmp.VarBind) (IndexValues, EntryValues, error) {
-	if len(varBinds) != len(table.EntrySyntax) {
-		return nil, nil, fmt.Errorf("Incorrect count of colums for Table<%v>: %d", table, len(varBinds))
-	}
-
-	// XXX: assuming all entry objects have the same index...
-	var index = table.EntrySyntax[0].OID.Index(varBinds[0].OID())
-
-	if entryValues, err := table.EntrySyntax.Unpack(varBinds); err != nil {
+	if index, entryValues, err := table.EntrySyntax.Unpack(varBinds); err != nil {
 		return nil, entryValues, err
 	} else if indexValues, err := table.IndexSyntax.UnpackIndex(index); err != nil {
 		return indexValues, nil, err
