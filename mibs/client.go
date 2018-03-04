@@ -43,25 +43,14 @@ func (client Client) ProbeMany(ids []ID) (map[IDKey]bool, error) {
 	return probed, nil
 }
 
-// Read the value at a leaf object at instance .0
-func (client Client) GetObject(object *Object) (Value, error) {
-	if varBinds, err := client.Get(object.OID.Extend(0)); err != nil {
-		return nil, err
-	} else if value, err := object.Unpack(varBinds[0]); err != nil {
-		return nil, err
-	} else {
-		return value, nil
-	}
-}
-
-func (client Client) WalkObjects(f func(*Object, IndexValues, Value, error) error, objects ...*Object) error {
+func (client Client) WalkObjects(objects []*Object, f func(*Object, IndexValues, Value, error) error) error {
 	var oids = make([]snmp.OID, len(objects))
 
 	for i, object := range objects {
 		oids[i] = object.OID
 	}
 
-	return client.Walk(func(varBinds ...snmp.VarBind) error {
+	return client.Walk(oids, func(varBinds []snmp.VarBind) error {
 		for i, varBind := range varBinds {
 			var object = objects[i]
 			var walkErr error
@@ -82,11 +71,11 @@ func (client Client) WalkObjects(f func(*Object, IndexValues, Value, error) erro
 		}
 
 		return nil
-	}, oids...)
+	})
 }
 
 func (client Client) WalkTable(table *Table, f func(IndexValues, EntryValues) error) error {
-	return client.Walk(func(varBinds ...snmp.VarBind) error {
+	return client.Walk(table.EntryOIDs(), func(varBinds []snmp.VarBind) error {
 		if indexValues, entryValues, err := table.Unpack(varBinds); err != nil {
 			return err
 		} else if err := f(indexValues, entryValues); err != nil {
@@ -94,5 +83,5 @@ func (client Client) WalkTable(table *Table, f func(IndexValues, EntryValues) er
 		} else {
 			return nil
 		}
-	}, table.EntryOIDs()...)
+	})
 }
