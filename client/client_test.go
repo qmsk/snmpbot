@@ -260,6 +260,29 @@ func TestGetNothing(t *testing.T) {
 	})
 }
 
+func TestGetBulkMaxRepetitions(t *testing.T) {
+	var tests = []struct {
+		options Options
+		scalars uint
+		entries uint
+		result  int
+	}{
+		{options: Options{MaxVars: 10, MaxRepetitions: 10}, scalars: 0, entries: 1, result: 10},
+		{options: Options{MaxVars: 10, MaxRepetitions: 10}, scalars: 0, entries: 5, result: 2},
+		{options: Options{MaxVars: 10, MaxRepetitions: 10}, scalars: 0, entries: 6, result: 1},
+		{options: Options{MaxVars: 10, MaxRepetitions: 10}, scalars: 0, entries: 10, result: 1},
+		{options: Options{MaxVars: 10, MaxRepetitions: 10}, scalars: 0, entries: 11, result: 1},
+		{options: Options{MaxVars: 10, MaxRepetitions: 10}, scalars: 5, entries: 5, result: 1},
+		{options: Options{MaxVars: 100, MaxRepetitions: 10}, scalars: 0, entries: 5, result: 10},
+	}
+
+	for _, test := range tests {
+		var client = Client{options: test.options}
+
+		assert.Equalf(t, test.result, int(client.getBulkMaxRepetitions(test.scalars, test.entries)), "%#v", test)
+	}
+}
+
 func TestGetRequestGetBulk(t *testing.T) {
 	var scalarOID = snmp.OID{1, 3, 6, 1, 2, 1, 1, 4}
 	var entryOIDs = []snmp.OID{

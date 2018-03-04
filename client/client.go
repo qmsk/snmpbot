@@ -156,6 +156,26 @@ func (client *Client) GetNextSplit(oids []snmp.OID) ([]snmp.VarBind, error) {
 	return client.requestSplit(snmp.GetNextRequestType, makeGetVars(oids), snmp.GetResponseType)
 }
 
+func (client *Client) getBulkMaxRepetitions(scalarsLen uint, entriesLen uint) uint {
+	var maxRepetitions = DefaultMaxRepetitions
+	var maxVars = DefaultMaxVars
+
+	if client.options.MaxRepetitions != 0 {
+		maxRepetitions = client.options.MaxRepetitions
+	}
+	if client.options.MaxVars != 0 {
+		maxVars = client.options.MaxVars
+	}
+
+	if scalarsLen >= maxVars || entriesLen >= maxVars-scalarsLen {
+		return 1
+	} else if scalarsLen+maxRepetitions*entriesLen > maxVars {
+		return (maxVars - scalarsLen) / entriesLen
+	} else {
+		return maxRepetitions
+	}
+}
+
 func makeBulkVars(scalars []snmp.OID, entries []snmp.OID) []snmp.VarBind {
 	var varBinds = make([]snmp.VarBind, len(scalars)+len(entries))
 
@@ -193,23 +213,9 @@ func unpackBulkVars(scalarCount int, entryLen int, varBinds []snmp.VarBind) ([]s
 }
 
 func (client *Client) GetBulk(scalars []snmp.OID, entries []snmp.OID) ([]snmp.VarBind, [][]snmp.VarBind, error) {
-	var scalarLen = uint(len(scalars))
-	var entriesLen = uint(len(entries))
-	var maxRepetitions = DefaultMaxRepetitions
-
-	if client.options.MaxRepetitions != 0 {
-		maxRepetitions = client.options.MaxRepetitions
-	}
-
-	if scalarLen >= client.options.MaxVars || entriesLen >= client.options.MaxVars-scalarLen {
-		maxRepetitions = 1
-	} else if scalarLen+maxRepetitions*entriesLen > client.options.MaxVars {
-		maxRepetitions = (client.options.MaxVars - scalarLen) / entriesLen
-	}
-
 	var pdu = snmp.BulkPDU{
 		NonRepeaters:   len(scalars),
-		MaxRepetitions: int(maxRepetitions),
+		MaxRepetitions: int(client.getBulkMaxRepetitions(uint(len(scalars)), uint(len(entries)))),
 		VarBinds:       makeBulkVars(scalars, entries),
 	}
 
