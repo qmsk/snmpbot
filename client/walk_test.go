@@ -32,7 +32,7 @@ func testWalk(t *testing.T, client *Client, test walkTest) {
 		walkMock.On("walk", result.scalars, result.entries).Once()
 	}
 
-	if err := client.Walk(test.scalars, test.entries, func(scalars []snmp.VarBind, entries []snmp.VarBind) error {
+	if err := client.WalkWithScalars(test.scalars, test.entries, func(scalars []snmp.VarBind, entries []snmp.VarBind) error {
 		walkMock.MethodCalled("walk", scalars, entries)
 
 		return nil

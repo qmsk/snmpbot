@@ -50,7 +50,7 @@ func (client *Client) walkNext(oids ...snmp.OID) ([]snmp.VarBind, error) {
 // Exception: walking without any entry OIDs will walk the scalar OIDs exactly once.
 //
 // Splits into multiple requests if the number of OIDs exceeds options.MaxVars.
-func (client *Client) Walk(scalars []snmp.OID, entries []snmp.OID, walkFunc func(scalars []snmp.VarBind, entries []snmp.VarBind) error) error {
+func (client *Client) WalkWithScalars(scalars []snmp.OID, entries []snmp.OID, walkFunc func(scalars []snmp.VarBind, entries []snmp.VarBind) error) error {
 	var rootOIDs = make([]snmp.OID, len(scalars)+len(entries))
 	var walkOIDs = make([]snmp.OID, len(scalars)+len(entries))
 	var entryOffset = len(scalars)
@@ -118,8 +118,8 @@ func (client *Client) Walk(scalars []snmp.OID, entries []snmp.OID, walkFunc func
 	return nil
 }
 
-func (client *Client) WalkTable(entries []snmp.OID, walkFunc func(entries []snmp.VarBind) error) error {
-	return client.Walk(nil, entries, func(scalars []snmp.VarBind, entries []snmp.VarBind) error {
+func (client *Client) Walk(oids []snmp.OID, walkFunc func(varBinds []snmp.VarBind) error) error {
+	return client.WalkWithScalars(nil, oids, func(scalars []snmp.VarBind, entries []snmp.VarBind) error {
 		return walkFunc(entries)
 	})
 }
