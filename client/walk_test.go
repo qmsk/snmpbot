@@ -66,7 +66,7 @@ func TestWalkTable(t *testing.T) {
 	})
 }
 
-func TestWalkScalars(t *testing.T) {
+func TestWalkScalarsOnly(t *testing.T) {
 	var oid = snmp.MustParseOID(".1.3.6.1.2.1.2.1") // IF-MIB::ifNumber
 	var varBinds = []snmp.VarBind{
 		snmp.MakeVarBind(oid.Extend(0), int(2)),
@@ -75,11 +75,10 @@ func TestWalkScalars(t *testing.T) {
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
 		transport.mockGetNext("test", oid, varBinds[0])
 
+		// nothing, because no entries
 		testWalk(t, client, walkTest{
 			scalars: []snmp.OID{oid},
-			results: []walkResult{
-				{scalars: []snmp.VarBind{varBinds[0]}},
-			},
+			results: []walkResult{},
 		})
 	})
 }
