@@ -193,10 +193,18 @@ func unpackBulkVars(scalarCount int, entryLen int, varBinds []snmp.VarBind) ([]s
 }
 
 func (client *Client) GetBulk(scalars []snmp.OID, entries []snmp.OID) ([]snmp.VarBind, [][]snmp.VarBind, error) {
+	var scalarLen = uint(len(scalars))
+	var entriesLen = uint(len(entries))
 	var maxRepetitions = DefaultMaxRepetitions
 
 	if client.options.MaxRepetitions != 0 {
 		maxRepetitions = client.options.MaxRepetitions
+	}
+
+	if scalarLen >= client.options.MaxVars || entriesLen >= client.options.MaxVars-scalarLen {
+		maxRepetitions = 1
+	} else if scalarLen+maxRepetitions*entriesLen > client.options.MaxVars {
+		maxRepetitions = (client.options.MaxVars - scalarLen) / entriesLen
 	}
 
 	var pdu = snmp.BulkPDU{

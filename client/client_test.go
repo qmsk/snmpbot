@@ -268,6 +268,9 @@ func TestGetRequestGetBulk(t *testing.T) {
 	}
 
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		client.options.MaxVars = 20
+		client.options.MaxRepetitions = 5
+
 		transport.On("GetBulkRequest", IO{
 			Addr: testAddr("test"),
 			Packet: snmp.Packet{
@@ -277,7 +280,7 @@ func TestGetRequestGetBulk(t *testing.T) {
 			PDUType: snmp.GetBulkRequestType,
 			PDU: snmp.BulkPDU{
 				NonRepeaters:   1,
-				MaxRepetitions: int(DefaultMaxRepetitions),
+				MaxRepetitions: 5,
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(scalarOID, nil),
 					snmp.MakeVarBind(entryOIDs[0], nil),
@@ -329,6 +332,9 @@ func TestGetRequestGetBulkOne(t *testing.T) {
 	}
 
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		client.options.MaxVars = 20
+		client.options.MaxRepetitions = 5
+
 		transport.On("GetBulkRequest", IO{
 			Addr: testAddr("test"),
 			Packet: snmp.Packet{
@@ -338,7 +344,7 @@ func TestGetRequestGetBulkOne(t *testing.T) {
 			PDUType: snmp.GetBulkRequestType,
 			PDU: snmp.BulkPDU{
 				NonRepeaters:   1,
-				MaxRepetitions: int(DefaultMaxRepetitions),
+				MaxRepetitions: 5,
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(scalarOID, nil),
 					snmp.MakeVarBind(entryOIDs[0], nil),
@@ -384,6 +390,9 @@ func TestGetRequestGetBulkShort(t *testing.T) {
 	}
 
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		client.options.MaxVars = 20
+		client.options.MaxRepetitions = 5
+
 		transport.On("GetBulkRequest", IO{
 			Addr: testAddr("test"),
 			Packet: snmp.Packet{
@@ -393,7 +402,7 @@ func TestGetRequestGetBulkShort(t *testing.T) {
 			PDUType: snmp.GetBulkRequestType,
 			PDU: snmp.BulkPDU{
 				NonRepeaters:   1,
-				MaxRepetitions: int(DefaultMaxRepetitions),
+				MaxRepetitions: 5,
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(scalarOID, nil),
 					snmp.MakeVarBind(entryOIDs[0], nil),
@@ -428,6 +437,9 @@ func TestGetRequestGetBulkOdd(t *testing.T) {
 	}
 
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		client.options.MaxVars = 5
+		client.options.MaxRepetitions = 5
+
 		transport.On("GetBulkRequest", IO{
 			Addr: testAddr("test"),
 			Packet: snmp.Packet{
@@ -437,7 +449,7 @@ func TestGetRequestGetBulkOdd(t *testing.T) {
 			PDUType: snmp.GetBulkRequestType,
 			PDU: snmp.BulkPDU{
 				NonRepeaters:   1,
-				MaxRepetitions: int(DefaultMaxRepetitions),
+				MaxRepetitions: 2,
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(scalarOID, nil),
 					snmp.MakeVarBind(entryOIDs[0], nil),

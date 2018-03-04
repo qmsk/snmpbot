@@ -237,6 +237,9 @@ func TestWalkBulk(t *testing.T) {
 	}
 
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		client.options.MaxVars = 20
+		client.options.MaxRepetitions = 5
+
 		transport.On("GetBulkRequest", IO{
 			Addr: testAddr("test"),
 			Packet: snmp.Packet{
@@ -246,7 +249,7 @@ func TestWalkBulk(t *testing.T) {
 			PDUType: snmp.GetBulkRequestType,
 			PDU: snmp.BulkPDU{
 				NonRepeaters:   1,
-				MaxRepetitions: int(DefaultMaxRepetitions),
+				MaxRepetitions: 5,
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(ifNumber, nil),
 					snmp.MakeVarBind(ifIndex, nil),
@@ -280,7 +283,7 @@ func TestWalkBulk(t *testing.T) {
 			PDUType: snmp.GetBulkRequestType,
 			PDU: snmp.BulkPDU{
 				NonRepeaters:   1,
-				MaxRepetitions: int(DefaultMaxRepetitions),
+				MaxRepetitions: 5,
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(ifNumber, nil),
 					snmp.MakeVarBind(ifIndex.Extend(2), nil),
