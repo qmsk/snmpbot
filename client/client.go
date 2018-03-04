@@ -59,11 +59,7 @@ func (client *Client) request(send IO) (IO, error) {
 	}
 }
 
-func (client *Client) requestGeneric(requestType snmp.PDUType, varBinds []snmp.VarBind) (snmp.PDUType, []snmp.VarBind, error) {
-	var maxVars = DefaultMaxVars
-	var retType snmp.PDUType
-	var retVars = make([]snmp.VarBind, len(varBinds))
-	var retLen = uint(0)
+func (client *Client) requestGeneric(requestType snmp.PDUType, varBinds []snmp.VarBind, responseType snmp.PDUType) ([]snmp.VarBind, error) {
 	var send = IO{
 		Addr: client.addr,
 		Packet: snmp.Packet{
@@ -71,82 +67,40 @@ func (client *Client) requestGeneric(requestType snmp.PDUType, varBinds []snmp.V
 			Community: []byte(client.options.Community),
 		},
 		PDUType: requestType,
+		PDU: snmp.GenericPDU{
+			VarBinds: varBinds,
+		},
 	}
 
-	if client.options.MaxVars > 0 {
-		maxVars = client.options.MaxVars
+	if len(varBinds) == 0 {
+		return nil, nil
+	} else if recv, err := client.request(send); err != nil {
+		return nil, err
+	} else if recv.PDUType != responseType {
+		return nil, fmt.Errorf("Invalid %v response type, expected %v, got %v", requestType, responseType, recv.PDUType)
+	} else if responsePDU, ok := recv.PDU.(snmp.GenericPDU); !ok {
+		return nil, fmt.Errorf("Invalid %v response type, expected %v, got %v with PDU of type %T", requestType, responseType, recv.PDUType, recv.PDU)
+	} else if len(responsePDU.VarBinds) != len(varBinds) {
+		return responsePDU.VarBinds, fmt.Errorf("Invalid %v response, expected %d vars, got %v with %d vars", requestType, len(varBinds), recv.PDUType, len(responsePDU.VarBinds))
+	} else {
+		return responsePDU.VarBinds, nil
+	}
+}
+
+func makeGetVars(oids []snmp.OID) []snmp.VarBind {
+	var varBinds = make([]snmp.VarBind, len(oids))
+
+	for i, oid := range oids {
+		varBinds[i] = snmp.MakeVarBind(oid, nil)
 	}
 
-	for retLen < uint(len(varBinds)) {
-		var reqVars = make([]snmp.VarBind, maxVars)
-		var reqLen = uint(0)
-
-		for retLen+reqLen < uint(len(varBinds)) && reqLen < maxVars {
-			reqVars[reqLen] = varBinds[retLen+reqLen]
-			reqLen++
-		}
-
-		send.PDU = snmp.GenericPDU{
-			VarBinds: reqVars[:reqLen],
-		}
-
-		// TODO: handle snmp.TooBigError
-		if recv, err := client.request(send); err != nil {
-			return recv.PDUType, nil, err
-		} else if responsePDU, ok := recv.PDU.(snmp.GenericPDU); !ok {
-			return recv.PDUType, nil, fmt.Errorf("Invalid %v with PDU of type %T", recv.PDUType, recv.PDU)
-		} else if len(responsePDU.VarBinds) > len(reqVars) {
-			return retType, retVars, fmt.Errorf("Invalid %v with %d vars for %v with %d vars", recv.PDUType, len(responsePDU.VarBinds), requestType, len(retVars))
-		} else {
-			retType = recv.PDUType
-
-			for _, varBind := range responsePDU.VarBinds {
-				retVars[retLen] = varBind
-				retLen++
-				reqLen++
-			}
-		}
-	}
-
-	return retType, retVars, nil
+	return varBinds
 }
 
 func (client *Client) Get(oids ...snmp.OID) ([]snmp.VarBind, error) {
-	var requestVars = make([]snmp.VarBind, len(oids))
-
-	for i, oid := range oids {
-		requestVars[i] = snmp.MakeVarBind(oid, nil)
-	}
-
-	if len(oids) == 0 {
-		return nil, nil
-	} else if responseType, responseVars, err := client.requestGeneric(snmp.GetRequestType, requestVars); err != nil {
-		return responseVars, err
-	} else if responseType != snmp.GetResponseType {
-		return responseVars, fmt.Errorf("Unexpected response type %v for GetRequest", responseType)
-	} else if len(responseVars) != len(oids) {
-		return nil, fmt.Errorf("Incorrect number of response vars %d for GetRequest with %d OIDs", len(responseVars), len(oids))
-	} else {
-		return responseVars, nil
-	}
+	return client.requestGeneric(snmp.GetRequestType, makeGetVars(oids), snmp.GetResponseType)
 }
 
 func (client *Client) GetNext(oids ...snmp.OID) ([]snmp.VarBind, error) {
-	var requestVars = make([]snmp.VarBind, len(oids))
-
-	for i, oid := range oids {
-		requestVars[i] = snmp.MakeVarBind(oid, nil)
-	}
-
-	if len(oids) == 0 {
-		return nil, nil
-	} else if responseType, responseVars, err := client.requestGeneric(snmp.GetNextRequestType, requestVars); err != nil {
-		return responseVars, err
-	} else if responseType != snmp.GetResponseType {
-		return responseVars, fmt.Errorf("Unexpected response type %v for GetNextRequest", responseType)
-	} else if len(responseVars) != len(oids) {
-		return nil, fmt.Errorf("Incorrect number of response vars %d for GetRequest with %d OIDs", len(responseVars), len(oids))
-	} else {
-		return responseVars, nil
-	}
+	return client.requestGeneric(snmp.GetNextRequestType, makeGetVars(oids), snmp.GetResponseType)
 }

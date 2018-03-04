@@ -204,7 +204,7 @@ func TestGetRequestErrorValue(t *testing.T) {
 	})
 }
 
-func TestGetRequestBig(t *testing.T) {
+func TestGetRequestTooBig(t *testing.T) {
 	var oids = []snmp.OID{
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0},
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
@@ -212,35 +212,40 @@ func TestGetRequestBig(t *testing.T) {
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 3},
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 4},
 	}
-	var values = [][]byte{
-		[]byte("qmsk-snmp test 0"),
-		[]byte("qmsk-snmp test 1"),
-		[]byte("qmsk-snmp test 2"),
-		[]byte("qmsk-snmp test 3"),
-		[]byte("qmsk-snmp test 4"),
-	}
 
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
-		client.options.MaxVars = 2
+		transport.On("GetRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetRequestType,
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(oids[0], nil),
+					snmp.MakeVarBind(oids[1], nil),
+					snmp.MakeVarBind(oids[2], nil),
+					snmp.MakeVarBind(oids[3], nil),
+					snmp.MakeVarBind(oids[4], nil),
+				},
+			},
+		}).Return(error(nil), IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUType: snmp.GetResponseType,
+			PDU: snmp.GenericPDU{
+				ErrorStatus: snmp.TooBigError,
+			},
+		})
 
-		transport.mockGetMany("test", []snmp.OID{oids[0], oids[1]}, []snmp.VarBind{
-			snmp.MakeVarBind(oids[0], values[0]),
-			snmp.MakeVarBind(oids[1], values[1]),
-		})
-		transport.mockGetMany("test", []snmp.OID{oids[2], oids[3]}, []snmp.VarBind{
-			snmp.MakeVarBind(oids[2], values[2]),
-			snmp.MakeVarBind(oids[3], values[3]),
-		})
-		transport.mockGetMany("test", []snmp.OID{oids[4]}, []snmp.VarBind{
-			snmp.MakeVarBind(oids[4], values[4]),
-		})
-
-		if varBinds, err := client.Get(oids...); err != nil {
-			t.Fatalf("Get(%v): %v", oids, err)
+		if varBinds, err := client.Get(oids...); err == nil {
+			t.Errorf("Get(%v): %v", oids, varBinds)
 		} else {
-			for i, oid := range oids {
-				assertVarBind(t, varBinds, i, oid, values[i])
-			}
+			assert.EqualError(t, err, "SNMP GetRequest error: SNMP PDU Error: TooBig @ .")
 		}
 	})
 }
