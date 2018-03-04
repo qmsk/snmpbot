@@ -49,15 +49,6 @@ func marshalSequence(cls int, tag int, values ...interface{}) ([]byte, error) {
 	}
 }
 
-func (packet Packet) Marshal() ([]byte, error) {
-	return asn1.Marshal(packet)
-}
-
-func (pdu PDU) Pack(pduType PDUType) (asn1.RawValue, error) {
-	return packSequence(asn1.ClassContextSpecific, int(pduType),
-		pdu.RequestID,
-		pdu.ErrorStatus,
-		pdu.ErrorIndex,
-		pdu.VarBinds,
-	)
+func marshal(obj interface{}) ([]byte, error) {
+	return asn1.Marshal(obj)
 }
