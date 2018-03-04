@@ -10,33 +10,23 @@ type Client struct {
 }
 
 // Probe the MIB at id
-func (client Client) Probe(id ID) (bool, error) {
-	if varBinds, err := client.GetNext(id.OID); err != nil {
-		return false, err
-	} else if index := id.OID.Index(varBinds[0].OID()); index == nil {
-		return false, err
-	} else {
-		return true, nil
-	}
-}
-
-func (client Client) ProbeMany(ids []ID) (map[IDKey]bool, error) {
+func (client Client) Probe(ids []ID) ([]bool, error) {
 	var oids = make([]snmp.OID, len(ids))
-	var probed = make(map[IDKey]bool)
+	var probed = make([]bool, len(ids))
 
 	for i, id := range ids {
 		oids[i] = id.OID
 	}
 
-	// XXX: limit on the number of var-binds per request?
-	if varBinds, err := client.GetNext(oids...); err != nil {
+	if varBinds, err := client.WalkNext(oids, oids); err != nil {
 		return probed, err
 	} else {
 		for i, varBind := range varBinds {
-			id := ids[i]
-			index := id.OID.Index(varBind.OID())
-
-			probed[id.Key()] = (index != nil)
+			if err := varBind.ErrorValue(); err != nil {
+				// not supported
+			} else {
+				probed[i] = true
+			}
 		}
 	}
 
