@@ -21,9 +21,6 @@ func (pdu *BulkPDU) unpack(raw asn1.RawValue) error {
 func (pdu BulkPDU) GetRequestID() int {
 	return pdu.RequestID
 }
-func (pdu BulkPDU) SetRequestID(id int) {
-	pdu.RequestID = id
-}
 
 func (pdu BulkPDU) String() string {
 	var scalars []string

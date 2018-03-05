@@ -12,7 +12,6 @@ type PDUError struct {
 
 type PDU interface {
 	GetRequestID() int
-	SetRequestID(int)
 
 	GetError() PDUError
 

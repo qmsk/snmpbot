@@ -20,9 +20,6 @@ func (pdu *GenericPDU) unpack(raw asn1.RawValue) error {
 func (pdu GenericPDU) GetRequestID() int {
 	return pdu.RequestID
 }
-func (pdu GenericPDU) SetRequestID(id int) {
-	pdu.RequestID = id
-}
 
 func (pdu GenericPDU) String() string {
 	if pdu.ErrorStatus != 0 {
