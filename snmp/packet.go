@@ -28,12 +28,12 @@ func (packet *Packet) PDUType() PDUType {
 	return PDUType(packet.RawPDU.Tag)
 }
 
-func (packet *Packet) UnpackPDU() (PDUType, PDU, error) {
+func (packet *Packet) UnpackPDU() (PDUMeta, PDU, error) {
 	return UnpackPDU(packet.RawPDU)
 }
 
-func (packet *Packet) PackPDU(pduType PDUType, pdu PDU) error {
-	if rawPDU, err := pdu.Pack(pduType); err != nil {
+func (packet *Packet) PackPDU(meta PDUMeta, pdu PDU) error {
+	if rawPDU, err := pdu.Pack(meta); err != nil {
 		return err
 	} else {
 		packet.RawPDU = rawPDU

@@ -50,9 +50,9 @@ func (pdu GenericPDU) GetError() PDUError {
 	}
 }
 
-func (pdu GenericPDU) Pack(pduType PDUType) (asn1.RawValue, error) {
-	return packSequence(asn1.ClassContextSpecific, int(pduType),
-		pdu.RequestID,
+func (pdu GenericPDU) Pack(meta PDUMeta) (asn1.RawValue, error) {
+	return packSequence(asn1.ClassContextSpecific, int(meta.PDUType),
+		meta.RequestID,
 		pdu.ErrorStatus,
 		pdu.ErrorIndex,
 		pdu.VarBinds,
