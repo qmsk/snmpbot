@@ -112,7 +112,12 @@ func (engine *Engine) startRequest(request *Request) {
 	// initialize request with next request ID to get the request key used to track send/recv/timeout
 	requestKey := request.init(engine.nextRequestID())
 
-	if err := engine.sendRequest(request); err != nil {
+	if _, exists := engine.requests[requestKey]; exists {
+		engine.log.Warnf("Start request %v allocated a duplicate requestKey: %v", request, requestKey)
+
+		request.fail(fmt.Errorf("Request ID collision: %v", requestKey))
+
+	} else if err := engine.sendRequest(request); err != nil {
 		engine.log.Debugf("Start request %v failed: %v", requestKey, err)
 
 		request.fail(err)
