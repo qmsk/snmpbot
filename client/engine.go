@@ -3,7 +3,14 @@ package client
 import (
 	"fmt"
 	"github.com/qmsk/go-logging"
+	"sync/atomic"
 )
+
+type requestIDPool uint32
+
+func (pool *requestIDPool) atomicNext() requestID {
+	return requestID(atomic.AddUint32((*uint32)(pool), 1))
+}
 
 func NewUDPEngine(udpOptions UDPOptions) (*Engine, error) {
 	if udp, err := NewUDP(udpOptions); err != nil {
@@ -21,11 +28,11 @@ func makeEngine(transport Transport) Engine {
 	return Engine{
 		transport: transport,
 
-		requestID:   1, // TODO: randomize
-		requests:    make(requestMap),
-		requestChan: make(chan *Request),
-		timeoutChan: make(chan ioKey),
-		recvChan:    make(chan IO),
+		requestIDPool: 0, // TODO: randomize
+		requests:      make(requestMap),
+		requestChan:   make(chan *Request),
+		timeoutChan:   make(chan ioKey),
+		recvChan:      make(chan IO),
 	}
 }
 
@@ -33,10 +40,10 @@ type Engine struct {
 	log       logging.PrefixLogging
 	transport Transport
 
-	requestID   requestID
-	requests    requestMap
-	requestChan chan *Request
-	timeoutChan chan ioKey
+	requestIDPool requestIDPool
+	requests      requestMap
+	requestChan   chan *Request
+	timeoutChan   chan ioKey
 
 	recvChan chan IO
 	recvErr  error
@@ -46,12 +53,9 @@ func (engine *Engine) String() string {
 	return fmt.Sprintf("%v", engine.transport)
 }
 
+// atomic, goroutine-safe
 func (engine *Engine) nextRequestID() requestID {
-	var requestID = engine.requestID
-
-	engine.requestID++
-
-	return requestID
+	return engine.requestIDPool.atomicNext()
 }
 
 func (engine *Engine) teardown() {
@@ -108,7 +112,12 @@ func (engine *Engine) startRequest(request *Request) {
 	// initialize request with next request ID to get the request key used to track send/recv/timeout
 	requestKey := request.init(engine.nextRequestID())
 
-	if err := engine.sendRequest(request); err != nil {
+	if _, exists := engine.requests[requestKey]; exists {
+		engine.log.Warnf("Start request %v allocated a duplicate requestKey: %v", request, requestKey)
+
+		request.fail(fmt.Errorf("Request ID collision: %v", requestKey))
+
+	} else if err := engine.sendRequest(request); err != nil {
 		engine.log.Debugf("Start request %v failed: %v", requestKey, err)
 
 		request.fail(err)
@@ -125,7 +134,7 @@ func (engine *Engine) recvRequest(recv IO) {
 	requestKey := recv.key()
 
 	if request, ok := engine.requests[requestKey]; !ok {
-		engine.log.Debugf("Unknown request %v recv", requestKey)
+		engine.log.Warnf("Unknown request %v recv", requestKey)
 	} else {
 		engine.log.Debugf("Request %v done: %v", requestKey, request)
 
@@ -137,7 +146,7 @@ func (engine *Engine) recvRequest(recv IO) {
 
 func (engine *Engine) timeoutRequest(requestKey ioKey) {
 	if request, ok := engine.requests[requestKey]; !ok {
-		engine.log.Debugf("Unknown request %v timeout", requestKey)
+		engine.log.Warnf("Unknown request %v timeout", requestKey)
 
 	} else if request.retry <= 0 {
 		engine.log.Debugf("Timeout %v request: %v", requestKey, request)

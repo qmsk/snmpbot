@@ -20,9 +20,6 @@ func (pdu *GenericPDU) unpack(raw asn1.RawValue) error {
 func (pdu GenericPDU) GetRequestID() int {
 	return pdu.RequestID
 }
-func (pdu GenericPDU) SetRequestID(id int) {
-	pdu.RequestID = id
-}
 
 func (pdu GenericPDU) String() string {
 	if pdu.ErrorStatus != 0 {
@@ -53,9 +50,9 @@ func (pdu GenericPDU) GetError() PDUError {
 	}
 }
 
-func (pdu GenericPDU) Pack(pduType PDUType) (asn1.RawValue, error) {
-	return packSequence(asn1.ClassContextSpecific, int(pduType),
-		pdu.RequestID,
+func (pdu GenericPDU) Pack(meta PDUMeta) (asn1.RawValue, error) {
+	return packSequence(asn1.ClassContextSpecific, int(meta.PDUType),
+		meta.RequestID,
 		pdu.ErrorStatus,
 		pdu.ErrorIndex,
 		pdu.VarBinds,

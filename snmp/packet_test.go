@@ -36,14 +36,14 @@ func testVarBind(oid OID, value interface{}) VarBind {
 }
 
 type packetTest struct {
-	bytes   []byte
-	packet  Packet
-	pduType PDUType
-	pdu     PDU
+	bytes  []byte
+	packet Packet
+	meta   PDUMeta
+	pdu    PDU
 }
 
 func testPacketMarshal(t *testing.T, test packetTest) {
-	if err := test.packet.PackPDU(test.pduType, test.pdu); err != nil {
+	if err := test.packet.PackPDU(test.meta, test.pdu); err != nil {
 		t.Fatalf("pdu.pack: %v", err)
 	}
 
@@ -64,7 +64,7 @@ func testPacketUnmarshal(t *testing.T, test packetTest) {
 		return
 	}
 
-	pduType, pdu, err := packet.UnpackPDU()
+	pduMeta, pdu, err := packet.UnpackPDU()
 	if err != nil {
 		t.Errorf("packet.UnpackPDU: %v", err)
 		return
@@ -72,7 +72,7 @@ func testPacketUnmarshal(t *testing.T, test packetTest) {
 
 	assert.Equal(t, test.packet.Version, packet.Version)
 	assert.Equal(t, test.packet.Community, packet.Community)
-	assert.Equal(t, test.pduType, pduType)
+	assert.Equal(t, test.meta, pduMeta)
 	assert.Equal(t, test.pdu, pdu)
 }
 
@@ -100,7 +100,7 @@ func TestPacketGetRequest(t *testing.T) {
 			Version:   SNMPv2c,
 			Community: []byte("public"),
 		},
-		pduType: GetNextRequestType,
+		meta: PDUMeta{GetNextRequestType, 1337},
 		pdu: GenericPDU{
 			RequestID: 1337,
 			VarBinds: []VarBind{
@@ -122,7 +122,7 @@ func TestPacketGetResponse(t *testing.T) {
 			Version:   SNMPv2c,
 			Community: []byte("public"),
 		},
-		pduType: GetResponseType,
+		meta: PDUMeta{GetResponseType, 24800755},
 		pdu: GenericPDU{
 			RequestID: 24800755,
 			VarBinds: []VarBind{
@@ -144,7 +144,7 @@ func TestPacketCounter32(t *testing.T) {
 			Version:   SNMPv2c,
 			Community: []byte("public"),
 		},
-		pduType: GetResponseType,
+		meta: PDUMeta{GetResponseType, 698234863},
 		pdu: GenericPDU{
 			RequestID: 698234863,
 			VarBinds: []VarBind{
@@ -165,7 +165,7 @@ func TestPacketNoSuchInstance(t *testing.T) {
 			Version:   SNMPv2c,
 			Community: []byte("public"),
 		},
-		pduType: GetResponseType,
+		meta: PDUMeta{GetResponseType, 1198209160},
 		pdu: GenericPDU{
 			RequestID: 1198209160,
 			VarBinds: []VarBind{
@@ -187,7 +187,7 @@ func TestPacketGetBulk(t *testing.T) {
 			Version:   SNMPv2c,
 			Community: []byte("public"),
 		},
-		pduType: GetBulkRequestType,
+		meta: PDUMeta{GetBulkRequestType, 745174553},
 		pdu: BulkPDU{
 			RequestID:      745174553,
 			NonRepeaters:   0,

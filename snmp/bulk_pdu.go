@@ -21,9 +21,6 @@ func (pdu *BulkPDU) unpack(raw asn1.RawValue) error {
 func (pdu BulkPDU) GetRequestID() int {
 	return pdu.RequestID
 }
-func (pdu BulkPDU) SetRequestID(id int) {
-	pdu.RequestID = id
-}
 
 func (pdu BulkPDU) String() string {
 	var scalars []string
@@ -44,9 +41,9 @@ func (pdu BulkPDU) GetError() PDUError {
 	return PDUError{}
 }
 
-func (pdu BulkPDU) Pack(pduType PDUType) (asn1.RawValue, error) {
-	return packSequence(asn1.ClassContextSpecific, int(pduType),
-		pdu.RequestID,
+func (pdu BulkPDU) Pack(meta PDUMeta) (asn1.RawValue, error) {
+	return packSequence(asn1.ClassContextSpecific, int(meta.PDUType),
+		meta.RequestID,
 		pdu.NonRepeaters,
 		pdu.MaxRepetitions,
 		pdu.VarBinds,

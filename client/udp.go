@@ -123,7 +123,7 @@ func (udp *UDP) send(buf []byte, addr net.Addr) error {
 }
 
 func (udp *UDP) Send(send IO) error {
-	if err := send.Packet.PackPDU(send.PDUType, send.PDU); err != nil {
+	if err := send.Packet.PackPDU(send.PDUMeta, send.PDU); err != nil {
 		return ProtocolError{fmt.Errorf("packet.PackPDU: %v", err)}
 	} else if buf, err := send.Packet.Marshal(); err != nil {
 		return ProtocolError{fmt.Errorf("packet.Marshal: %v", err)}
@@ -153,10 +153,10 @@ func (udp *UDP) Recv() (recv IO, err error) {
 		return recv, ProtocolError{fmt.Errorf("packet.Unmarshal: %v", err)}
 	}
 
-	if pduType, pdu, err := recv.Packet.UnpackPDU(); err != nil {
+	if pduMeta, pdu, err := recv.Packet.UnpackPDU(); err != nil {
 		return recv, ProtocolError{fmt.Errorf("packet.UnpackPDU: %v", err)}
 	} else {
-		recv.PDUType = pduType
+		recv.PDUMeta = pduMeta
 		recv.PDU = pdu
 	}
 

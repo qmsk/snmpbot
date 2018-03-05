@@ -88,7 +88,7 @@ func (request *Request) wait() error {
 
 func (request *Request) init(id requestID) ioKey {
 	request.id = id
-	request.send.PDU.SetRequestID(int(id))
+	request.send.RequestID = int(id)
 
 	return request.send.key()
 }

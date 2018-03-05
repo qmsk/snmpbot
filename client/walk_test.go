@@ -246,7 +246,7 @@ func TestWalkBulk(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetBulkRequestType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetBulkRequestType},
 			PDU: snmp.BulkPDU{
 				NonRepeaters:   1,
 				MaxRepetitions: 5,
@@ -262,7 +262,7 @@ func TestWalkBulk(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetResponseType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					numberVar,
@@ -280,7 +280,7 @@ func TestWalkBulk(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetBulkRequestType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetBulkRequestType},
 			PDU: snmp.BulkPDU{
 				NonRepeaters:   1,
 				MaxRepetitions: 5,
@@ -296,7 +296,7 @@ func TestWalkBulk(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetResponseType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					numberVar,

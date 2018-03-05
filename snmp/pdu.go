@@ -5,6 +5,11 @@ import (
 	"fmt"
 )
 
+type PDUMeta struct {
+	PDUType   PDUType
+	RequestID int
+}
+
 type PDUError struct {
 	ErrorStatus ErrorStatus
 	VarBind     VarBind
@@ -12,18 +17,17 @@ type PDUError struct {
 
 type PDU interface {
 	GetRequestID() int
-	SetRequestID(int)
 
 	GetError() PDUError
 
-	Pack(PDUType) (asn1.RawValue, error)
+	Pack(PDUMeta) (asn1.RawValue, error)
 }
 
-func UnpackPDU(raw asn1.RawValue) (PDUType, PDU, error) {
+func UnpackPDU(raw asn1.RawValue) (PDUMeta, PDU, error) {
 	var pduType = PDUType(raw.Tag)
 
 	if raw.Class != asn1.ClassContextSpecific {
-		return pduType, nil, fmt.Errorf("unexpected PDU: ASN.1 class=%d tag=%d", raw.Class, raw.Tag)
+		return PDUMeta{PDUType: pduType}, nil, fmt.Errorf("unexpected PDU: ASN.1 class=%d tag=%d", raw.Class, raw.Tag)
 	}
 
 	switch pduType {
@@ -32,16 +36,16 @@ func UnpackPDU(raw asn1.RawValue) (PDUType, PDU, error) {
 
 		err := pdu.unpack(raw)
 
-		return pduType, pdu, err
+		return PDUMeta{pduType, pdu.RequestID}, pdu, err
 
 	case GetBulkRequestType:
 		var pdu BulkPDU
 
 		err := pdu.unpack(raw)
 
-		return pduType, pdu, err
+		return PDUMeta{pduType, pdu.RequestID}, pdu, err
 
 	default:
-		return pduType, nil, fmt.Errorf("Unknown PDUType=%v", pduType)
+		return PDUMeta{PDUType: pduType}, nil, fmt.Errorf("Unknown PDUType=%v", pduType)
 	}
 }

@@ -21,15 +21,15 @@ func (key ioKey) String() string {
 }
 
 type IO struct {
-	Addr    net.Addr
-	Packet  snmp.Packet
-	PDUType snmp.PDUType
-	PDU     snmp.PDU
+	Addr   net.Addr
+	Packet snmp.Packet
+	snmp.PDUMeta
+	PDU snmp.PDU
 }
 
 func (io IO) key() ioKey {
 	return ioKey{
-		id:        io.PDU.GetRequestID(),
+		id:        io.RequestID,
 		community: string(io.Packet.Community),
 		addr:      io.Addr.String(),
 	}

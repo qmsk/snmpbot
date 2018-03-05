@@ -93,7 +93,7 @@ func TestGetSendError(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetRequestType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetRequestType},
 			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, nil),
@@ -119,7 +119,7 @@ func TestGetRecvWrongAddr(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetRequestType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetRequestType},
 			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, nil),
@@ -131,7 +131,7 @@ func TestGetRecvWrongAddr(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetResponseType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, 1),
@@ -159,7 +159,7 @@ func TestGetRecvWrongCommunity(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetRequestType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetRequestType},
 			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, nil),
@@ -171,7 +171,7 @@ func TestGetRecvWrongCommunity(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("not-public"),
 			},
-			PDUType: snmp.GetResponseType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oid, 1),
@@ -220,7 +220,7 @@ func TestGetRequestTooBig(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetRequestType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetRequestType},
 			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(oids[0], nil),
@@ -236,7 +236,7 @@ func TestGetRequestTooBig(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetResponseType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 			PDU: snmp.GenericPDU{
 				ErrorStatus: snmp.TooBigError,
 			},
@@ -300,7 +300,7 @@ func TestGetRequestGetBulk(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetBulkRequestType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetBulkRequestType},
 			PDU: snmp.BulkPDU{
 				NonRepeaters:   1,
 				MaxRepetitions: 5,
@@ -316,7 +316,7 @@ func TestGetRequestGetBulk(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetResponseType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(scalarOID, 0),
@@ -364,7 +364,7 @@ func TestGetRequestGetBulkOne(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetBulkRequestType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetBulkRequestType},
 			PDU: snmp.BulkPDU{
 				NonRepeaters:   1,
 				MaxRepetitions: 5,
@@ -380,7 +380,7 @@ func TestGetRequestGetBulkOne(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetResponseType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(scalarOID, 0),
@@ -422,7 +422,7 @@ func TestGetRequestGetBulkShort(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetBulkRequestType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetBulkRequestType},
 			PDU: snmp.BulkPDU{
 				NonRepeaters:   1,
 				MaxRepetitions: 5,
@@ -438,7 +438,7 @@ func TestGetRequestGetBulkShort(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetResponseType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(scalarOID, 0),
@@ -469,7 +469,7 @@ func TestGetRequestGetBulkOdd(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetBulkRequestType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetBulkRequestType},
 			PDU: snmp.BulkPDU{
 				NonRepeaters:   1,
 				MaxRepetitions: 2,
@@ -485,7 +485,7 @@ func TestGetRequestGetBulkOdd(t *testing.T) {
 				Version:   snmp.SNMPv2c,
 				Community: []byte("public"),
 			},
-			PDUType: snmp.GetResponseType,
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 			PDU: snmp.GenericPDU{
 				VarBinds: []snmp.VarBind{
 					snmp.MakeVarBind(scalarOID, 0),

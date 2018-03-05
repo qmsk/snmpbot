@@ -38,10 +38,10 @@ func (transport *testTransport) Resolve(addr string) (net.Addr, error) {
 }
 
 func (transport *testTransport) Send(io IO) error {
-	var requestID = io.PDU.GetRequestID()
+	var requestID = io.RequestID
 
 	// override requestID to 0 for assert.Equal() comparison
-	io.PDU.SetRequestID(0)
+	io.RequestID = 0
 
 	args := transport.MethodCalled(io.PDUType.String(), io)
 
@@ -49,7 +49,7 @@ func (transport *testTransport) Send(io IO) error {
 		// no response
 	} else {
 		recv := ret.(IO)
-		recv.PDU.SetRequestID(requestID)
+		recv.RequestID = requestID
 
 		transport.recvChan <- recv
 	}
@@ -83,7 +83,7 @@ func (transport *testTransport) mockGetTimeout(addr string, oid snmp.OID) {
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
 		},
-		PDUType: snmp.GetRequestType,
+		PDUMeta: snmp.PDUMeta{PDUType: snmp.GetRequestType},
 		PDU: snmp.GenericPDU{
 			VarBinds: []snmp.VarBind{
 				snmp.MakeVarBind(oid, nil),
@@ -99,7 +99,7 @@ func (transport *testTransport) mockGet(addr string, oid snmp.OID, varBind snmp.
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
 		},
-		PDUType: snmp.GetRequestType,
+		PDUMeta: snmp.PDUMeta{PDUType: snmp.GetRequestType},
 		PDU: snmp.GenericPDU{
 			VarBinds: []snmp.VarBind{
 				snmp.MakeVarBind(oid, nil),
@@ -111,7 +111,7 @@ func (transport *testTransport) mockGet(addr string, oid snmp.OID, varBind snmp.
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
 		},
-		PDUType: snmp.GetResponseType,
+		PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 		PDU: snmp.GenericPDU{
 			VarBinds: []snmp.VarBind{
 				varBind,
@@ -132,7 +132,7 @@ func (transport *testTransport) mockGetMany(addr string, oids []snmp.OID, varBin
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
 		},
-		PDUType: snmp.GetRequestType,
+		PDUMeta: snmp.PDUMeta{PDUType: snmp.GetRequestType},
 		PDU: snmp.GenericPDU{
 			VarBinds: reqVars,
 		},
@@ -142,7 +142,7 @@ func (transport *testTransport) mockGetMany(addr string, oids []snmp.OID, varBin
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
 		},
-		PDUType: snmp.GetResponseType,
+		PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 		PDU: snmp.GenericPDU{
 			VarBinds: varBinds,
 		},
@@ -156,7 +156,7 @@ func (transport *testTransport) mockGetNext(addr string, oid snmp.OID, varBind s
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
 		},
-		PDUType: snmp.GetNextRequestType,
+		PDUMeta: snmp.PDUMeta{PDUType: snmp.GetNextRequestType},
 		PDU: snmp.GenericPDU{
 			VarBinds: []snmp.VarBind{
 				snmp.MakeVarBind(oid, nil),
@@ -168,7 +168,7 @@ func (transport *testTransport) mockGetNext(addr string, oid snmp.OID, varBind s
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
 		},
-		PDUType: snmp.GetResponseType,
+		PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 		PDU: snmp.GenericPDU{
 			VarBinds: []snmp.VarBind{
 				varBind,
@@ -189,7 +189,7 @@ func (transport *testTransport) mockGetNextMulti(addr string, oids []snmp.OID, v
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
 		},
-		PDUType: snmp.GetNextRequestType,
+		PDUMeta: snmp.PDUMeta{PDUType: snmp.GetNextRequestType},
 		PDU: snmp.GenericPDU{
 			VarBinds: requestVars,
 		},
@@ -199,7 +199,7 @@ func (transport *testTransport) mockGetNextMulti(addr string, oids []snmp.OID, v
 			Version:   snmp.SNMPv2c,
 			Community: []byte("public"),
 		},
-		PDUType: snmp.GetResponseType,
+		PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType},
 		PDU: snmp.GenericPDU{
 			VarBinds: varBinds,
 		},
