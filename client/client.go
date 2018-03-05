@@ -66,8 +66,10 @@ func (client *Client) requestPDU(requestType snmp.PDUType, pdu snmp.PDU, respons
 			Version:   SNMPVersion,
 			Community: []byte(client.options.Community),
 		},
-		PDUType: requestType,
-		PDU:     pdu,
+		PDUMeta: snmp.PDUMeta{
+			PDUType: requestType,
+		},
+		PDU: pdu,
 	}
 
 	if recv, err := client.request(send); err != nil {
