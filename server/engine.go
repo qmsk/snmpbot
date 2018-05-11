@@ -112,6 +112,8 @@ func (engine *Engine) Tables() Tables {
 }
 
 func (engine *Engine) QueryObjects(q ObjectQuery) <-chan ObjectResult {
+	log.Infof("Query objects %v @ %v", q.Objects, q.Hosts)
+
 	q.resultChan = make(chan ObjectResult)
 
 	go q.query()
@@ -120,6 +122,8 @@ func (engine *Engine) QueryObjects(q ObjectQuery) <-chan ObjectResult {
 }
 
 func (engine *Engine) QueryTables(q TableQuery) <-chan TableResult {
+	log.Infof("Query tables %v @ %v", q.Tables, q.Hosts)
+
 	q.resultChan = make(chan TableResult)
 
 	go q.query()

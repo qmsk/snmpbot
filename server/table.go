@@ -5,6 +5,7 @@ import (
 	"github.com/qmsk/snmpbot/api"
 	"github.com/qmsk/snmpbot/mibs"
 	"path"
+	"strings"
 )
 
 func FilterTableObjects(table *mibs.Table, filters ...string) *mibs.Table {
@@ -57,6 +58,16 @@ type Tables map[TableID]*mibs.Table
 
 func (tables Tables) add(table *mibs.Table) {
 	tables[TableID(table.Key())] = table
+}
+
+func (tables Tables) String() string {
+	var ss = make([]string, 0, len(tables))
+
+	for _, table := range tables {
+		ss = append(ss, table.String())
+	}
+
+	return "{" + strings.Join(ss, ", ") + "}"
 }
 
 func (tables Tables) IDs() []mibs.ID {

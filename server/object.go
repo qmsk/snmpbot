@@ -5,6 +5,7 @@ import (
 	"github.com/qmsk/snmpbot/api"
 	"github.com/qmsk/snmpbot/mibs"
 	"path"
+	"strings"
 )
 
 type ObjectID string
@@ -36,6 +37,16 @@ type Objects map[ObjectID]*mibs.Object
 
 func (objects Objects) add(object *mibs.Object) {
 	objects[ObjectID(object.Key())] = object
+}
+
+func (objects Objects) String() string {
+	var ss = make([]string, 0, len(objects))
+
+	for _, object := range objects {
+		ss = append(ss, object.String())
+	}
+
+	return "{" + strings.Join(ss, ", ") + "}"
 }
 
 func (objects Objects) List() []*mibs.Object {
@@ -217,6 +228,8 @@ func (handler *objectHandler) QueryREST() interface{} {
 }
 
 func (handler *objectHandler) GetREST() (web.Resource, error) {
+	log.Debugf("GET .../objects/%v %#v", handler.object, handler.params)
+
 	if handler.params.Hosts != nil {
 		handler.hosts = handler.hosts.Filter(handler.params.Hosts...)
 	}
@@ -267,7 +280,7 @@ func (handler *objectsHandler) QueryREST() interface{} {
 }
 
 func (handler *objectsHandler) GetREST() (web.Resource, error) {
-	log.Infof("Get objects with params: %#v", handler.params)
+	log.Debugf("GET .../objects/ %#v", handler.params)
 
 	if handler.params.Hosts != nil {
 		handler.hosts = handler.hosts.Filter(handler.params.Hosts...)

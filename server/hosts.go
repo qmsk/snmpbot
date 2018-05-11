@@ -4,6 +4,7 @@ import (
 	"github.com/qmsk/go-web"
 	"github.com/qmsk/snmpbot/api"
 	"path"
+	"strings"
 )
 
 type HostID string
@@ -19,6 +20,16 @@ func MakeHosts(args ...*Host) Hosts {
 }
 
 type Hosts map[HostID]*Host
+
+func (hosts Hosts) String() string {
+	var ss = make([]string, 0, len(hosts))
+
+	for _, host := range hosts {
+		ss = append(ss, host.String())
+	}
+
+	return "{" + strings.Join(ss, ", ") + "}"
+}
 
 func (hosts Hosts) Filter(filters ...string) Hosts {
 	var filtered = make(Hosts)
