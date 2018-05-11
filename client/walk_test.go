@@ -88,6 +88,16 @@ func TestWalkScalarsOnly(t *testing.T) {
 	})
 }
 
+func TestWalkEmpty(t *testing.T) {
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		testWalk(t, client, walkTest{
+			scalars: []snmp.OID{},
+			entries: []snmp.OID{},
+			results: []walkResult{},
+		})
+	})
+}
+
 func TestWalk(t *testing.T) {
 	var ifNumber = snmp.MustParseOID(".1.3.6.1.2.1.2.1")                 // IF-MIB::ifNumber
 	var ifName = snmp.MustParseOID(".1.3.6.1.2.1.31.1.1.1.1")            // IF-MIB::ifName
@@ -316,6 +326,17 @@ func TestWalkBulk(t *testing.T) {
 				{scalars: []snmp.VarBind{numberVar}, entries: []snmp.VarBind{indexVars[0], nameVars[0]}},
 				{scalars: []snmp.VarBind{numberVar}, entries: []snmp.VarBind{indexVars[1], nameVars[1]}},
 			},
+		})
+	})
+}
+
+func TestWalkBulkEmpty(t *testing.T) {
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		testWalk(t, client, walkTest{
+			useBulk: true,
+			scalars: []snmp.OID{},
+			entries: []snmp.OID{},
+			results: []walkResult{},
 		})
 	})
 }
