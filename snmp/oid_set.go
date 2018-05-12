@@ -1,8 +1,14 @@
 package snmp
 
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
+
 func MakeOIDSet(oids ...OID) OIDSet {
 	// minimize
-	var oidSet OIDSet
+	var oidSet = make(OIDSet)
 
 	for _, oid := range oids {
 		oidSet.Add(oid)
@@ -11,32 +17,52 @@ func MakeOIDSet(oids ...OID) OIDSet {
 	return oidSet
 }
 
-type OIDSet []OID
+type OIDSet map[string]OID
+
+func (oidSet OIDSet) String() string {
+	var strs []string
+
+	for _, oid := range oidSet {
+		strs = append(strs, oid.String())
+	}
+
+	sort.Strings(strs)
+
+	return "{" + strings.Join(strs, " ") + "}"
+}
 
 func (oidSet OIDSet) Get(oid OID) OID {
-	for _, o := range oidSet {
-		if idx := o.Index(oid); idx != nil {
-			return o
+	var key = ""
+
+	if matchOID, ok := oidSet["."]; ok {
+		return matchOID
+	}
+
+	for _, x := range oid {
+		key += fmt.Sprintf(".%d", x)
+
+		if matchOID, ok := oidSet[key]; ok {
+			return matchOID
 		}
 	}
 
 	return nil
 }
 
-func (oidSet *OIDSet) Add(oid OID) {
+func (oidSet OIDSet) Add(oid OID) {
 	if oid == nil {
 		panic("add nil oid to set")
 	}
 
-	for i, o := range *oidSet {
+	for oidKey, o := range oidSet {
 		if idx := o.Index(oid); idx != nil {
 			// set already contains OID covering this OID
 			return
 		} else if idx := oid.Index(o); idx != nil {
 			// delete OID from set covered by this OID
-			*oidSet = append((*oidSet)[:i], (*oidSet)[i+1:]...)
+			delete(oidSet, oidKey)
 		}
 	}
 
-	*oidSet = append(*oidSet, oid)
+	oidSet[oid.String()] = oid
 }
