@@ -54,7 +54,7 @@ func (mib *MIB) registerTable(table Table) *Table {
 var mibResolveRegexp = regexp.MustCompile("^([^.]+?)?([.][0-9.]+)?$")
 
 func (mib *MIB) Resolve(name string) (ID, error) {
-	var id = ID{OID: mib.OID}
+	var id = ID{MIB: mib, OID: mib.OID}
 	var nameID, nameOID string
 
 	if matches := mibResolveRegexp.FindStringSubmatch(name); matches == nil {
