@@ -29,10 +29,6 @@ func (mib *MIB) String() string {
 	return mib.Name
 }
 
-func (mib *MIB) MakeID(name string, ids ...int) ID {
-	return ID{mib, name, mib.OID.Extend(ids...)}
-}
-
 func (mib *MIB) registerObject(object Object) *Object {
 	mibRegistry.registerOID(object.ID)
 	mib.registry.register(object.ID)
@@ -41,24 +37,12 @@ func (mib *MIB) registerObject(object Object) *Object {
 	return &object
 }
 
-func (mib *MIB) RegisterObject(id ID, object Object) *Object {
-	object.ID = id
-
-	return mib.registerObject(object)
-}
-
 func (mib *MIB) registerTable(table Table) *Table {
 	mibRegistry.registerOID(table.ID)
 	mib.registry.register(table.ID)
 	mib.tables[table.ID.Key()] = &table
 
 	return &table
-}
-
-func (mib *MIB) RegisterTable(id ID, table Table) *Table {
-	table.ID = id
-
-	return mib.registerTable(table)
 }
 
 /* Resolve MIB-relative ID by human-readable name:

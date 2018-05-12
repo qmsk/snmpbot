@@ -20,10 +20,6 @@ func registerMIB(mib MIB) *MIB {
 	return &mib
 }
 
-func RegisterMIB(name string, oid ...int) *MIB {
-	return registerMIB(makeMIB(name, snmp.OID(oid)))
-}
-
 func ResolveMIB(name string) (*MIB, error) {
 	if id, ok := mibRegistry.getName(name); !ok {
 		return nil, fmt.Errorf("MIB not found: %v", name)
