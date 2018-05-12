@@ -118,15 +118,22 @@ func (client *Client) walkGetBulk(scalars []snmp.OID, entries []snmp.OID, walkFu
 			// no scalar vars matched !?
 		}
 
+		var ok = false
+
 		for _, entryVars := range entryList {
 			if !walkEntryVars(entries, walkOIDs, entryVars) {
-				// did not make progress
-				return nil
-			}
-
-			if err := walkFunc(scalarVars, entryVars); err != nil {
+				// no vars made progress, ignore the remainder
+				ok = false
+				break
+			} else if err := walkFunc(scalarVars, entryVars); err != nil {
 				return err
+			} else {
+				ok = true
 			}
+		}
+
+		if !ok {
+			return nil
 		}
 	}
 }
