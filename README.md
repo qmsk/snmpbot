@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/qmsk/snmpbot.svg?branch=master)](https://travis-ci.com/qmsk/snmpbot)
+
 # github.com/qmsk/snmpbot
 
 SNMP client (manager) library for Go with support for SMI MIBs.
