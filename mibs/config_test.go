@@ -21,6 +21,14 @@ func TestConfigResolveMIB(t *testing.T) {
 	}
 }
 
+func TestConfigMIBOIDs(t *testing.T) {
+	if resolveMIB, err := ResolveMIB("TEST2-MIB"); err != nil {
+		t.Errorf("ResolveMIB TEST2-MIB: %v", err)
+	} else {
+		assert.Equal(t, "{.1.0.2 .1.1.5}", resolveMIB.OIDs.String())
+	}
+}
+
 func TestConfigResolve(t *testing.T) {
 	if id, err := Resolve("TEST2-MIB"); err != nil {
 		t.Errorf("Resolve TEST2-MIB: %v", err)
