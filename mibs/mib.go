@@ -8,8 +8,9 @@ import (
 
 func makeMIB(name string, oid snmp.OID) MIB {
 	return MIB{
-		ID:       ID{OID: oid},
-		Name:     name,
+		Name: name,
+		OID:  oid,
+
 		registry: makeRegistry(),
 		objects:  make(map[IDKey]*Object),
 		tables:   make(map[IDKey]*Table),
@@ -17,8 +18,8 @@ func makeMIB(name string, oid snmp.OID) MIB {
 }
 
 type MIB struct {
-	ID
-	Name string // shadows ID.Name, which is empty
+	Name string
+	OID  snmp.OID
 	registry
 
 	objects map[IDKey]*Object

@@ -9,12 +9,10 @@ import (
 var mibRegistry = makeRegistry()
 
 func registerMIB(mib MIB) *MIB {
-	mib.ID.MIB = &mib
-
-	mibRegistry.registerName(mib.ID, mib.Name)
+	mibRegistry.registerName(ID{MIB: &mib, OID: mib.OID}, mib.Name)
 
 	if mib.OID != nil {
-		mibRegistry.registerOID(mib.ID)
+		mibRegistry.registerOID(ID{MIB: &mib, OID: mib.OID})
 	}
 
 	return &mib
@@ -65,8 +63,7 @@ func Resolve(name string) (ID, error) {
 	} else if mib, err := ResolveMIB(nameMIB); err != nil {
 		return id, err
 	} else {
-		id = mib.ID
-		id.Name = "" // fixup MIB.ID re-use of Name
+		id = ID{MIB: mib, OID: mib.OID}
 	}
 
 	if nameID == "" {
