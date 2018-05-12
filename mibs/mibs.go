@@ -28,11 +28,6 @@ func ResolveMIB(name string) (*MIB, error) {
 
 func WalkMIBs(f func(mib *MIB)) {
 	mibRegistry.walk(func(id ID) {
-		if id.OID == nil {
-			// skip MIBs without a top-level OID
-			return
-		}
-
 		f(id.MIB)
 	})
 }
