@@ -18,7 +18,7 @@ func init() {
 	options.InitFlags()
 }
 
-func snmptable(client *mibs.Client, id mibs.ID) error {
+func snmptable(client mibs.Client, id mibs.ID) error {
 	var table = id.Table()
 	var writer = tabwriter.NewWriter(os.Stdout, 8, 4, 1, ' ', 0)
 

@@ -96,8 +96,6 @@ func (client *Client) walkGetNext(scalars []snmp.OID, entries []snmp.OID, walkFu
 			return err
 		}
 	}
-
-	return nil
 }
 
 func (client *Client) walkGetBulk(scalars []snmp.OID, entries []snmp.OID, walkFunc func(scalars []snmp.VarBind, entries []snmp.VarBind) error) error {

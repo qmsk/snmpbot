@@ -113,13 +113,13 @@ func (options Options) WithClientOIDs(args []string, f func(*client.Client, ...s
 	}
 }
 
-func (options Options) WithClientIDs(args []string, f func(*mibs.Client, ...mibs.ID) error) error {
+func (options Options) WithClientIDs(args []string, f func(mibs.Client, ...mibs.ID) error) error {
 	if engine, err := options.ClientEngine(); err != nil {
 		return err
 	} else if snmpClient, ids, err := options.ParseClientIDs(engine, args); err != nil {
 		return err
 	} else {
-		var client = &mibs.Client{snmpClient}
+		var client = mibs.MakeClient(snmpClient)
 
 		return options.withEngine(engine, func() error {
 			return f(client, ids...)
@@ -127,13 +127,13 @@ func (options Options) WithClientIDs(args []string, f func(*mibs.Client, ...mibs
 	}
 }
 
-func (options Options) WithClientID(args []string, f func(*mibs.Client, mibs.ID) error) error {
+func (options Options) WithClientID(args []string, f func(mibs.Client, mibs.ID) error) error {
 	if engine, err := options.ClientEngine(); err != nil {
 		return err
 	} else if snmpClient, ids, err := options.ParseClientIDs(engine, args); err != nil {
 		return err
 	} else {
-		var client = &mibs.Client{snmpClient}
+		var client = mibs.MakeClient(snmpClient)
 
 		return options.withEngine(engine, func() error {
 			for _, id := range ids {

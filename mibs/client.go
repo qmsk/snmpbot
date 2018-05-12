@@ -5,6 +5,10 @@ import (
 	"github.com/qmsk/snmpbot/snmp"
 )
 
+func MakeClient(c *client.Client) Client {
+	return Client{Client: c}
+}
+
 type Client struct {
 	*client.Client
 }

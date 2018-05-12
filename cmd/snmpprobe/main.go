@@ -16,7 +16,7 @@ func init() {
 	options.InitFlags()
 }
 
-func snmpprobe(client *mibs.Client, ids ...mibs.ID) error {
+func snmpprobe(client mibs.Client, ids ...mibs.ID) error {
 	if len(ids) == 0 {
 		mibs.WalkMIBs(func(mib *mibs.MIB) {
 			ids = append(ids, mib.ID)

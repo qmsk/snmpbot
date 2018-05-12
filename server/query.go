@@ -25,18 +25,21 @@ type TableResult struct {
 type ObjectQuery struct {
 	Hosts   Hosts
 	Objects Objects
+}
 
+type objectQuery struct {
+	ObjectQuery
 	resultChan chan ObjectResult
 	waitGroup  sync.WaitGroup
 }
 
-func (q *ObjectQuery) fail(host *Host, err error) {
+func (q *objectQuery) fail(host *Host, err error) {
 	for _, object := range q.Objects {
 		q.resultChan <- ObjectResult{Host: host, Object: object, Error: err}
 	}
 }
 
-func (q *ObjectQuery) queryHost(host *Host) error {
+func (q *objectQuery) queryHost(host *Host) error {
 	if client, err := host.getClient(); err != nil {
 		return err
 	} else if err := client.WalkObjects(q.Objects.List(), func(object *mibs.Object, indexValues mibs.IndexValues, value mibs.Value, err error) error {
@@ -55,7 +58,7 @@ func (q *ObjectQuery) queryHost(host *Host) error {
 	return nil
 }
 
-func (q *ObjectQuery) query() {
+func (q *objectQuery) query() {
 	defer close(q.resultChan)
 
 	for _, host := range q.Hosts {
@@ -75,16 +78,19 @@ func (q *ObjectQuery) query() {
 type TableQuery struct {
 	Hosts  Hosts
 	Tables Tables
+}
 
+type tableQuery struct {
+	TableQuery
 	resultChan chan TableResult
 	waitGroup  sync.WaitGroup
 }
 
-func (q *TableQuery) fail(host *Host, table *mibs.Table, err error) {
+func (q *tableQuery) fail(host *Host, table *mibs.Table, err error) {
 	q.resultChan <- TableResult{Host: host, Table: table, Error: err}
 }
 
-func (q *TableQuery) queryHostTable(host *Host, table *mibs.Table) error {
+func (q *tableQuery) queryHostTable(host *Host, table *mibs.Table) error {
 	if client, err := host.getClient(); err != nil {
 		return err
 	} else if err := client.WalkTable(table, func(indexValues mibs.IndexValues, entryValues mibs.EntryValues) error {
@@ -102,7 +108,7 @@ func (q *TableQuery) queryHostTable(host *Host, table *mibs.Table) error {
 	return nil
 }
 
-func (q *TableQuery) query() {
+func (q *tableQuery) query() {
 	defer close(q.resultChan)
 
 	for _, host := range q.Hosts {

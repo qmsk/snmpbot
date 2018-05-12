@@ -111,20 +111,26 @@ func (engine *Engine) Tables() Tables {
 	return AllTables()
 }
 
-func (engine *Engine) QueryObjects(q ObjectQuery) <-chan ObjectResult {
-	log.Infof("Query objects %v @ %v", q.Objects, q.Hosts)
+func (engine *Engine) QueryObjects(query ObjectQuery) <-chan ObjectResult {
+	log.Infof("Query objects %v @ %v", query.Objects, query.Hosts)
 
-	q.resultChan = make(chan ObjectResult)
+	var q = objectQuery{
+		ObjectQuery: query,
+		resultChan:  make(chan ObjectResult),
+	}
 
 	go q.query()
 
 	return q.resultChan
 }
 
-func (engine *Engine) QueryTables(q TableQuery) <-chan TableResult {
-	log.Infof("Query tables %v @ %v", q.Tables, q.Hosts)
+func (engine *Engine) QueryTables(query TableQuery) <-chan TableResult {
+	log.Infof("Query tables %v @ %v", query.Tables, query.Hosts)
 
-	q.resultChan = make(chan TableResult)
+	var q = tableQuery{
+		TableQuery: query,
+		resultChan: make(chan TableResult),
+	}
 
 	go q.query()
 
