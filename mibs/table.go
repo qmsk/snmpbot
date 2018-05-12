@@ -50,7 +50,7 @@ func (entrySyntax EntrySyntax) Unpack(varBinds []snmp.VarBind) ([]int, EntryValu
 		} else if index := entryObject.OID.Index(varBind.OID()); index == nil {
 			return entryIndex, nil, fmt.Errorf("Invalid VarBind[%v] OID for %v: %v", varBind.OID(), entryObject, entryObject.OID)
 		} else if entryIndex != nil && !indexEquals(entryIndex, index) {
-			return entryIndex, nil, fmt.Errorf("Mismatching VarBind[%v] OID for %v: expected index", varBind.OID(), entryObject, entryIndex)
+			return entryIndex, nil, fmt.Errorf("Mismatching VarBind[%v] OID for %v: index %v != expected %v", varBind.OID(), entryObject, index, entryIndex)
 		} else if value, err := entryObject.Unpack(varBind); err != nil {
 			return entryIndex, nil, fmt.Errorf("Invalid VarBind[%v] Value for %v: %v", varBind.OID(), entryObject, err)
 		} else {
