@@ -509,9 +509,34 @@ Query host with information about tables/objects for probed MIBs.
 }
 ```
 
+#### `GET /api/hosts/:host/tables/LLDP-MIB::lldpRemTable`
+
+Query a specific table for a specific host (dynamic or configured).
+
+```json
+{
+   "ObjectKeys" : [
+      ...
+   ],
+   "IndexKeys" : [
+      ...
+   ],
+   "Entries" : [
+      ...
+   ],
+   "ID" : "LLDP-MIB::lldpRemTable"
+}
+```
+
+***Note***: The queried table does not necessarily need to belong to a probed MIB.
+
 #### `GET /api/hosts/:host/tables/?table=LLDP-MIB::*`
 
-Query matching tables from probed mibs for a specific host (dynamic or configured).
+Query multiple tables from probed mibs for a specific host (dynamic or configured).
+
+Use multiple `?table=A&table=B` filters to query different tables.
+
+Use (multiple) `?host=test-*` query parameters to limit queried hosts.
 
 ```json
 [
@@ -582,30 +607,31 @@ Query matching tables from probed mibs for a specific host (dynamic or configure
 
 ***Note***: The queried tables must belong to a probed MIB.
 
-#### `GET /api/hosts/:host/tables/:table`
+#### `GET /api/hosts/:host/objects/SNMPv2-MIB::sysDescr`
 
-Query an arbitrary table for a specific host (dynamic or configured).
+Query a specific object for a specific host (configured or dynamic).
 
 ```json
 {
-   "ObjectKeys" : [
-      ...
+   "Instances" : [
+      {
+         "Value" : "EdgeSwitch 24-Port Lite, 1.7.0.4922887, Linux 3.6.5-f4a26ed5, 0.0.0.0000000",
+         "HostID" : "edgeswitch-098730"
+      }
    ],
-   "IndexKeys" : [
-      ...
-   ],
-   "Entries" : [
-      ...
-   ],
-   "ID" : "LLDP-MIB::lldpRemTable"
+   "ID" : "SNMPv2-MIB::sysDescr"
 }
 ```
 
-***Note***: The queried table does not necessarily need to belong to a probed MIB.
+***Note***: The queried object does not necessarily need to belong to a probed MIB.
 
-#### `GET /api/hosts/:host/objects/?object=system::sysDescr&object=interfaces::ifDescr`
+***Note***: Objects belonging to table entries will return multiple instances with different `Index` values.
+
+#### `GET /api/hosts/:host/objects/?object=SNMPv2-MIB::sys*&object=IF-MIB::ifDescr`
 
 Query matching objects from probed MIBs for a specific host (dynamic or configured).
+
+Use multiple `?object=A&object=B` filters to query different objects. Use `?object=MIB::foo*` filters to query multiple matching objects.
 
 ```json
    {
@@ -645,27 +671,81 @@ Query matching objects from probed MIBs for a specific host (dynamic or configur
 
 ***Note***: The queried object must belong to a probed MIB.
 
-#### `GET /api/hosts/:host/objects/system::sysDescr`
+#### `GET /api/tables/IF-MIB::ifTable?host=test-*`
 
-Query an arbitrary object for a specific host (configured or dynamic).
+Query specific table across all hosts.
+
+Use (multiple) `?host=test-*` query parameters to limit queried hosts.
 
 ```json
 {
-   "Instances" : [
-      {
-         "Value" : "EdgeSwitch 24-Port Lite, 1.7.0.4922887, Linux 3.6.5-f4a26ed5, 0.0.0.0000000",
-         "HostID" : "edgeswitch-098730"
-      }
+   "ID" : "IF-MIB::ifTable",
+   "IndexKeys" : [
+      "IF-MIB::ifIndex"
    ],
-   "ID" : "system::sysDescr"
+   "ObjectKeys" : [
+      "IF-MIB::ifIndex",
+      "IF-MIB::ifDescr",
+      "IF-MIB::ifType",
+      "IF-MIB::ifMtu",
+      "IF-MIB::ifSpeed",
+      "IF-MIB::ifPhysAddress",
+      "IF-MIB::ifAdminStatus",
+      "IF-MIB::ifOperStatus",
+      "IF-MIB::ifLastChange"
+   ],
+   "Entries" : [
+      {
+         "Index" : {
+            "IF-MIB::ifIndex" : 1
+         },
+         "Objects" : {
+            "IF-MIB::ifPhysAddress" : "",
+            "IF-MIB::ifLastChange" : 0,
+            "IF-MIB::ifMtu" : 65536,
+            "IF-MIB::ifType" : 24,
+            "IF-MIB::ifSpeed" : 10000000,
+            "IF-MIB::ifIndex" : 1,
+            "IF-MIB::ifAdminStatus" : "up",
+            "IF-MIB::ifDescr" : "lo",
+            "IF-MIB::ifOperStatus" : "up"
+         },
+         "HostID" : "erx-home"
+      },
+      ...
+      {
+         "HostID" : "edgeswitch-098730",
+         "Objects" : {
+            "IF-MIB::ifMtu" : 1518,
+            "IF-MIB::ifLastChange" : 8433020,
+            "IF-MIB::ifPhysAddress" : "f0:9f:c2:09:87:31",
+            "IF-MIB::ifSpeed" : 1000000000,
+            "IF-MIB::ifType" : 6,
+            "IF-MIB::ifDescr" : "Slot: 0 Port: 2 Gigabit - Level",
+            "IF-MIB::ifAdminStatus" : "up",
+            "IF-MIB::ifIndex" : 2,
+            "IF-MIB::ifOperStatus" : "up"
+         },
+         "Index" : {
+            "IF-MIB::ifIndex" : 2
+         }
+      },
+   ]
 }
 ```
 
-***Note***: The queried object does not necessarily need to belong to a probed MIB.
+***Note***: Only configured hosts are queried.
+
+***Note***: The table contains entries from all hosts for that SNMP table: Different `Entries` in the same table can have different `HostID` values.
 
 #### `GET /api/tables/?table=LLDP-MIB::lldpRemTable&table=Q-BRIDGE-MIB::dot1qTpFdbTable`
 
-Query matching tables across all hosts. Use `?host=test-*` to filter queried hosts.
+Query multiple tables across all hosts.
+
+Use multiple `?table=A&table=B` filters to query different tables.
+
+Use (multiple) `?host=test-*` query parameters to limit queried hosts.
+
 
 ```json
 [
@@ -684,79 +764,96 @@ Query matching tables across all hosts. Use `?host=test-*` to filter queried hos
 
 ***Note***: Each table contains entries from all hosts for that SNMP table: Different `Entries` in the same table can have different `HostID` values.
 
-#### `GET /api/tables/interfaces::ifTable?host=test-*`
+#### `GET /api/objects/IF-MIB::ifDescr`
 
-Query specific table across all hosts. Use `?host=test-*` to filter queried hosts.
+Query specific object across all hosts. Use `?host=test-*` to filter queried hosts.
 
 ```json
 {
-   "ID" : "interfaces::ifTable",
    "IndexKeys" : [
-      "interfaces::ifIndex"
+      "IF-MIB::ifIndex"
    ],
-   "ObjectKeys" : [
-      "interfaces::ifIndex",
-      "interfaces::ifDescr",
-      "interfaces::ifType",
-      "interfaces::ifMtu",
-      "interfaces::ifSpeed",
-      "interfaces::ifPhysAddress",
-      "interfaces::ifAdminStatus",
-      "interfaces::ifOperStatus",
-      "interfaces::ifLastChange"
-   ],
-   "Entries" : [
+   "ID" : "IF-MIB::ifDescr",
+   "Instances" : [
       {
+         "HostID" : "erx-home",
+         "Value" : "lo",
          "Index" : {
-            "interfaces::ifIndex" : 1
-         },
-         "Objects" : {
-            "interfaces::ifPhysAddress" : "",
-            "interfaces::ifLastChange" : 0,
-            "interfaces::ifMtu" : 65536,
-            "interfaces::ifType" : 24,
-            "interfaces::ifSpeed" : 10000000,
-            "interfaces::ifIndex" : 1,
-            "interfaces::ifAdminStatus" : "up",
-            "interfaces::ifDescr" : "lo",
-            "interfaces::ifOperStatus" : "up"
-         },
-         "HostID" : "erx-home"
-      },
-      ...
-      {
-         "HostID" : "edgeswitch-098730",
-         "Objects" : {
-            "interfaces::ifMtu" : 1518,
-            "interfaces::ifLastChange" : 8433020,
-            "interfaces::ifPhysAddress" : "f0:9f:c2:09:87:31",
-            "interfaces::ifSpeed" : 1000000000,
-            "interfaces::ifType" : 6,
-            "interfaces::ifDescr" : "Slot: 0 Port: 2 Gigabit - Level",
-            "interfaces::ifAdminStatus" : "up",
-            "interfaces::ifIndex" : 2,
-            "interfaces::ifOperStatus" : "up"
-         },
-         "Index" : {
-            "interfaces::ifIndex" : 2
+            "IF-MIB::ifIndex" : 1
          }
       },
+      {
+         "Index" : {
+            "IF-MIB::ifIndex" : 1
+         },
+         "Value" : "Slot: 0 Port: 1 Gigabit - Level",
+         "HostID" : "edgeswitch-098730"
+      },
+      ...
    ]
 }
 ```
 
 ***Note***: Only configured hosts are queried.
 
-***Note***: The table contains entries from all hosts for that SNMP table: Different `Entries` in the same table can have different `HostID` values.
+#### `GET /api/objects/IF-MIB::ifDescr?host=edgeswitch-*`
 
-#### `GET /api/objects/?object=system::*`
+Query specific object across all hosts. Use `?host=...` to filter queried hosts.
 
-Query matching objects across all hosts. Use `?host=test-*` to filter queried hosts.
+```json
+{
+   "Instances" : [
+      {
+         "Index" : {
+            "IF-MIB::ifIndex" : 1
+         },
+         "HostID" : "edgeswitch-098730",
+         "Value" : "Slot: 0 Port: 1 Gigabit - Level"
+      },
+      {
+         "HostID" : "edgeswitch-098730",
+         "Index" : {
+            "IF-MIB::ifIndex" : 2
+         },
+         "Value" : "Slot: 0 Port: 2 Gigabit - Level"
+      },
+      {
+         "Value" : "Slot: 0 Port: 3 Gigabit - Level",
+         "HostID" : "edgeswitch-098730",
+         "Index" : {
+            "IF-MIB::ifIndex" : 3
+         }
+      },
+      ...
+      {
+         "HostID" : "edgeswitch-098730",
+         "Index" : {
+            "IF-MIB::ifIndex" : 71
+         },
+         "Value" : " Link Aggregate 6"
+      }
+   ],
+   "ID" : "IF-MIB::ifDescr",
+   "IndexKeys" : [
+      "IF-MIB::ifIndex"
+   ]
+}
+```
+
+***Note***: Only configured hosts are queried.
+
+#### `GET /api/objects/?object=SNMPv2-MIB::*`
+
+Query multiple matching objects across all hosts.
+
+Use multiple `?object=A&object=B` filters to query different objects.
+
+Use (multiple) `?host=test-*` query parameters to limit queried hosts.
 
 ```json
 [
    {
-      "ID" : "system::sysLocation",
+      "ID" : "SNMPv2-MIB::sysLocation",
       "Instances" : [
          {
             "Value" : "home.qmsk.net",
@@ -779,88 +876,10 @@ Query matching objects across all hosts. Use `?host=test-*` to filter queried ho
             "Value" : "EdgeSwitch 24-Port Lite, 1.7.0.4922887, Linux 3.6.5-f4a26ed5, 0.0.0.0000000"
          }
       ],
-      "ID" : "system::sysDescr"
+      "ID" : "SNMPv2-MIB::sysDescr"
    },
    ...
 ]
-```
-
-***Note***: Only configured hosts are queried.
-
-#### `GET /api/objects/interfaces::ifDescr`
-
-Query specific object across all hosts. Use `?host=test-*` to filter queried hosts.
-
-```json
-{
-   "IndexKeys" : [
-      "interfaces::ifIndex"
-   ],
-   "ID" : "interfaces::ifDescr",
-   "Instances" : [
-      {
-         "HostID" : "erx-home",
-         "Value" : "lo",
-         "Index" : {
-            "interfaces::ifIndex" : 1
-         }
-      },
-      {
-         "Index" : {
-            "interfaces::ifIndex" : 1
-         },
-         "Value" : "Slot: 0 Port: 1 Gigabit - Level",
-         "HostID" : "edgeswitch-098730"
-      },
-      ...
-   ]
-}
-```
-
-***Note***: Only configured hosts are queried.
-
-#### `GET /api/objects/interfaces::ifDescr?host=edgeswitch-*`
-
-Query specific object across all hosts. Use `?host=...` to filter queried hosts.
-
-```json
-{
-   "Instances" : [
-      {
-         "Index" : {
-            "interfaces::ifIndex" : 1
-         },
-         "HostID" : "edgeswitch-098730",
-         "Value" : "Slot: 0 Port: 1 Gigabit - Level"
-      },
-      {
-         "HostID" : "edgeswitch-098730",
-         "Index" : {
-            "interfaces::ifIndex" : 2
-         },
-         "Value" : "Slot: 0 Port: 2 Gigabit - Level"
-      },
-      {
-         "Value" : "Slot: 0 Port: 3 Gigabit - Level",
-         "HostID" : "edgeswitch-098730",
-         "Index" : {
-            "interfaces::ifIndex" : 3
-         }
-      },
-      ...
-      {
-         "HostID" : "edgeswitch-098730",
-         "Index" : {
-            "interfaces::ifIndex" : 71
-         },
-         "Value" : " Link Aggregate 6"
-      }
-   ],
-   "ID" : "interfaces::ifDescr",
-   "IndexKeys" : [
-      "interfaces::ifIndex"
-   ]
-}
 ```
 
 ***Note***: Only configured hosts are queried.
