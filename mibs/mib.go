@@ -7,9 +7,19 @@ import (
 )
 
 func makeMIB(name string, oid snmp.OID) MIB {
+	var oids snmp.OIDSet
+
+	if oid != nil {
+		oids = snmp.MakeOIDSet(oid)
+	} else {
+		// MIB without any OID has an empty OID set
+		oids = snmp.MakeOIDSet()
+	}
+
 	return MIB{
 		Name: name,
 		OID:  oid,
+		OIDs: oids,
 
 		registry: makeRegistry(),
 		objects:  make(map[IDKey]*Object),
@@ -20,6 +30,7 @@ func makeMIB(name string, oid snmp.OID) MIB {
 type MIB struct {
 	Name string
 	OID  snmp.OID
+	OIDs snmp.OIDSet
 	registry
 
 	objects map[IDKey]*Object
