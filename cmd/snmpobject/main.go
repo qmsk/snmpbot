@@ -17,7 +17,7 @@ func init() {
 	options.InitFlags()
 }
 
-func snmpobject(client *mibs.Client, id mibs.ID) error {
+func snmpobject(client mibs.Client, id mibs.ID) error {
 	var object = id.Object()
 
 	if object == nil {

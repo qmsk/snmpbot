@@ -82,7 +82,7 @@ func (host *Host) init(engine *Engine, config HostConfig) error {
 }
 
 func (host *Host) probe(probeMIBs MIBs) error {
-	var client = mibs.Client{host.client}
+	var client = mibs.MakeClient(host.client)
 	var ids = probeMIBs.ListIDs()
 	var mibs = make(MIBs)
 
@@ -130,7 +130,7 @@ func (host *Host) resolveTable(name string) (*mibs.Table, error) {
 }
 
 func (host *Host) getClient() (mibs.Client, error) {
-	return mibs.Client{host.client}, nil
+	return mibs.MakeClient(host.client), nil
 }
 
 type hostRoute struct {
