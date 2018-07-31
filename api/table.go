@@ -42,6 +42,7 @@ type TableEntry struct {
 	HostID  string `json:",omitempty"` // XXX: always?
 	Index   TableIndexMap
 	Objects TableObjectsMap
+	Errors  []Error `json:",omitempty"`
 }
 
 type TableError struct {

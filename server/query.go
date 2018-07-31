@@ -94,23 +94,13 @@ func (q *tableQuery) queryHostTable(host *Host, table *mibs.Table) error {
 	if client, err := host.getClient(); err != nil {
 		return err
 	} else if err := client.WalkTable(table, func(indexValues mibs.IndexValues, entryValues mibs.EntryValues, err error) error {
-		if indexValues != nil && entryValues != nil {
-			q.resultChan <- TableResult{
-				Host:        host,
-				Table:       table,
-				IndexValues: indexValues,
-				EntryValues: entryValues,
-			}
+		q.resultChan <- TableResult{
+			Host:        host,
+			Table:       table,
+			IndexValues: indexValues,
+			EntryValues: entryValues,
+			Error:       err,
 		}
-
-		if err != nil {
-			q.resultChan <- TableResult{
-				Host:  host,
-				Table: table,
-				Error: err,
-			}
-		}
-
 		return nil
 	}); err != nil {
 		return err

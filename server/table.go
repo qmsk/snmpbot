@@ -185,6 +185,20 @@ func (view tableView) entryFromResult(result TableResult) api.TableEntry {
 		entry.Objects[entryObject.String()] = result.EntryValues[i]
 	}
 
+	if result.Error == nil {
+	} else if entryErrors, ok := result.Error.(mibs.EntryErrors); ok {
+		entry.Errors = make([]api.Error, len(entryErrors))
+
+		for i, err := range entryErrors {
+			entry.Errors[i] = api.Error{err}
+		}
+
+	} else {
+		entry.Errors = []api.Error{
+			api.Error{result.Error},
+		}
+	}
+
 	return entry
 }
 
@@ -241,7 +255,7 @@ func (handler *tableHandler) query() api.Table {
 		Hosts:  handler.hosts,
 		Tables: MakeTables(handler.table),
 	}) {
-		if result.Error != nil {
+		if result.IndexValues == nil || result.EntryValues == nil {
 			table.Errors = append(table.Errors, tableView{result.Table}.errorFromResult(result))
 		} else {
 			table.Entries = append(table.Entries, tableView{result.Table}.entryFromResult(result))
