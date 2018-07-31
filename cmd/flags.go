@@ -40,6 +40,7 @@ func (options *Options) InitFlags() {
 func (options *Options) Parse() []string {
 	flag.Parse()
 
+	SetLogging(options.Logging.MakeLogging())
 	mibs.SetLogging(options.MIBsLogging.MakeLogging())
 	client.SetLogging(options.ClientLogging.MakeLogging())
 
