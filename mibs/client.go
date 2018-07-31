@@ -68,14 +68,10 @@ func (client Client) WalkObjects(objects []*Object, f func(*Object, IndexValues,
 	})
 }
 
-func (client Client) WalkTable(table *Table, f func(IndexValues, EntryValues) error) error {
+func (client Client) WalkTable(table *Table, f func(IndexValues, EntryValues, error) error) error {
 	return client.Walk(table.EntryOIDs(), func(varBinds []snmp.VarBind) error {
-		if indexValues, entryValues, err := table.Unpack(varBinds); err != nil {
-			return err
-		} else if err := f(indexValues, entryValues); err != nil {
-			return err
-		} else {
-			return nil
-		}
+		indexValues, entryValues, err := table.Unpack(varBinds)
+
+		return f(indexValues, entryValues, err)
 	})
 }
