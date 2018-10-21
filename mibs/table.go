@@ -2,12 +2,30 @@ package mibs
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/qmsk/snmpbot/snmp"
 )
 
 type EntrySyntax []*Object
 type EntryValues []Value
 type EntryMap map[IDKey]Value
+
+type EntryErrors []error
+
+func (errs *EntryErrors) add(err error) {
+	*errs = append(*errs, err)
+}
+
+func (errs EntryErrors) Error() string {
+	var strs = make([]string, len(errs))
+
+	for i, err := range errs {
+		strs[i] = err.Error()
+	}
+
+	return strings.Join(strs, "; ")
+}
 
 func (entrySyntax EntrySyntax) OIDs() []snmp.OID {
 	var oids = make([]snmp.OID, len(entrySyntax))
@@ -37,6 +55,7 @@ func indexEquals(expected []int, index []int) bool {
 func (entrySyntax EntrySyntax) Unpack(varBinds []snmp.VarBind) ([]int, EntryValues, error) {
 	var entryValues = make(EntryValues, len(entrySyntax))
 	var entryIndex []int
+	var entryErrors EntryErrors
 
 	if len(varBinds) != len(entrySyntax) {
 		return nil, nil, fmt.Errorf("Invalid VarBinds[%v] for entry syntax: %v", varBinds, entrySyntax)
@@ -48,18 +67,23 @@ func (entrySyntax EntrySyntax) Unpack(varBinds []snmp.VarBind) ([]int, EntryValu
 		if err := varBind.ErrorValue(); err != nil {
 			// skip unsupported columns
 		} else if index := entryObject.OID.Index(varBind.OID()); index == nil {
-			return entryIndex, nil, fmt.Errorf("Invalid VarBind[%v] OID for %v: %v", varBind.OID(), entryObject, entryObject.OID)
+			entryErrors.add(fmt.Errorf("Invalid VarBind[%v] OID for %v: %v", varBind.OID(), entryObject, entryObject.OID))
 		} else if entryIndex != nil && !indexEquals(entryIndex, index) {
-			return entryIndex, nil, fmt.Errorf("Mismatching VarBind[%v] OID for %v: index %v != expected %v", varBind.OID(), entryObject, index, entryIndex)
+			entryErrors.add(fmt.Errorf("Mismatching VarBind[%v] OID for %v: index %v != expected %v", varBind.OID(), entryObject, index, entryIndex))
 		} else if value, err := entryObject.Unpack(varBind); err != nil {
-			return entryIndex, nil, fmt.Errorf("Invalid VarBind[%v] Value for %v: %v", varBind.OID(), entryObject, err)
+			entryErrors.add(fmt.Errorf("Invalid VarBind[%v] Value for %v: %v", varBind.OID(), entryObject, err))
 		} else {
 			entryIndex = index
 			entryValues[i] = value
 		}
 	}
 
-	return entryIndex, entryValues, nil
+	if entryErrors == nil {
+		// interface with type but nil value does not compare equal to nil
+		return entryIndex, entryValues, nil
+	} else {
+		return entryIndex, entryValues, entryErrors
+	}
 }
 
 func (entrySyntax EntrySyntax) Map(varBinds []snmp.VarBind) (EntryMap, error) {
@@ -98,10 +122,18 @@ func (table Table) EntryOIDs() []snmp.OID {
 }
 
 func (table Table) Unpack(varBinds []snmp.VarBind) (IndexValues, EntryValues, error) {
-	if index, entryValues, err := table.EntrySyntax.Unpack(varBinds); err != nil {
-		return nil, entryValues, err
-	} else if indexValues, err := table.IndexSyntax.UnpackIndex(index); err != nil {
-		return indexValues, nil, err
+	index, entryValues, entryErr := table.EntrySyntax.Unpack(varBinds)
+
+	if index == nil {
+		return nil, entryValues, entryErr
+	}
+
+	indexValues, indexErr := table.IndexSyntax.UnpackIndex(index)
+
+	if indexErr != nil {
+		return indexValues, entryValues, indexErr
+	} else if entryErr != nil {
+		return indexValues, entryValues, entryErr
 	} else {
 		return indexValues, entryValues, nil
 	}

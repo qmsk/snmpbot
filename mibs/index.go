@@ -22,7 +22,7 @@ func (indexSyntax IndexSyntax) UnpackIndex(index []int) (IndexValues, error) {
 
 	for i, indexObject := range indexSyntax {
 		if indexValue, indexRemaining, err := indexObject.Syntax.UnpackIndex(index); err != nil {
-			return nil, fmt.Errorf("Invalid index for %v: %v", indexObject, err)
+			return values, fmt.Errorf("Invalid index for %v: %v", indexObject, err)
 		} else {
 			values[i] = indexValue
 			index = indexRemaining
