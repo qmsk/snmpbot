@@ -633,6 +633,8 @@ Query matching objects from probed MIBs for a specific host (dynamic or configur
 
 Use multiple `?object=A&object=B` filters to query different objects. Use `?object=MIB::foo*` filters to query multiple matching objects.
 
+Use `?table=IF-MIB::ifTable` to query for objects belonging to matching tables. These can also be combined with `?object=` filters, e.g. `GET /api/hosts/public@localhost/objects/?table=IF-MIB::ifXTable&object=*HC*Pkts` to return 64-bit per-interface packet counters as separate objects.
+
 ```json
    {
       "IndexKeys" : [

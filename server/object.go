@@ -39,6 +39,14 @@ func (objects Objects) add(object *mibs.Object) {
 	objects[ObjectID(object.Key())] = object
 }
 
+func (objects Objects) exists(object *mibs.Object) bool {
+	if _, exists := objects[ObjectID(object.Key())]; exists {
+		return true
+	} else {
+		return false
+	}
+}
+
 func (objects Objects) String() string {
 	var ss = make([]string, 0, len(objects))
 
@@ -80,6 +88,29 @@ func (objects Objects) Filter(filters ...string) Objects {
 	return filtered
 }
 
+// Select objects belonging to tables
+func (objects Objects) FilterTables(tables Tables) Objects {
+	var filtered = make(Objects)
+
+	for _, table := range tables {
+		for _, object := range table.EntrySyntax {
+			if object.NotAccessible {
+				continue
+			}
+
+			if !objects.exists(object) {
+				continue
+			}
+
+			filtered.add(object)
+		}
+	}
+
+	log.Debugf("Filter %d => %d objects by tables: %#v", len(objects), len(filtered), tables)
+
+	return filtered
+}
+
 type objectsRoute struct {
 	engine *Engine
 }
@@ -90,6 +121,7 @@ func (route objectsRoute) Index(name string) (web.Resource, error) {
 			engine:  route.engine,
 			hosts:   route.engine.Hosts(),
 			objects: route.engine.Objects(),
+			tables:  route.engine.Tables(),
 		}, nil
 	} else if object, err := mibs.ResolveObject(name); err != nil {
 		return nil, web.Errorf(404, "%v", err)
@@ -241,6 +273,7 @@ type objectsHandler struct {
 	engine  *Engine
 	hosts   Hosts
 	objects Objects
+	tables  Tables
 	params  api.ObjectsQuery
 }
 
@@ -284,6 +317,10 @@ func (handler *objectsHandler) GetREST() (web.Resource, error) {
 
 	if handler.params.Hosts != nil {
 		handler.hosts = handler.hosts.Filter(handler.params.Hosts...)
+	}
+
+	if handler.params.Tables != nil {
+		handler.objects = handler.objects.FilterTables(handler.tables.Filter(handler.params.Tables...))
 	}
 
 	if handler.params.Objects != nil {

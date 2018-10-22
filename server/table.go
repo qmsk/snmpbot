@@ -98,6 +98,8 @@ func (tables Tables) Filter(filters ...string) Tables {
 		}
 	}
 
+	log.Debugf("Filter %d => %d tables: %#v", len(tables), len(filtered), filters)
+
 	return filtered
 }
 
