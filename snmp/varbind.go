@@ -178,7 +178,11 @@ func (varBind *VarBind) Set(genericValue interface{}) error {
 }
 
 func (varBind *VarBind) SetNull() {
-	varBind.RawValue = asn1.NullRawValue
+	if rawValue, err := pack(asn1.ClassUniversal, asn1.TagNull, nil); err != nil {
+		panic(err)
+	} else {
+		varBind.RawValue = rawValue
+	}
 }
 
 func (varBind *VarBind) SetError(errorValue ErrorValue) error {
