@@ -1,7 +1,13 @@
 language: go
 go:
-- '1.9'
-- '1.10'
+  - '1.9'
+  - '1.10'
+env:
+  global:
+    # DOCKER_USERNAME
+    - secure: Eb4Qe+9FMFqI7KvroqBl3zCEuyjb5f04Khx2iEWAfVrmwCKyt3xKSLQZgLL+q3X3j71girwgtKR1WecC5832E6DpYRrq6itoALNEPJDadE3AcUYMsh1NsrhK5aMxvEev5vwDqhBX+wEayO+pj4r1FY4AYCuR3vcZVj01lxEZEzglRMrPisGbrgWvlKSwp08j/NOTDdmNQ4tcNCYHMUpOjHi9lzCA9FAcH4Jo6TfAKgcX3VZ0hxGLb79xhGBkC5uQplJviQbUKVQinYVAIp41dsI9EDmYX097OigJs+gWZZpyktbGfnu7lDczqd8uLdPPb74dVqhdkqsbVSqo+/5OyexDYAXzf1rB8ciXfbYOZ1ogSBorMoljSaXKatzcrzdItQKCqG/0MNuKM7YL9kNyxjIMx4Jx/Hy1hdmoUWbaHdQPLUiT8ohq9CcmKaACbvaYFRw5/LxzOTXhLVjBK6QlmBr4AYVomPUg+DD+WslZ2tAi7Gt8jUNi+4BJOn8+E17dytVyV5x1fks0ZPsztuv9/4MVQhjFHfU1z9mW+9jxhS+A/7cZFyICtWkcFZGSs8yFuFEIydEX/hfQOOortUnVD24LaDdPev/rtRvBW/rqzQcTKHHRhBFL89E7jKevHQta0nSoeWCoer2+sbgjL5E3VgrPxAX+3A+5kMOkT5JrlyM=
+    # DOCKER_PASSWORD
+    - secure: HKvn5AWLEIyEEV+AubCpCZYW89vWyZ32UNxEYN31AMrs12iQ8S9oOHnlR7282R3BCqqTsqAGs7J+KWnKZlT7fWobzf58t/tPyGezZO2WnsvN5IWDZL++IUuKjWMbSfy3rHGJKtJgXDqFgFrdlnhN6ZgZBC7huhxZfLgq8/22ZN1pQ+il1syFAwmPpiYy2Ef8SRRjbRMqw4oxf+fPUAm9RvAhcPL5pbIbNs/N0DEeBhe6Is2PicUE5wKrxT6/Ido6shwv+LbgaS/SG/JB2eLMEnMRn+7o6tcMLisg8oYQD0IWgUrB5UFe0/6z62CDcfr6Wm7Kf9Tw8efWtWVUIS2nf2R0B4svtnQA6hknAGwDulYCWqa92w95V/311O5Fa9eCc5p5/eBBg5tAtLcSxIEgz+qeOtsAcDLT8Z2hxVGDJfKKiUjuIivBKihgPT5EVdb5GFBa967AlmchydHWdUoiI5Rzmr0beK+Dm5MTCsF6xTrnYVEvFSD24UdTZelKbj4E1+doOIda8SFdMigEB82Od4DvHpBWIH0JQykAkvDqzoHJkEIDU2ekBDNhRURvVzXgrPrXJjBfJxwXuuXvhDhz45xp6FBvhqqKl0jfiDn7FR+8vCE2c0RbPe38IXAi8kdjAaKsOpRpRW2X8VG9CZr0z0TaN9s/qNBsyxoll0jUmRI=
 
 before_install:
   - curl -L -o /tmp/dep-linux-amd64 https://github.com/golang/dep/releases/download/v0.5.0/dep-linux-amd64 && install -m 0755 /tmp/dep-linux-amd64 $GOPATH/bin/dep
