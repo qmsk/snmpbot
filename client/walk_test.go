@@ -187,7 +187,7 @@ func TestWalkTableSparse(t *testing.T) {
 		transport.mockGetNextMulti("test", []snmp.OID{oid1.Extend(3), oid2.Extend(3)}, []snmp.VarBind{snmp.MakeVarBind(oid1, snmp.EndOfMibViewValue), snmp.MakeVarBind(oid2, snmp.EndOfMibViewValue)})
 
 		testWalk(t, client, walkTest{
-			options: WalkOptions{Objects: []snmp.OID{oid1, oid2}},
+			options: WalkOptions{TableEntries: []snmp.OID{oid1, oid2}},
 			results: [][]snmp.VarBind{
 				[]snmp.VarBind{varBinds1[0], varBinds2[0]},
 				[]snmp.VarBind{varBinds1[1], errBind},
