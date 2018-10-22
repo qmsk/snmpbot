@@ -69,4 +69,5 @@ type ObjectQuery struct {
 type ObjectsQuery struct {
 	Hosts   []string `schema:"host"`
 	Objects []string `schema:"object"`
+	Tables  []string `schema:"table"`
 }

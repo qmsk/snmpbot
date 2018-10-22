@@ -285,6 +285,7 @@ func (route hostObjectsRoute) Index(name string) (web.Resource, error) {
 			engine:  route.engine,
 			hosts:   MakeHosts(route.host),
 			objects: route.host.Objects(),
+			tables:  route.host.Tables(),
 		}, nil
 	} else if object, err := route.host.resolveObject(name); err != nil {
 		return nil, web.Errorf(404, "%v", err)
