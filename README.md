@@ -8,6 +8,10 @@ REST (HTTP/JSON) API for writing SNMP applications.
 
 ## Requirements
 
+### Go version 1.10
+
+* [encoding/asn1: add MarshalWithParams](https://github.com/golang/go/commit/c32626a4ce9293979c407c4e6a799d1bec37aa18#diff-3c740598b49abcc8e5f74f801dc75255)
+
 ### Go version 1.9
 
 * [encoding/asn1: add NullBytes and NullRawValue for working with ASN.1 NULL](https://github.com/golang/go/commit/d9b1f9e85ee097ebc95c5904cee921ba7be4f732)

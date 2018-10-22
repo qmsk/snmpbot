@@ -22,14 +22,9 @@ func decodeTestPacket(str string) []byte {
 func testVarBind(oid OID, value interface{}) VarBind {
 	varBind := MakeVarBind(oid, value)
 
-	if varBind.RawValue.Bytes == nil {
-		varBind.RawValue.Bytes = []byte{}
-	}
-
-	if data, err := asn1.Marshal(varBind.RawValue); err != nil {
+	// ensure that varBind has both Bytes *and* FullBytes, for comparisons with unmarshal
+	if _, err := asn1.Unmarshal(varBind.RawValue.FullBytes, &varBind.RawValue); err != nil {
 		panic(err)
-	} else {
-		varBind.RawValue.FullBytes = data
 	}
 
 	return varBind
