@@ -42,12 +42,12 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:39cb7921adb12b8420b1aa722c40484b235d995f39bf00f184860c58f3b47570"
+  digest = "1:778326db7844e786ad21d198ef74f6e3f739fe5d6ca24f25d56384f461f7bf76"
   name = "github.com/qmsk/go-logging"
   packages = ["."]
   pruneopts = "UT"
-  revision = "69543e686d5be4cd70a1628e49fbca86308e3fcb"
-  version = "v0.1.0"
+  revision = "50e0b557012ec6563bc2bd2e6a4821f3ce8da078"
+  version = "v0.2.0"
 
 [[projects]]
   digest = "1:4020bb2f298e72268704e727ff5f317abcf44ac81372821f2f1aa3be14c95ef5"
