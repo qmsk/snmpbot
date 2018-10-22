@@ -164,6 +164,39 @@ func TestWalkTablePartial(t *testing.T) {
 	})
 }
 
+// test of column with sparse values
+func TestWalkTableSparse(t *testing.T) {
+	var oid1 = snmp.MustParseOID(".1.3.6.1.2.1.2.2.1.2") // IF-MIB::ifDescr
+	var oid2 = snmp.MustParseOID(".1.3.6.1.2.1.2.2.1.4") // IF-MIB::ifMtu
+
+	var errBind = snmp.MakeVarBind(oid2.Extend(2), snmp.NoSuchInstanceValue)
+	var varBinds1 = []snmp.VarBind{
+		snmp.MakeVarBind(oid1.Extend(1), string("test1")),
+		snmp.MakeVarBind(oid1.Extend(2), string("test2")),
+		snmp.MakeVarBind(oid1.Extend(3), string("test3")),
+	}
+	var varBinds2 = []snmp.VarBind{
+		snmp.MakeVarBind(oid2.Extend(1), int(1500)),
+		snmp.MakeVarBind(oid2.Extend(3), int(1500)),
+	}
+
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		transport.mockGetNextMulti("test", []snmp.OID{oid1, oid2}, []snmp.VarBind{varBinds1[0], varBinds2[0]})
+		transport.mockGetNextMulti("test", []snmp.OID{oid1.Extend(1), oid2.Extend(1)}, []snmp.VarBind{varBinds1[1], varBinds2[1]})
+		transport.mockGetNextMulti("test", []snmp.OID{oid1.Extend(2), oid2.Extend(2)}, []snmp.VarBind{varBinds1[2], varBinds2[1]})
+		transport.mockGetNextMulti("test", []snmp.OID{oid1.Extend(3), oid2.Extend(3)}, []snmp.VarBind{snmp.MakeVarBind(oid1, snmp.EndOfMibViewValue), snmp.MakeVarBind(oid2, snmp.EndOfMibViewValue)})
+
+		testWalk(t, client, walkTest{
+			options: WalkOptions{Objects: []snmp.OID{oid1, oid2}},
+			results: [][]snmp.VarBind{
+				[]snmp.VarBind{varBinds1[0], varBinds2[0]},
+				[]snmp.VarBind{varBinds1[1], errBind},
+				[]snmp.VarBind{varBinds1[2], varBinds2[1]},
+			},
+		})
+	})
+}
+
 func TestWalkSplit(t *testing.T) {
 	var oids = []snmp.OID{
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0},
