@@ -83,6 +83,10 @@ func (client *Client) walkGetNext(options WalkOptions, walkFunc WalkFunc) error 
 		walkOIDs[len(options.Scalars)+i] = oid
 	}
 
+	if len(walkOIDs) == 0 {
+		return nil
+ 	}
+
 	for {
 		// request splitting
 		varBinds, err := client.GetNextSplit(walkOIDs)
@@ -94,13 +98,17 @@ func (client *Client) walkGetNext(options WalkOptions, walkFunc WalkFunc) error 
 			// no scalar vars matched !?
 		}
 
-		if !walkObjectVars(options.Objects, walkOIDs[len(options.Scalars):len(options.Scalars)+len(options.Objects)], varBinds[len(options.Scalars):len(options.Scalars)+len(options.Objects)]) {
+		if len(options.Objects) > 0 && !walkObjectVars(options.Objects, walkOIDs[objectsOffset:objectsOffset+len(options.Objects)], varBinds[objectsOffset:objectsOffset+len(options.Objects)]) {
 			// did not make progress
 			return nil
 		}
 
 		if err := walkFunc(varBinds); err != nil {
 			return err
+		}
+
+		if len(options.Objects) == 0 {
+			return nil
 		}
 	}
 }
@@ -158,7 +166,8 @@ func (client *Client) walkGetBulk(options WalkOptions, walkFunc WalkFunc) error 
 func (client *Client) GetScalars(oids []snmp.OID) ([]snmp.VarBind, error) {
 	var retVars []snmp.VarBind
 
-	return retVars, client.WalkWithOptions(WalkOptions{Objects: oids}, func(vars []snmp.VarBind) error {
+	// walkGetBulk is useless, and doesn't support scalars-only
+	return retVars, client.walkGetNext(WalkOptions{Scalars: oids}, func(vars []snmp.VarBind) error {
 		retVars = vars
 
 		return nil

@@ -65,7 +65,9 @@ func TestWalkScalarsOnly(t *testing.T) {
 		// nothing, because no entries
 		testWalk(t, client, walkTest{
 			options: WalkOptions{Scalars: []snmp.OID{oid}},
-			results: [][]snmp.VarBind{},
+			results: [][]snmp.VarBind{
+				[]snmp.VarBind{varBinds[0]},
+			},
 		})
 	})
 }
