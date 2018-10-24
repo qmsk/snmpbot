@@ -309,7 +309,7 @@ func (handler *tablesHandler) query() []*api.Table {
 	}) {
 		var table = tableMap[TableID(result.Table.Key())]
 
-		if result.Error != nil {
+		if result.IndexValues == nil || result.EntryValues == nil {
 			table.Errors = append(table.Errors, tableView{result.Table}.errorFromResult(result))
 		} else {
 			table.Entries = append(table.Entries, tableView{result.Table}.entryFromResult(result))
