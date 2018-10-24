@@ -6,6 +6,167 @@ SNMP client (manager) library for Go with support for SMI MIBs.
 
 REST (HTTP/JSON) API for writing SNMP applications.
 
+## Quickstart
+
+The easiest way to run `snmpbot` is using the pre-built Docker image:
+
+```
+$ docker run --net=host qmsk/snmpbot
+INFO mibs: Load MIBs from directory: /opt/qmsk/snmpbot/mibs
+...
+INFO web: Listen on :8286...
+```
+
+The pre-build Docker images contain the most common MIB definitions.
+
+### Querying a scalar object
+
+You can then query the API at `:8286`:
+
+#### `$ curl -s 'http://localhost:8286/api/hosts/public@localhost/objects/SNMPv2-MIB::sysDescr' | jq`
+```json
+{
+  "ID": "SNMPv2-MIB::sysDescr",
+  "Instances": [
+    {
+      "HostID": "public@localhost",
+      "Value": "Linux tehobari 4.15.0-33-generic #36~16.04.1-Ubuntu SMP Wed Aug 15 17:21:05 UTC 2018 x86_64"
+    }
+  ]
+}
+```
+
+### Querying objects
+
+You can query an object with multiple indexes, and `snmpbot` will parse the OID indexes:
+
+#### `$ curl -s 'http://localhost:8286/api/hosts/public@localhost/objects/IF-MIB::ifName' | jq`
+```
+{
+  "ID": "IF-MIB::ifName",
+  "IndexKeys": [
+    "IF-MIB::ifIndex"
+  ],
+  "Instances": [
+    {
+      "HostID": "public@localhost",
+      "Index": {
+        "IF-MIB::ifIndex": 1
+      },
+      "Value": "lo"
+    },
+    {
+      "HostID": "public@localhost",
+      "Index": {
+        "IF-MIB::ifIndex": 2
+      },
+      "Value": "enp0s31f6"
+    },
+    {
+      "HostID": "public@localhost",
+      "Index": {
+        "IF-MIB::ifIndex": 4
+      },
+      "Value": "wlp4s0"
+    },
+    {
+      "HostID": "public@localhost",
+      "Index": {
+        "IF-MIB::ifIndex": 5
+      },
+      "Value": "docker0"
+    },
+    {
+      "HostID": "public@localhost",
+      "Index": {
+        "IF-MIB::ifIndex": 95
+      },
+      "Value": "wwp0s20f0u3c2"
+    }
+  ]
+}
+```
+
+### Querying tables
+
+You can also query tables, and `snmpbot` will group the objects into entries with indexes:
+
+#### `curl -s 'http://localhost:8286/api/hosts/public@localhost/tables/IF-MIB::ifTable' | jq`
+```json
+{
+  "ID": "IF-MIB::ifTable",
+  "IndexKeys": [
+    "IF-MIB::ifIndex"
+  ],
+  "ObjectKeys": [
+    "IF-MIB::ifIndex",
+    "IF-MIB::ifDescr",
+    "IF-MIB::ifType",
+    "IF-MIB::ifMtu",
+    "IF-MIB::ifSpeed",
+    "IF-MIB::ifPhysAddress",
+    "IF-MIB::ifAdminStatus",
+    "IF-MIB::ifOperStatus",
+    "IF-MIB::ifLastChange",
+    "IF-MIB::ifInOctets",
+    "IF-MIB::ifInUcastPkts",
+    "IF-MIB::ifInNUcastPkts",
+    "IF-MIB::ifInDiscards",
+    "IF-MIB::ifInErrors",
+    "IF-MIB::ifInUnknownProtos",
+    "IF-MIB::ifOutOctets",
+    "IF-MIB::ifOutUcastPkts",
+    "IF-MIB::ifOutNUcastPkts",
+    "IF-MIB::ifOutDiscards",
+    "IF-MIB::ifOutErrors",
+    "IF-MIB::ifOutQLen",
+    "IF-MIB::ifSpecific"
+  ],
+  "Entries": [
+    {
+      "HostID": "public@localhost",
+      "Index": {
+        "IF-MIB::ifIndex": 1
+      },
+      "Objects": {
+        "IF-MIB::ifAdminStatus": "up",
+        "IF-MIB::ifDescr": "lo",
+        "IF-MIB::ifInDiscards": 0,
+        "IF-MIB::ifInErrors": 0,
+        "IF-MIB::ifInNUcastPkts": 0,
+        "IF-MIB::ifInOctets": 1692789727,
+        "IF-MIB::ifInUcastPkts": 1086499,
+        "IF-MIB::ifInUnknownProtos": 0,
+        "IF-MIB::ifIndex": 1,
+        "IF-MIB::ifLastChange": 0,
+        "IF-MIB::ifMtu": 65536,
+        "IF-MIB::ifOperStatus": "up",
+        "IF-MIB::ifOutDiscards": 0,
+        "IF-MIB::ifOutErrors": 0,
+        "IF-MIB::ifOutNUcastPkts": 0,
+        "IF-MIB::ifOutOctets": 1692789727,
+        "IF-MIB::ifOutQLen": 0,
+        "IF-MIB::ifOutUcastPkts": 1086499,
+        "IF-MIB::ifPhysAddress": "",
+        "IF-MIB::ifSpecific": ".0.0",
+        "IF-MIB::ifSpeed": 10000000,
+        "IF-MIB::ifType": "softwareLoopback"
+      }
+    },
+    ...
+  ]
+}
+```
+
+### Advanced usage
+
+See the remainder of the README for more advanced usage, including:
+
+* Querying multiple objects in parallel
+* Querying multiple tables in parallel
+* Configuring hosts (static TOML config file, or dynamic HTTP `POST/PUT/DELETE` API)
+* Querying multiple hosts in parallel
+
 ## Requirements
 
 ### Go version 1.10
