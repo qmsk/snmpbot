@@ -112,7 +112,7 @@ func (objects Objects) FilterTables(tables Tables) Objects {
 }
 
 type objectsRoute struct {
-	engine *Engine
+	engine Engine
 }
 
 func (route objectsRoute) Index(name string) (web.Resource, error) {
@@ -229,7 +229,7 @@ func (view objectsView) makeAPIIndex() []api.ObjectIndex {
 }
 
 type objectHandler struct {
-	engine *Engine
+	engine Engine
 	hosts  Hosts
 	object *mibs.Object
 	params api.ObjectQuery
@@ -270,7 +270,7 @@ func (handler *objectHandler) GetREST() (web.Resource, error) {
 }
 
 type objectsHandler struct {
-	engine  *Engine
+	engine  Engine
 	hosts   Hosts
 	objects Objects
 	tables  Tables

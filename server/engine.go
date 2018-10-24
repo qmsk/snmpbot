@@ -2,18 +2,43 @@ package server
 
 import (
 	"github.com/qmsk/snmpbot/client"
+	"github.com/qmsk/snmpbot/mibs"
 	"sync"
 )
 
-func newEngine(clientEngine *client.Engine) *Engine {
-	return &Engine{
+type engineClient interface {
+	String() string
+	Probe(ids []mibs.ID) ([]bool, error)
+	WalkObjects(objects []*mibs.Object, f func(*mibs.Object, mibs.IndexValues, mibs.Value, error) error) error
+	WalkTable(table *mibs.Table, f func(mibs.IndexValues, mibs.EntryValues, error) error) error
+}
+
+type Engine interface {
+	ClientOptions() client.Options
+	client(config client.Config) (engineClient, error)
+
+	MIBs() MIBs
+	Objects() Objects
+	Tables() Tables
+
+	Hosts() Hosts
+	AddHost(host *Host) bool
+	SetHost(host *Host)
+	DelHost(host *Host) bool
+
+	QueryObjects(query ObjectQuery) <-chan ObjectResult
+	QueryTables(query TableQuery) <-chan TableResult
+}
+
+func newEngine(clientEngine *client.Engine) *engine {
+	return &engine{
 		clientEngine: clientEngine,
 		mibs:         AllMIBs(),
 		hosts:        make(Hosts),
 	}
 }
 
-type Engine struct {
+type engine struct {
 	clientEngine  *client.Engine
 	clientOptions client.Options
 
@@ -22,7 +47,7 @@ type Engine struct {
 	hostsMutex sync.Mutex
 }
 
-func (engine *Engine) loadConfig(config Config) error {
+func (engine *engine) loadConfig(config Config) error {
 	engine.clientOptions = config.ClientOptions
 
 	for hostName, hostConfig := range config.Hosts {
@@ -32,7 +57,7 @@ func (engine *Engine) loadConfig(config Config) error {
 	return nil
 }
 
-func (engine *Engine) loadHost(id HostID, config HostConfig) {
+func (engine *engine) loadHost(id HostID, config HostConfig) {
 	host, err := loadHost(engine, id, config)
 
 	if err != nil {
@@ -48,12 +73,24 @@ func (engine *Engine) loadHost(id HostID, config HostConfig) {
 	}
 }
 
-func (engine *Engine) MIBs() MIBs {
+func (engine *engine) ClientOptions() client.Options {
+	return engine.clientOptions
+}
+
+func (engine *engine) client(config client.Config) (engineClient, error) {
+	if c, err := client.NewClient(engine.clientEngine, config); err != nil {
+		return nil, err
+	} else {
+		return mibs.MakeClient(c), nil
+	}
+}
+
+func (engine *engine) MIBs() MIBs {
 	return engine.mibs
 }
 
 // Returns false if host already exists
-func (engine *Engine) AddHost(host *Host) bool {
+func (engine *engine) AddHost(host *Host) bool {
 	engine.hostsMutex.Lock()
 	defer engine.hostsMutex.Unlock()
 
@@ -65,7 +102,7 @@ func (engine *Engine) AddHost(host *Host) bool {
 	}
 }
 
-func (engine *Engine) SetHost(host *Host) {
+func (engine *engine) SetHost(host *Host) {
 	engine.hostsMutex.Lock()
 	defer engine.hostsMutex.Unlock()
 
@@ -73,7 +110,7 @@ func (engine *Engine) SetHost(host *Host) {
 }
 
 // Returns false if host does not exist
-func (engine *Engine) DelHost(host *Host) bool {
+func (engine *engine) DelHost(host *Host) bool {
 	engine.hostsMutex.Lock()
 	defer engine.hostsMutex.Unlock()
 
@@ -85,7 +122,7 @@ func (engine *Engine) DelHost(host *Host) bool {
 	}
 }
 
-func (engine *Engine) Hosts() Hosts {
+func (engine *engine) Hosts() Hosts {
 	var hosts = make(Hosts)
 
 	engine.hostsMutex.Lock()
@@ -101,17 +138,17 @@ func (engine *Engine) Hosts() Hosts {
 	return hosts
 }
 
-func (engine *Engine) Objects() Objects {
+func (engine *engine) Objects() Objects {
 	// TODO: limit by MIBs?
 	return AllObjects()
 }
 
-func (engine *Engine) Tables() Tables {
+func (engine *engine) Tables() Tables {
 	// TODO: limit by MIBs?
 	return AllTables()
 }
 
-func (engine *Engine) QueryObjects(query ObjectQuery) <-chan ObjectResult {
+func (engine *engine) QueryObjects(query ObjectQuery) <-chan ObjectResult {
 	log.Infof("Query objects %v @ %v", query.Objects, query.Hosts)
 
 	var q = objectQuery{
@@ -124,7 +161,7 @@ func (engine *Engine) QueryObjects(query ObjectQuery) <-chan ObjectResult {
 	return q.resultChan
 }
 
-func (engine *Engine) QueryTables(query TableQuery) <-chan TableResult {
+func (engine *engine) QueryTables(query TableQuery) <-chan TableResult {
 	log.Infof("Query tables %v @ %v", query.Tables, query.Hosts)
 
 	var q = tableQuery{

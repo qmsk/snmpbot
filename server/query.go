@@ -40,9 +40,7 @@ func (q *objectQuery) fail(host *Host, err error) {
 }
 
 func (q *objectQuery) queryHost(host *Host) error {
-	if client, err := host.getClient(); err != nil {
-		return err
-	} else if err := client.WalkObjects(q.Objects.List(), func(object *mibs.Object, indexValues mibs.IndexValues, value mibs.Value, err error) error {
+	if err := host.client.WalkObjects(q.Objects.List(), func(object *mibs.Object, indexValues mibs.IndexValues, value mibs.Value, err error) error {
 		q.resultChan <- ObjectResult{
 			Host:        host,
 			Object:      object,
@@ -91,9 +89,7 @@ func (q *tableQuery) fail(host *Host, table *mibs.Table, err error) {
 }
 
 func (q *tableQuery) queryHostTable(host *Host, table *mibs.Table) error {
-	if client, err := host.getClient(); err != nil {
-		return err
-	} else if err := client.WalkTable(table, func(indexValues mibs.IndexValues, entryValues mibs.EntryValues, err error) error {
+	if err := host.client.WalkTable(table, func(indexValues mibs.IndexValues, entryValues mibs.EntryValues, err error) error {
 		q.resultChan <- TableResult{
 			Host:        host,
 			Table:       table,

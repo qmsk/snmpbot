@@ -53,7 +53,7 @@ func (hosts Hosts) Filter(filters ...string) Hosts {
 }
 
 type hostsRoute struct {
-	engine    *Engine
+	engine    Engine
 	hosts     Hosts
 	hostQuery api.HostQuery
 }
@@ -63,7 +63,7 @@ func (route *hostsRoute) QueryREST() interface{} {
 }
 
 func (route *hostsRoute) makeHostConfig() HostConfig {
-	var options = route.engine.clientOptions
+	var options = route.engine.ClientOptions()
 
 	if route.hostQuery.Community != "" {
 		options.Community = route.hostQuery.Community
@@ -93,7 +93,7 @@ func (route *hostsRoute) Index(name string) (web.Resource, error) {
 }
 
 type hostsView struct {
-	engine *Engine
+	engine Engine
 	hosts  Hosts
 	post   api.HostPOST
 }
@@ -117,7 +117,7 @@ func (view *hostsView) IntoREST() interface{} {
 }
 
 func (view *hostsView) makeHostConfig() HostConfig {
-	var options = view.engine.clientOptions
+	var options = view.engine.ClientOptions()
 
 	if view.post.Community != "" {
 		options.Community = view.post.Community

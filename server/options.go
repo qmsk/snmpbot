@@ -31,7 +31,7 @@ func (options Options) LoadConfig(clientOptions client.Options) (Config, error) 
 	return config, nil
 }
 
-func (options Options) Engine(clientEngine *client.Engine, config Config) (*Engine, error) {
+func (options Options) Engine(clientEngine *client.Engine, config Config) (Engine, error) {
 	var engine = newEngine(clientEngine)
 
 	if err := engine.loadConfig(config); err != nil {
