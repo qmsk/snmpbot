@@ -8,7 +8,7 @@ REST (HTTP/JSON) API for writing SNMP applications.
 
 ## Quickstart
 
-The easiest way to run `snmpbot` is using the pre-built Docker image:
+The easiest way to run `snmpbot` is using the [pre-built Docker image](https://hub.docker.com/r/qmsk/snmpbot/):
 
 ```
 $ docker run --net=host qmsk/snmpbot
@@ -17,7 +17,7 @@ INFO mibs: Load MIBs from directory: /opt/qmsk/snmpbot/mibs
 INFO web: Listen on :8286...
 ```
 
-The pre-build Docker images contain the most common MIB definitions.
+The pre-build Docker images contain the [most common MIB definitions](https://github.com/qmsk/snmpbot-mibs).
 
 ### Querying a scalar object
 
@@ -36,9 +36,9 @@ You can then query the API at `:8286`:
 }
 ```
 
-### Querying objects
+### Querying multi-instance objects
 
-You can query an object with multiple indexes, and `snmpbot` will parse the OID indexes:
+You can query an object with multiple instances, and `snmpbot` will parse the OID indexes:
 
 #### `$ curl -s 'http://localhost:8286/api/hosts/public@localhost/objects/IF-MIB::ifName' | jq`
 ```
