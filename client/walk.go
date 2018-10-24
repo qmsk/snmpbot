@@ -265,10 +265,22 @@ func (client *Client) GetScalars(oids []snmp.OID) ([]snmp.VarBind, error) {
 	})
 }
 
+// Perform GetNext walk steps for the given objects, yielding VarBinds of objects underneath given oid.
+// Yields EndOfMibViewValue VarBinds once walk goes outside of the given OIDs.
+//
+// The objects are not assumed to be related to eachother.
+// This will yield partial EndOfMibView results until all OIDs have been walked through.
 func (client *Client) WalkObjects(oids []snmp.OID, walkFunc WalkFunc) error {
 	return client.WalkWithOptions(WalkOptions{Objects: oids}, walkFunc)
 }
 
+// Perform GetNext walk steps for the given objects, yielding VarBinds of objects underneath given oid.
+// Yields EndOfMibView VarBinds once walk goes outside of the given OIDs.
+// Yields NoSuchInstance VarBinds if walk step returns inconsistent OID indexes.
+//
+// The objects are assuemd to be related to eachother, and each step yields objects with the same OID index suffix.
+// This will yield objects matching the minimum index suffix for each step, masking objects with non-matching indexes with synthesized NoSuchInstance VarBinds.
+// This will yield partial EndOfMibView results until all OIDs have been walked through.
 func (client *Client) WalkTable(entryOids []snmp.OID, walkFunc WalkFunc) error {
 	return client.WalkWithOptions(WalkOptions{TableEntries: entryOids}, walkFunc)
 }
