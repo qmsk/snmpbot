@@ -6,41 +6,23 @@ import (
 	"testing"
 )
 
-type walkResult struct {
-	scalars []snmp.VarBind
-	entries []snmp.VarBind
-}
-
 type walkTest struct {
 	useBulk bool
-	scalars []snmp.OID
-	entries []snmp.OID
+	options WalkOptions
 
-	results []walkResult
+	results [][]snmp.VarBind
 }
 
 func testWalk(t *testing.T, client *Client, test walkTest) {
-	var results = []walkResult{}
-
-	for i, result := range test.results {
-		if result.scalars == nil {
-			result.scalars = []snmp.VarBind{}
-		}
-		if result.entries == nil {
-			result.entries = []snmp.VarBind{}
-		}
-
-		test.results[i] = result
-	}
-
+	var results = make([][]snmp.VarBind, 0)
 	client.options.NoBulk = !test.useBulk
 
-	if err := client.WalkWithScalars(test.scalars, test.entries, func(scalars []snmp.VarBind, entries []snmp.VarBind) error {
-		results = append(results, walkResult{scalars, entries})
+	if err := client.WalkWithOptions(test.options, func(vars []snmp.VarBind) error {
+		results = append(results, vars)
 
 		return nil
 	}); err != nil {
-		t.Fatalf("Walk(%v, %v): %v", test.scalars, test.entries, err)
+		t.Fatalf("Walk(%#v): %v", test.options, err)
 	}
 
 	assert.Equal(t, test.results, results)
@@ -62,10 +44,10 @@ func TestWalkTable(t *testing.T) {
 		transport.mockGetNext("test", ifName.Extend(2), varBinds[2])
 
 		testWalk(t, client, walkTest{
-			entries: []snmp.OID{ifName},
-			results: []walkResult{
-				{entries: []snmp.VarBind{varBinds[0]}},
-				{entries: []snmp.VarBind{varBinds[1]}},
+			options: WalkOptions{Objects: []snmp.OID{ifName}},
+			results: [][]snmp.VarBind{
+				[]snmp.VarBind{varBinds[0]},
+				[]snmp.VarBind{varBinds[1]},
 			},
 		})
 	})
@@ -82,8 +64,10 @@ func TestWalkScalarsOnly(t *testing.T) {
 
 		// nothing, because no entries
 		testWalk(t, client, walkTest{
-			scalars: []snmp.OID{oid},
-			results: []walkResult{},
+			options: WalkOptions{Scalars: []snmp.OID{oid}},
+			results: [][]snmp.VarBind{
+				[]snmp.VarBind{varBinds[0]},
+			},
 		})
 	})
 }
@@ -91,9 +75,11 @@ func TestWalkScalarsOnly(t *testing.T) {
 func TestWalkEmpty(t *testing.T) {
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
 		testWalk(t, client, walkTest{
-			scalars: []snmp.OID{},
-			entries: []snmp.OID{},
-			results: []walkResult{},
+			options: WalkOptions{
+				Scalars: []snmp.OID{},
+				Objects: []snmp.OID{},
+			},
+			results: [][]snmp.VarBind{},
 		})
 	})
 }
@@ -116,11 +102,13 @@ func TestWalk(t *testing.T) {
 		transport.mockGetNextMulti("test", []snmp.OID{ifNumber, ifName.Extend(2)}, []snmp.VarBind{varBind, varBinds[2]})
 
 		testWalk(t, client, walkTest{
-			scalars: []snmp.OID{ifNumber},
-			entries: []snmp.OID{ifName},
-			results: []walkResult{
-				{scalars: []snmp.VarBind{varBind}, entries: []snmp.VarBind{varBinds[0]}},
-				{scalars: []snmp.VarBind{varBind}, entries: []snmp.VarBind{varBinds[1]}},
+			options: WalkOptions{
+				Scalars: []snmp.OID{ifNumber},
+				Objects: []snmp.OID{ifName},
+			},
+			results: [][]snmp.VarBind{
+				[]snmp.VarBind{varBind, varBinds[0]},
+				[]snmp.VarBind{varBind, varBinds[1]},
 			},
 		})
 	})
@@ -140,15 +128,16 @@ func TestWalkV2(t *testing.T) {
 		transport.mockGetNext("test", varBinds[1].OID(), varBinds[2])
 
 		testWalk(t, client, walkTest{
-			entries: []snmp.OID{oid},
-			results: []walkResult{
-				{entries: []snmp.VarBind{varBinds[0]}},
-				{entries: []snmp.VarBind{varBinds[1]}},
+			options: WalkOptions{Objects: []snmp.OID{oid}},
+			results: [][]snmp.VarBind{
+				[]snmp.VarBind{varBinds[0]},
+				[]snmp.VarBind{varBinds[1]},
 			},
 		})
 	})
 }
 
+// test walk of missing column
 func TestWalkTablePartial(t *testing.T) {
 	var oid1 = snmp.OID{1, 3, 6, 1, 2, 1, 17, 7, 1, 2, 2, 1, 1} // Q-BRIDGE-MIB::dot1qTpFdbAddress (not-accessible)
 	var oid2 = snmp.OID{1, 3, 6, 1, 2, 1, 17, 7, 1, 2, 2, 1, 2} // Q-BRIDGE-MIB::dot1qTpFdbPort
@@ -166,16 +155,49 @@ func TestWalkTablePartial(t *testing.T) {
 		transport.mockGetNextMulti("test", []snmp.OID{oid1, varBinds[1].OID()}, []snmp.VarBind{varBinds[0], varBinds[2]})
 
 		testWalk(t, client, walkTest{
-			entries: []snmp.OID{oid1, oid2},
-			results: []walkResult{
-				{entries: []snmp.VarBind{errBind, varBinds[0]}},
-				{entries: []snmp.VarBind{errBind, varBinds[1]}},
+			options: WalkOptions{Objects: []snmp.OID{oid1, oid2}},
+			results: [][]snmp.VarBind{
+				[]snmp.VarBind{errBind, varBinds[0]},
+				[]snmp.VarBind{errBind, varBinds[1]},
 			},
 		})
 	})
 }
 
-func TestWalkMany(t *testing.T) {
+// test of column with sparse values
+func TestWalkTableSparse(t *testing.T) {
+	var oid1 = snmp.MustParseOID(".1.3.6.1.2.1.2.2.1.2") // IF-MIB::ifDescr
+	var oid2 = snmp.MustParseOID(".1.3.6.1.2.1.2.2.1.4") // IF-MIB::ifMtu
+
+	var errBind = snmp.MakeVarBind(oid2.Extend(2), snmp.NoSuchInstanceValue)
+	var varBinds1 = []snmp.VarBind{
+		snmp.MakeVarBind(oid1.Extend(1), string("test1")),
+		snmp.MakeVarBind(oid1.Extend(2), string("test2")),
+		snmp.MakeVarBind(oid1.Extend(3), string("test3")),
+	}
+	var varBinds2 = []snmp.VarBind{
+		snmp.MakeVarBind(oid2.Extend(1), int(1500)),
+		snmp.MakeVarBind(oid2.Extend(3), int(1500)),
+	}
+
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		transport.mockGetNextMulti("test", []snmp.OID{oid1, oid2}, []snmp.VarBind{varBinds1[0], varBinds2[0]})
+		transport.mockGetNextMulti("test", []snmp.OID{oid1.Extend(1), oid2.Extend(1)}, []snmp.VarBind{varBinds1[1], varBinds2[1]})
+		transport.mockGetNextMulti("test", []snmp.OID{oid1.Extend(2), oid2.Extend(2)}, []snmp.VarBind{varBinds1[2], varBinds2[1]})
+		transport.mockGetNextMulti("test", []snmp.OID{oid1.Extend(3), oid2.Extend(3)}, []snmp.VarBind{snmp.MakeVarBind(oid1, snmp.EndOfMibViewValue), snmp.MakeVarBind(oid2, snmp.EndOfMibViewValue)})
+
+		testWalk(t, client, walkTest{
+			options: WalkOptions{TableEntries: []snmp.OID{oid1, oid2}},
+			results: [][]snmp.VarBind{
+				[]snmp.VarBind{varBinds1[0], varBinds2[0]},
+				[]snmp.VarBind{varBinds1[1], errBind},
+				[]snmp.VarBind{varBinds1[2], varBinds2[1]},
+			},
+		})
+	})
+}
+
+func TestWalkSplit(t *testing.T) {
 	var oids = []snmp.OID{
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0},
 		snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 1},
@@ -219,9 +241,9 @@ func TestWalkMany(t *testing.T) {
 		})
 
 		testWalk(t, client, walkTest{
-			entries: oids,
-			results: []walkResult{
-				{entries: varBinds},
+			options: WalkOptions{Objects: oids},
+			results: [][]snmp.VarBind{
+				varBinds,
 			},
 		})
 	})
@@ -320,11 +342,13 @@ func TestWalkBulk(t *testing.T) {
 
 		testWalk(t, client, walkTest{
 			useBulk: true,
-			scalars: []snmp.OID{ifNumber},
-			entries: []snmp.OID{ifIndex, ifName},
-			results: []walkResult{
-				{scalars: []snmp.VarBind{numberVar}, entries: []snmp.VarBind{indexVars[0], nameVars[0]}},
-				{scalars: []snmp.VarBind{numberVar}, entries: []snmp.VarBind{indexVars[1], nameVars[1]}},
+			options: WalkOptions{
+				Scalars: []snmp.OID{ifNumber},
+				Objects: []snmp.OID{ifIndex, ifName},
+			},
+			results: [][]snmp.VarBind{
+				[]snmp.VarBind{numberVar, indexVars[0], nameVars[0]},
+				[]snmp.VarBind{numberVar, indexVars[1], nameVars[1]},
 			},
 		})
 	})
@@ -334,9 +358,11 @@ func TestWalkBulkEmpty(t *testing.T) {
 	withTestClient(t, "test", func(transport *testTransport, client *Client) {
 		testWalk(t, client, walkTest{
 			useBulk: true,
-			scalars: []snmp.OID{},
-			entries: []snmp.OID{},
-			results: []walkResult{},
+			options: WalkOptions{
+				Scalars: []snmp.OID{},
+				Objects: []snmp.OID{},
+			},
+			results: [][]snmp.VarBind{},
 		})
 	})
 }

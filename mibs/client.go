@@ -22,7 +22,7 @@ func (client Client) Probe(ids []ID) ([]bool, error) {
 		oids[i] = id.OID
 	}
 
-	if varBinds, err := client.WalkScalars(oids); err != nil {
+	if varBinds, err := client.GetScalars(oids); err != nil {
 		return probed, err
 	} else {
 		for i, varBind := range varBinds {
@@ -44,7 +44,7 @@ func (client Client) WalkObjects(objects []*Object, f func(*Object, IndexValues,
 		oids[i] = object.OID
 	}
 
-	return client.Walk(oids, func(varBinds []snmp.VarBind) error {
+	return client.Client.WalkObjects(oids, func(varBinds []snmp.VarBind) error {
 		for i, varBind := range varBinds {
 			var object = objects[i]
 			var walkErr error
@@ -69,7 +69,7 @@ func (client Client) WalkObjects(objects []*Object, f func(*Object, IndexValues,
 }
 
 func (client Client) WalkTable(table *Table, f func(IndexValues, EntryValues, error) error) error {
-	return client.Walk(table.EntryOIDs(), func(varBinds []snmp.VarBind) error {
+	return client.Client.WalkTable(table.EntryOIDs(), func(varBinds []snmp.VarBind) error {
 		indexValues, entryValues, err := table.Unpack(varBinds)
 
 		return f(indexValues, entryValues, err)

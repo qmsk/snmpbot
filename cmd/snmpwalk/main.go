@@ -17,7 +17,7 @@ func init() {
 }
 
 func snmpwalk(client *client.Client, oids ...snmp.OID) error {
-	return client.Walk(oids, func(varBinds []snmp.VarBind) error {
+	return client.WalkObjects(oids, func(varBinds []snmp.VarBind) error {
 		for _, varBind := range varBinds {
 			options.PrintVarBind(varBind)
 		}

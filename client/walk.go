@@ -23,7 +23,7 @@ func walkScalarVars(oids []snmp.OID, varBinds []snmp.VarBind) bool {
 	return ok
 }
 
-func walkEntryVars(rootOIDs []snmp.OID, walkOIDs []snmp.OID, varBinds []snmp.VarBind) bool {
+func walkObjectVars(rootOIDs []snmp.OID, walkOIDs []snmp.OID, varBinds []snmp.VarBind) bool {
 	var ok = false
 
 	for i, varBind := range varBinds {
@@ -44,6 +44,87 @@ func walkEntryVars(rootOIDs []snmp.OID, walkOIDs []snmp.OID, varBinds []snmp.Var
 	return ok
 }
 
+func indexCmp(a []int, b []int) int {
+	if len(a) < len(b) {
+		return -1
+	} else if len(a) > len(b) {
+		return +1
+	}
+
+	for i, _ := range a {
+		if a[i] < b[i] {
+			return -1
+		} else if a[i] > b[i] {
+			return +1
+		}
+	}
+
+	return 0 // equal
+}
+
+func walkEntryVars(rootOIDs []snmp.OID, walkOIDs []snmp.OID, varBinds []snmp.VarBind) bool {
+	var ok = false
+	var entryIndex []int
+
+	// select minimum index
+	for i, varBind := range varBinds {
+		var rootOID = rootOIDs[i]
+		var oid = varBind.OID()
+
+		if errorValue := varBind.ErrorValue(); errorValue == snmp.EndOfMibViewValue {
+			// explicit SNMPv2 break
+			continue
+		} else if oid.Equals(walkOIDs[i]) {
+			// not making progress
+			continue
+
+		} else if index := rootOID.Index(oid); index == nil {
+			// walked out of tree
+			varBinds[i] = snmp.MakeVarBind(rootOID, snmp.EndOfMibViewValue)
+			continue
+
+		} else if entryIndex == nil || indexCmp(entryIndex, index) > 0 {
+			entryIndex = index
+		}
+
+		// at least one object is making progress
+		ok = true
+	}
+
+	// select objects with matching index
+	for i, varBind := range varBinds {
+		var rootOID = rootOIDs[i]
+		var oid = varBind.OID()
+		var entryOID = rootOID.Extend(entryIndex...)
+
+		if index := rootOID.Index(oid); index == nil {
+			// error, leave as-is
+		} else if indexCmp(entryIndex, index) != 0 {
+			// hole, replace with snmp.NoSuchInstanceValue
+			varBinds[i] = snmp.MakeVarBind(entryOID, snmp.NoSuchInstanceValue)
+		} else {
+			// valid, leave as-is
+		}
+
+		walkOIDs[i] = entryOID
+	}
+
+	return ok
+}
+
+type WalkOptions struct {
+	// scalar objects with only one instance (.0), each walk step returns the same object instance
+	Scalars []snmp.OID
+
+	// mixed objects, each walk step may return objects with different indexes
+	Objects []snmp.OID
+
+	// table entry objects, each walk step returns objects with the same index
+	TableEntries []snmp.OID
+}
+
+type WalkFunc func(vars []snmp.VarBind) error
+
 // Object/Table traversal using GetNext.
 //
 // Scalar OIDs are objects that are always fetched for every traversed row.
@@ -55,22 +136,31 @@ func walkEntryVars(rootOIDs []snmp.OID, walkOIDs []snmp.OID, varBinds []snmp.Var
 // Returns if none of the entry varBinds are within the requested OIDs.
 //
 // Splits into multiple requests if the number of OIDs exceeds options.MaxVars.
-func (client *Client) WalkWithScalars(scalars []snmp.OID, entries []snmp.OID, walkFunc func(scalars []snmp.VarBind, entries []snmp.VarBind) error) error {
+func (client *Client) WalkWithOptions(options WalkOptions, walkFunc WalkFunc) error {
 	if client.options.NoBulk {
-		return client.walkGetNext(scalars, entries, walkFunc)
+		return client.walkGetNext(options, walkFunc)
 	} else {
-		return client.walkGetBulk(scalars, entries, walkFunc)
+		return client.walkGetBulk(options, walkFunc)
 	}
 }
 
-func (client *Client) walkGetNext(scalars []snmp.OID, entries []snmp.OID, walkFunc func(scalars []snmp.VarBind, entries []snmp.VarBind) error) error {
-	var walkOIDs = make([]snmp.OID, len(scalars)+len(entries))
+func (client *Client) walkGetNext(options WalkOptions, walkFunc WalkFunc) error {
+	var walkOIDs = make([]snmp.OID, len(options.Scalars)+len(options.Objects)+len(options.TableEntries))
+	var objectsOffset = len(options.Scalars)
+	var entriesOffset = len(options.Scalars) + len(options.Objects)
 
-	for i, oid := range scalars {
+	for i, oid := range options.Scalars {
 		walkOIDs[i] = oid
 	}
-	for i, oid := range entries {
-		walkOIDs[len(scalars)+i] = oid
+	for i, oid := range options.Objects {
+		walkOIDs[objectsOffset+i] = oid
+	}
+	for i, oid := range options.TableEntries {
+		walkOIDs[entriesOffset+i] = oid
+	}
+
+	if len(walkOIDs) == 0 {
+		return nil
 	}
 
 	for {
@@ -80,50 +170,77 @@ func (client *Client) walkGetNext(scalars []snmp.OID, entries []snmp.OID, walkFu
 			return err
 		}
 
-		var scalarVars = varBinds[:len(scalars)]
-		var entryVars = varBinds[len(scalars):]
-
-		if !walkScalarVars(scalars, scalarVars) {
+		if !walkScalarVars(options.Scalars, varBinds[0:len(options.Scalars)]) {
 			// no scalar vars matched !?
 		}
 
-		if !walkEntryVars(entries, walkOIDs[len(scalars):], entryVars) {
+		if len(options.Objects) > 0 && !walkObjectVars(options.Objects, walkOIDs[objectsOffset:objectsOffset+len(options.Objects)], varBinds[objectsOffset:objectsOffset+len(options.Objects)]) {
 			// did not make progress
 			return nil
 		}
 
-		if err := walkFunc(scalarVars, entryVars); err != nil {
+		if len(options.TableEntries) > 0 && !walkEntryVars(options.TableEntries, walkOIDs[entriesOffset:entriesOffset+len(options.TableEntries)], varBinds[entriesOffset:entriesOffset+len(options.TableEntries)]) {
+			// did not make progress
+			return nil
+		}
+
+		if err := walkFunc(varBinds); err != nil {
 			return err
+		}
+
+		if len(options.Objects) == 0 && len(options.TableEntries) == 0 {
+			return nil
 		}
 	}
 }
 
-func (client *Client) walkGetBulk(scalars []snmp.OID, entries []snmp.OID, walkFunc func(scalars []snmp.VarBind, entries []snmp.VarBind) error) error {
-	var walkOIDs = make([]snmp.OID, len(entries))
+func (client *Client) walkGetBulk(options WalkOptions, walkFunc WalkFunc) error {
+	var walkOIDs = make([]snmp.OID, len(options.Objects)+len(options.TableEntries))
+	var entriesOffset = len(options.Objects)
 
-	for i, oid := range entries {
+	for i, oid := range options.Objects {
 		walkOIDs[i] = oid
+	}
+	for i, oid := range options.TableEntries {
+		walkOIDs[entriesOffset+i] = oid
 	}
 
 	for {
 		// TODO: request splitting
-		scalarVars, entryList, err := client.GetBulk(scalars, walkOIDs)
+		scalarVars, entryList, err := client.GetBulk(options.Scalars, walkOIDs)
 		if err != nil {
 			return err
 		}
 
-		if !walkScalarVars(scalars, scalarVars) {
+		if !walkScalarVars(options.Scalars, scalarVars) {
 			// no scalar vars matched !?
 		}
 
 		var ok = false
 
 		for _, entryVars := range entryList {
-			if !walkEntryVars(entries, walkOIDs, entryVars) {
+			if len(options.Objects) > 0 && !walkObjectVars(options.Objects, walkOIDs[0:len(options.Objects)], entryVars[0:len(options.Objects)]) {
 				// no vars made progress, ignore the remainder
 				ok = false
 				break
-			} else if err := walkFunc(scalarVars, entryVars); err != nil {
+			}
+
+			if len(options.TableEntries) > 0 && !walkEntryVars(options.TableEntries, walkOIDs[entriesOffset:entriesOffset+len(options.TableEntries)], entryVars[entriesOffset:entriesOffset+len(options.TableEntries)]) {
+				// no vars made progress, ignore the remainder
+				ok = false
+				break
+			}
+
+			var vars = make([]snmp.VarBind, len(options.Scalars)+len(options.Objects)+len(options.TableEntries))
+
+			for i, v := range scalarVars {
+				vars[i] = v
+			}
+			for i, v := range entryVars {
+				vars[len(scalarVars)+i] = v
+			}
+
+			if err := walkFunc(vars); err != nil {
 				return err
 			} else {
 				ok = true
@@ -136,22 +253,34 @@ func (client *Client) walkGetBulk(scalars []snmp.OID, entries []snmp.OID, walkFu
 	}
 }
 
-func (client *Client) Walk(oids []snmp.OID, walkFunc func(varBinds []snmp.VarBind) error) error {
-	return client.WalkWithScalars(nil, oids, func(scalars []snmp.VarBind, entries []snmp.VarBind) error {
-		return walkFunc(entries)
+// Perform a single GetNext walk step, returning either objects underneath given oid, or EndOfMibViewValue
+func (client *Client) GetScalars(oids []snmp.OID) ([]snmp.VarBind, error) {
+	var retVars []snmp.VarBind
+
+	// walkGetBulk is useless, and doesn't support scalars-only
+	return retVars, client.walkGetNext(WalkOptions{Scalars: oids}, func(vars []snmp.VarBind) error {
+		retVars = vars
+
+		return nil
 	})
 }
 
-// Perform a single GetNext walk step, returning either objects underneath given oid, or EndOfMibViewValue
-func (client *Client) WalkScalars(oids []snmp.OID) ([]snmp.VarBind, error) {
-	// request splitting
-	if varBinds, err := client.GetNextSplit(oids); err != nil {
-		return nil, err
-	} else {
-		if !walkScalarVars(oids, varBinds) {
-			// no scalar vars matched !?
-		}
+// Perform GetNext walk steps for the given objects, yielding VarBinds of objects underneath given oid.
+// Yields EndOfMibViewValue VarBinds once walk goes outside of the given OIDs.
+//
+// The objects are not assumed to be related to eachother.
+// This will yield partial EndOfMibView results until all OIDs have been walked through.
+func (client *Client) WalkObjects(oids []snmp.OID, walkFunc WalkFunc) error {
+	return client.WalkWithOptions(WalkOptions{Objects: oids}, walkFunc)
+}
 
-		return varBinds, err
-	}
+// Perform GetNext walk steps for the given objects, yielding VarBinds of objects underneath given oid.
+// Yields EndOfMibView VarBinds once walk goes outside of the given OIDs.
+// Yields NoSuchInstance VarBinds if walk step returns inconsistent OID indexes.
+//
+// The objects are assuemd to be related to eachother, and each step yields objects with the same OID index suffix.
+// This will yield objects matching the minimum index suffix for each step, masking objects with non-matching indexes with synthesized NoSuchInstance VarBinds.
+// This will yield partial EndOfMibView results until all OIDs have been walked through.
+func (client *Client) WalkTable(entryOids []snmp.OID, walkFunc WalkFunc) error {
+	return client.WalkWithOptions(WalkOptions{TableEntries: entryOids}, walkFunc)
 }
