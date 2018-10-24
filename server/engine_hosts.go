@@ -4,6 +4,12 @@ import (
 	"sync"
 )
 
+func makeEngineHosts() engineHosts {
+	return engineHosts{
+		Hosts: make(Hosts),
+	}
+}
+
 type engineHosts struct {
 	mutex sync.Mutex
 

@@ -33,9 +33,7 @@ func newEngine(clientEngine *client.Engine) *engine {
 	return &engine{
 		clientEngine: clientEngine,
 		mibs:         AllMIBs(),
-		hosts: engineHosts{
-			Hosts: make(Hosts),
-		},
+		hosts:        makeEngineHosts(),
 	}
 }
 
