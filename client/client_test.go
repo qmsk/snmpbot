@@ -79,7 +79,7 @@ func TestGetTimeout(t *testing.T) {
 		} else if timeoutErr, ok := err.(TimeoutError); !ok {
 			t.Errorf("Get(%v): %v", oid, err)
 		} else {
-			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[1] after %v", timeoutErr.Duration))
+			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[%d] after %v", timeoutErr.request.id, timeoutErr.Duration))
 		}
 	})
 }
@@ -146,7 +146,7 @@ func TestGetRecvWrongAddr(t *testing.T) {
 		} else if timeoutErr, ok := err.(TimeoutError); !ok {
 			t.Errorf("Get(%v): %v", oid, err)
 		} else {
-			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[1] after %v", timeoutErr.Duration))
+			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[%d] after %v", timeoutErr.request.id, timeoutErr.Duration))
 		}
 	})
 }
@@ -186,7 +186,7 @@ func TestGetRecvWrongCommunity(t *testing.T) {
 		} else if timeoutErr, ok := err.(TimeoutError); !ok {
 			t.Errorf("Get(%v): %v", oid, err)
 		} else {
-			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[1] after %v", timeoutErr.Duration))
+			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[%d] after %v", timeoutErr.request.id, timeoutErr.Duration))
 		}
 	})
 }
