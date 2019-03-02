@@ -8,8 +8,9 @@ import (
 
 type requestIDPool uint32
 
+// Return next request ID between 0..214783647
 func (pool *requestIDPool) atomicNext() requestID {
-	return requestID(atomic.AddUint32((*uint32)(pool), 1))
+	return requestID(atomic.AddUint32((*uint32)(pool), 1) % requestIDWrapping)
 }
 
 func NewUDPEngine(udpOptions UDPOptions) (*Engine, error) {

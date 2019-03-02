@@ -6,7 +6,13 @@ import (
 	"time"
 )
 
-type requestID uint32
+/*
+	PDU ::= SEQUENCE {
+        request-id INTEGER (-214783648..214783647),
+*/
+type requestID int32
+
+const requestIDWrapping = (1 << 31)
 
 type requestMap map[ioKey]*Request
 
