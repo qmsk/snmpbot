@@ -2,11 +2,13 @@ package client
 
 import (
 	"fmt"
+	"math"
+	"testing"
+	"time"
+
 	"github.com/qmsk/go-logging"
 	"github.com/qmsk/snmpbot/snmp"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func makeTestClient(t *testing.T, addr string) (*testTransport, *Engine, *Client) {
@@ -77,7 +79,7 @@ func TestGetTimeout(t *testing.T) {
 		} else if timeoutErr, ok := err.(TimeoutError); !ok {
 			t.Errorf("Get(%v): %v", oid, err)
 		} else {
-			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[1] after %v", timeoutErr.Duration))
+			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[%d] after %v", timeoutErr.request.id, timeoutErr.Duration))
 		}
 	})
 }
@@ -144,7 +146,7 @@ func TestGetRecvWrongAddr(t *testing.T) {
 		} else if timeoutErr, ok := err.(TimeoutError); !ok {
 			t.Errorf("Get(%v): %v", oid, err)
 		} else {
-			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[1] after %v", timeoutErr.Duration))
+			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[%d] after %v", timeoutErr.request.id, timeoutErr.Duration))
 		}
 	})
 }
@@ -184,7 +186,7 @@ func TestGetRecvWrongCommunity(t *testing.T) {
 		} else if timeoutErr, ok := err.(TimeoutError); !ok {
 			t.Errorf("Get(%v): %v", oid, err)
 		} else {
-			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[1] after %v", timeoutErr.Duration))
+			assert.EqualError(t, err, fmt.Sprintf("SNMP<testing> timeout for GetRequest<1.3.6.1.2.1.1.5.0>@test[%d] after %v", timeoutErr.request.id, timeoutErr.Duration))
 		}
 	})
 }
@@ -509,4 +511,63 @@ func TestGetRequestGetBulkOdd(t *testing.T) {
 			},
 		}, entryVarsList)
 	})
+}
+
+func testGetRequestID(t *testing.T, initRequestIDPool requestIDPool, requestID int) {
+	var oid = snmp.OID{1, 3, 6, 1, 2, 1, 1, 5, 0}
+	var value = int64(1)
+
+	withTestClient(t, "test", func(transport *testTransport, client *Client) {
+		transport.passRequestID = true
+
+		client.engine.requestIDPool = initRequestIDPool
+
+		transport.On("GetRequest", IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetRequestType, RequestID: requestID},
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(oid, nil),
+				},
+			},
+		}).Return(nil, IO{
+			Addr: testAddr("test"),
+			Packet: snmp.Packet{
+				Version:   snmp.SNMPv2c,
+				Community: []byte("public"),
+			},
+			PDUMeta: snmp.PDUMeta{PDUType: snmp.GetResponseType, RequestID: requestID},
+			PDU: snmp.GenericPDU{
+				VarBinds: []snmp.VarBind{
+					snmp.MakeVarBind(oid, 1),
+				},
+			},
+		})
+
+		if varBinds, err := client.Get(oid); err != nil {
+			t.Fatalf("Get(%v): %v", oid, err)
+		} else {
+			assertVarBind(t, varBinds, 0, oid, value)
+		}
+	})
+}
+
+func TestGetRequestID0(t *testing.T) {
+	testGetRequestID(t, 0, 1)
+}
+
+func TestGetRequestIDWrap(t *testing.T) {
+	testGetRequestID(t, math.MaxInt32-1, math.MaxInt32)
+}
+
+func TestGetRequestIDWrap0(t *testing.T) {
+	testGetRequestID(t, math.MaxInt32, 0)
+}
+
+func TestGetRequestIDWrap1(t *testing.T) {
+	testGetRequestID(t, math.MaxInt32+1, 1)
 }

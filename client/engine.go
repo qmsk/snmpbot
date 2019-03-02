@@ -3,13 +3,19 @@ package client
 import (
 	"fmt"
 	"github.com/qmsk/go-logging"
+	"math/rand"
 	"sync/atomic"
 )
 
 type requestIDPool uint32
 
+func randomizedRequestIDPool() requestIDPool {
+	return requestIDPool(rand.Uint32())
+}
+
+// Return next request ID between 0..214783647
 func (pool *requestIDPool) atomicNext() requestID {
-	return requestID(atomic.AddUint32((*uint32)(pool), 1))
+	return requestID(atomic.AddUint32((*uint32)(pool), 1) % requestIDWrapping)
 }
 
 func NewUDPEngine(udpOptions UDPOptions) (*Engine, error) {
@@ -28,7 +34,7 @@ func makeEngine(transport Transport) Engine {
 	return Engine{
 		transport: transport,
 
-		requestIDPool: 0, // TODO: randomize
+		requestIDPool: randomizedRequestIDPool(),
 		requests:      make(requestMap),
 		requestChan:   make(chan *Request),
 		timeoutChan:   make(chan ioKey),

@@ -27,6 +27,8 @@ type testTransport struct {
 
 	recvChan      chan IO
 	recvErrorChan chan error
+
+	passRequestID bool
 }
 
 func (transport *testTransport) String() string {
@@ -40,8 +42,10 @@ func (transport *testTransport) Resolve(addr string) (net.Addr, error) {
 func (transport *testTransport) Send(io IO) error {
 	var requestID = io.RequestID
 
-	// override requestID to 0 for assert.Equal() comparison
-	io.RequestID = 0
+	if !transport.passRequestID {
+		// override requestID to 0 for assert.Equal() comparison
+		io.RequestID = 0
+	}
 
 	args := transport.MethodCalled(io.PDUType.String(), io)
 
@@ -49,7 +53,10 @@ func (transport *testTransport) Send(io IO) error {
 		// no response
 	} else {
 		recv := ret.(IO)
-		recv.RequestID = requestID
+
+		if !transport.passRequestID {
+			recv.RequestID = requestID
+		}
 
 		transport.recvChan <- recv
 	}
