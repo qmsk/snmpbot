@@ -7,9 +7,20 @@ import (
 )
 
 func makeMIB(name string, oid snmp.OID) MIB {
+	var oids snmp.OIDSet
+
+	if oid != nil {
+		oids = snmp.MakeOIDSet(oid)
+	} else {
+		// MIB without any OID has an empty OID set
+		oids = snmp.MakeOIDSet()
+	}
+
 	return MIB{
-		ID:       ID{OID: oid},
-		Name:     name,
+		Name: name,
+		OID:  oid,
+		OIDs: oids,
+
 		registry: makeRegistry(),
 		objects:  make(map[IDKey]*Object),
 		tables:   make(map[IDKey]*Table),
@@ -17,8 +28,9 @@ func makeMIB(name string, oid snmp.OID) MIB {
 }
 
 type MIB struct {
-	ID
-	Name string // shadows ID.Name, which is empty
+	Name string
+	OID  snmp.OID
+	OIDs snmp.OIDSet
 	registry
 
 	objects map[IDKey]*Object
@@ -29,22 +41,12 @@ func (mib *MIB) String() string {
 	return mib.Name
 }
 
-func (mib *MIB) MakeID(name string, ids ...int) ID {
-	return ID{mib, name, mib.OID.Extend(ids...)}
-}
-
 func (mib *MIB) registerObject(object Object) *Object {
 	mibRegistry.registerOID(object.ID)
 	mib.registry.register(object.ID)
 	mib.objects[object.ID.Key()] = &object
 
 	return &object
-}
-
-func (mib *MIB) RegisterObject(id ID, object Object) *Object {
-	object.ID = id
-
-	return mib.registerObject(object)
 }
 
 func (mib *MIB) registerTable(table Table) *Table {
@@ -55,12 +57,6 @@ func (mib *MIB) registerTable(table Table) *Table {
 	return &table
 }
 
-func (mib *MIB) RegisterTable(id ID, table Table) *Table {
-	table.ID = id
-
-	return mib.registerTable(table)
-}
-
 /* Resolve MIB-relative ID by human-readable name:
 ".1.0"
 "sysDescr"
@@ -69,7 +65,7 @@ func (mib *MIB) RegisterTable(id ID, table Table) *Table {
 var mibResolveRegexp = regexp.MustCompile("^([^.]+?)?([.][0-9.]+)?$")
 
 func (mib *MIB) Resolve(name string) (ID, error) {
-	var id = ID{OID: mib.OID}
+	var id = ID{MIB: mib, OID: mib.OID}
 	var nameID, nameOID string
 
 	if matches := mibResolveRegexp.FindStringSubmatch(name); matches == nil {

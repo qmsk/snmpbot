@@ -1,14 +1,17 @@
 package mibs
 
 import (
+	"github.com/qmsk/snmpbot/snmp"
 	"github.com/stretchr/testify/assert"
+
 	"testing"
 )
 
 var (
-	TestMIB = RegisterMIB("TEST-MIB", 1, 0, 1)
+	TestMIB = registerMIB(makeMIB("TEST-MIB", snmp.OID{1, 0, 1}))
 
-	TestObject = TestMIB.RegisterObject(TestMIB.MakeID("test", 1, 1), Object{
+	TestObject = TestMIB.registerObject(Object{
+		ID:     ID{MIB: TestMIB, Name: "test", OID: snmp.OID{1, 0, 1, 1, 1}},
 		Syntax: DisplayStringSyntax{},
 	})
 )

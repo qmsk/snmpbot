@@ -21,6 +21,14 @@ func TestConfigResolveMIB(t *testing.T) {
 	}
 }
 
+func TestConfigMIBOIDs(t *testing.T) {
+	if resolveMIB, err := ResolveMIB("TEST2-MIB"); err != nil {
+		t.Errorf("ResolveMIB TEST2-MIB: %v", err)
+	} else {
+		assert.Equal(t, "{.1.0.2 .1.1.5}", resolveMIB.OIDs.String())
+	}
+}
+
 func TestConfigResolve(t *testing.T) {
 	if id, err := Resolve("TEST2-MIB"); err != nil {
 		t.Errorf("Resolve TEST2-MIB: %v", err)
@@ -133,12 +141,22 @@ func TestConfigLookupObject(t *testing.T) {
 	}
 }
 
+func TestConfigFormatObject(t *testing.T) {
+	assert.Equal(t, "TEST2-MIB::test", FormatOID(snmp.OID{1, 0, 2, 1, 1}))
+	assert.Equal(t, "TEST2-MIB::test.0", FormatOID(snmp.OID{1, 0, 2, 1, 1, 0}))
+}
+
 func TestConfigLookupObjectExt(t *testing.T) {
 	if object := LookupObject(snmp.OID{1, 1, 5, 1}); object == nil {
 		t.Errorf("LookupObject .1.1.5.1: %v", nil)
 	} else {
 		assert.Equal(t, "TEST2-MIB::extObject", object.String())
 	}
+}
+
+func TestConfigFormatObjectExt(t *testing.T) {
+	assert.Equal(t, "TEST2-MIB::extObject", FormatOID(snmp.OID{1, 1, 5, 1}))
+	assert.Equal(t, "TEST2-MIB::extObject.0", FormatOID(snmp.OID{1, 1, 5, 1, 0}))
 }
 
 func TestConfigObjectUnknownSyntax(t *testing.T) {

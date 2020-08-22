@@ -24,27 +24,39 @@ func (config ConfigID) resolve(mib *MIB) (ID, error) {
 
 type MIBConfig struct {
 	OID     string
+	OIDs    []string
 	Name    string
 	Objects []ObjectConfig
 	Tables  []TableConfig
-
-	oid snmp.OID
 }
 
-func (config MIBConfig) build() (MIB, error) {
+func (config MIBConfig) makeMIB() (MIB, error) {
 	if oid, err := snmp.ParseOID(config.OID); err != nil {
 		return MIB{}, fmt.Errorf("Invalid OID for MIB %v: %v", config.Name, err)
 	} else {
 		return makeMIB(config.Name, oid), nil
 	}
+}
 
+func (config MIBConfig) loadOIDs(mib *MIB) error {
+	for _, o := range config.OIDs {
+		if oid, err := snmp.ParseOID(o); err != nil {
+			return fmt.Errorf("Invalid OID %v for MIB %v: %v", o, config.Name, err)
+		} else {
+			mib.OIDs.Add(oid)
+		}
+	}
+
+	return nil
 }
 
 func (config MIBConfig) loadMIB() (*MIB, error) {
-	if buildMIB, err := config.build(); err != nil {
+	if mib, err := config.makeMIB(); err != nil {
+		return nil, err
+	} else if err := config.loadOIDs(&mib); err != nil {
 		return nil, err
 	} else {
-		return registerMIB(buildMIB), nil
+		return registerMIB(mib), nil
 	}
 }
 
@@ -52,6 +64,8 @@ func (config MIBConfig) loadObjects(mib *MIB) error {
 	for _, objectConfig := range config.Objects {
 		if object, err := objectConfig.build(mib); err != nil {
 			return fmt.Errorf("Invalid Object %v: %v", objectConfig.Name, err)
+		} else if mib.OIDs.Get(object.OID) == nil {
+			return fmt.Errorf("Unknown OID %v for Object %v: outside of MIB OIDs %v", object.OID, objectConfig.Name, mib.OIDs)
 		} else {
 			mib.registerObject(object)
 		}
@@ -69,8 +83,12 @@ func (config MIBConfig) loadTables(mib *MIB, loadContext loadContext) error {
 	for _, tableConfig := range config.Tables {
 		if table, err := tableConfig.build(mib); err != nil {
 			return fmt.Errorf("Invalid Table %v: %v", tableConfig.Name, err)
+		} else if mib.OIDs.Get(table.OID) == nil {
+			return fmt.Errorf("Unknown OID %v for Table %v: outside of MIB OIDs %v", table.OID, tableConfig.Name, mib.OIDs)
 		} else {
-			loadContext.entryMap[mib.Name+"::"+tableConfig.EntryName] = mib.registerTable(table)
+			var table = mib.registerTable(table)
+
+			loadContext.entryMap[mib.Name+"::"+tableConfig.EntryName] = table
 			loadContext.augmentsMap[mib.Name+"::"+tableConfig.EntryName] = tableConfig.AugmentsEntry
 		}
 	}

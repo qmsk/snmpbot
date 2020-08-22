@@ -13,7 +13,35 @@ type Client struct {
 	*client.Client
 }
 
-// Probe the MIB at id
+// Probe for the existence of given MIBs
+func (client Client) ProbeMIBs(mibs []*MIB) ([]bool, error) {
+	var probed = make([]bool, len(mibs))
+	var oids []snmp.OID
+	var mibIndex []int
+
+	for i, mib := range mibs {
+		for _, oid := range mib.OIDs {
+			oids = append(oids, oid)
+			mibIndex = append(mibIndex, i)
+		}
+	}
+
+	if varBinds, err := client.WalkScalars(oids); err != nil {
+		return probed, err
+	} else {
+		for i, varBind := range varBinds {
+			if err := varBind.ErrorValue(); err != nil {
+				// not supported
+			} else {
+				probed[mibIndex[i]] = true
+			}
+		}
+	}
+
+	return probed, nil
+}
+
+// Probe for the existence of arbitrary OIDs
 func (client Client) Probe(ids []ID) ([]bool, error) {
 	var oids = make([]snmp.OID, len(ids))
 	var probed = make([]bool, len(ids))

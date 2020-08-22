@@ -9,19 +9,13 @@ import (
 var mibRegistry = makeRegistry()
 
 func registerMIB(mib MIB) *MIB {
-	mib.ID.MIB = &mib
-
-	mibRegistry.registerName(mib.ID, mib.Name)
+	mibRegistry.registerName(ID{MIB: &mib, OID: mib.OID}, mib.Name)
 
 	if mib.OID != nil {
-		mibRegistry.registerOID(mib.ID)
+		mibRegistry.registerOID(ID{MIB: &mib, OID: mib.OID})
 	}
 
 	return &mib
-}
-
-func RegisterMIB(name string, oid ...int) *MIB {
-	return registerMIB(makeMIB(name, snmp.OID(oid)))
 }
 
 func ResolveMIB(name string) (*MIB, error) {
@@ -34,11 +28,6 @@ func ResolveMIB(name string) (*MIB, error) {
 
 func WalkMIBs(f func(mib *MIB)) {
 	mibRegistry.walk(func(id ID) {
-		if id.OID == nil {
-			// skip MIBs without a top-level OID
-			return
-		}
-
 		f(id.MIB)
 	})
 }
@@ -69,8 +58,7 @@ func Resolve(name string) (ID, error) {
 	} else if mib, err := ResolveMIB(nameMIB); err != nil {
 		return id, err
 	} else {
-		id = mib.ID
-		id.Name = "" // fixup MIB.ID re-use of Name
+		id = ID{MIB: mib, OID: mib.OID}
 	}
 
 	if nameID == "" {

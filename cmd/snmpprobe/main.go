@@ -18,16 +18,27 @@ func init() {
 
 func snmpprobe(client mibs.Client, ids ...mibs.ID) error {
 	if len(ids) == 0 {
-		mibs.WalkMIBs(func(mib *mibs.MIB) {
-			ids = append(ids, mib.ID)
-		})
-	}
+		var mibList []*mibs.MIB
 
-	if probed, err := client.Probe(ids); err != nil {
-		return err
+		mibs.WalkMIBs(func(mib *mibs.MIB) {
+			mibList = append(mibList, mib)
+		})
+
+		if probed, err := client.ProbeMIBs(mibList); err != nil {
+			return err
+		} else {
+			for i, ok := range probed {
+				fmt.Printf("%v = %v\n", mibList[i], ok)
+			}
+		}
+
 	} else {
-		for i, ok := range probed {
-			fmt.Printf("%v = %v\n", ids[i], ok)
+		if probed, err := client.Probe(ids); err != nil {
+			return err
+		} else {
+			for i, ok := range probed {
+				fmt.Printf("%v = %v\n", ids[i], ok)
+			}
 		}
 	}
 

@@ -83,17 +83,23 @@ func (host *Host) init(engine *Engine, config HostConfig) error {
 
 func (host *Host) probe(probeMIBs MIBs) error {
 	var client = mibs.MakeClient(host.client)
-	var ids = probeMIBs.ListIDs()
+	var mibList []*mibs.MIB
 	var mibs = make(MIBs)
 
 	host.log.Infof("Probing MIBs: %v", probeMIBs)
 
-	if probed, err := client.Probe(ids); err != nil {
+	for _, mib := range probeMIBs {
+		mibList = append(mibList, mib)
+	}
+
+	if probed, err := client.ProbeMIBs(mibList); err != nil {
 		return err
 	} else {
 		for i, ok := range probed {
+			host.log.Debugf("probe MIB %v => %v", mibList[i], ok)
+
 			if ok {
-				mibs.Add(ids[i].MIB)
+				mibs.Add(mibList[i])
 			}
 		}
 	}
