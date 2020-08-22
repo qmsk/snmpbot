@@ -79,3 +79,21 @@ func TestEngineGetIndex(t *testing.T) {
 	assert.ElementsMatch(t, testIndex.Objects, apiIndex.Objects, "response index Objects")
 	assert.ElementsMatch(t, testIndex.Tables, apiIndex.Tables, "response index Tables")
 }
+
+func TestNotFound(t *testing.T) {
+	var engine = makeTestEngine(testConfig{
+		mibs: testMIBs,
+	})
+
+	//
+	webtest.TestAPI(t, webtest.APITest{
+		Handler: WebAPI(engine),
+		Request: webtest.APIRequest{
+			Method: "GET",
+			Target: "/testx",
+		},
+		Response: webtest.APIResponse{
+			StatusCode: 404,
+		},
+	})
+}
