@@ -4,22 +4,22 @@
   "Objects": [
     {
       "Name": "test",
-      "OID": ".1.0.2.1.1",
+      "OID": ".1.0.1.1.1",
       "Syntax": "SNMPv2-TC::DisplayString"
     },
     {
       "Name": "testID",
-      "OID": ".1.0.2.1.2.1",
+      "OID": ".1.0.1.1.2.1",
       "Syntax": "Integer32"
     },
     {
       "Name": "testName",
-      "OID": ".1.0.2.1.2.2",
+      "OID": ".1.0.1.1.2.2",
       "Syntax": "SNMPv2-TC::DisplayString"
     },
     {
       "Name": "testEnum",
-      "OID": ".1.0.2.1.3",
+      "OID": ".1.0.1.1.3",
       "Syntax": "ENUM",
       "SyntaxOptions": [
         { "Value": 1, "Name": "one"},
@@ -30,7 +30,7 @@
   "Tables": [
     {
       "Name": "testTable",
-      "OID": ".1.0.2.1.2",
+      "OID": ".1.0.1.1.2",
       "IndexObjects": [ "TEST-MIB::testID" ],
       "EntryObjects": [ "TEST-MIB::testName" ],
       "EntryName": "testEntry"
