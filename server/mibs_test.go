@@ -83,7 +83,9 @@ func TestGetMibIndex(t *testing.T) {
 		},
 	})
 
-	assert.Equal(t, testMibIndex, apiIndex, "response index")
+	assert.Equal(t, testMibIndex.MIBIndex, apiIndex.MIBIndex, "response index")
+	assert.ElementsMatch(t, testMibIndex.Objects, apiIndex.Objects, "response index objects")
+	assert.ElementsMatch(t, testMibIndex.Tables, apiIndex.Tables, "response index tables")
 }
 
 func TestGetMibNotFound(t *testing.T) {

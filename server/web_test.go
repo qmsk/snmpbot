@@ -74,5 +74,8 @@ func TestEngineGetIndex(t *testing.T) {
 		},
 	})
 
-	assert.Equal(t, testIndex, apiIndex, "response index")
+	assert.ElementsMatch(t, testIndex.Hosts, apiIndex.Hosts, "response index Hosts")
+	assert.ElementsMatch(t, testIndex.MIBs, apiIndex.MIBs, "response index MIBs")
+	assert.ElementsMatch(t, testIndex.Objects, apiIndex.Objects, "response index Objects")
+	assert.ElementsMatch(t, testIndex.Tables, apiIndex.Tables, "response index Tables")
 }
