@@ -52,6 +52,7 @@ func (e *testEngine) QueryObjects(query ObjectQuery) <-chan ObjectResult {
 
 	defer close(c)
 
+	// TODO
 	return c
 }
 
@@ -60,8 +61,8 @@ func (e *testEngine) QueryTables(query TableQuery) <-chan TableResult {
 
 	defer close(c)
 
+	// TODO
 	return c
-
 }
 
 func makeTestEngine() *testEngine {
@@ -80,13 +81,13 @@ func (c *testEngineClient) String() string {
 }
 
 func (c *testEngineClient) Probe(ids []mibs.ID) ([]bool, error) {
-	return nil, nil
+	return nil, nil // TODO
 }
 
 func (c *testEngineClient) WalkObjects(objects []*mibs.Object, f func(*mibs.Object, mibs.IndexValues, mibs.Value, error) error) error {
-	return nil
+	return nil // TODO
 }
 
 func (c *testEngineClient) WalkTable(table *mibs.Table, f func(mibs.IndexValues, mibs.EntryValues, error) error) error {
-	return nil
+	return nil // TODO
 }
