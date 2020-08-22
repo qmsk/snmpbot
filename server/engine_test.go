@@ -2,15 +2,39 @@ package server
 
 import (
 	"github.com/qmsk/snmpbot/client"
-	"github.com/qmsk/snmpbot/mibs"
+	"github.com/stretchr/testify/mock"
 )
 
 type testConfig struct {
 	hosts map[HostID]HostConfig
+
+	clientMock bool
 }
 
 type testEngine struct {
 	hosts engineHosts
+
+	mock.Mock
+}
+
+func makeTestEngine(config testConfig) *testEngine {
+	var engine = testEngine{
+		hosts: makeEngineHosts(),
+	}
+
+	if !config.clientMock {
+		engine.On("client", mock.AnythingOfType("client.Config")).Return(nil)
+	}
+
+	for id, config := range config.hosts {
+		if host, err := loadHost(&engine, id, config); err != nil {
+			panic(err)
+		} else if !engine.hosts.Add(host) {
+			panic("host already added")
+		}
+	}
+
+	return &engine
 }
 
 func (e *testEngine) ClientOptions() client.Options {
@@ -19,12 +43,21 @@ func (e *testEngine) ClientOptions() client.Options {
 	}
 }
 
+func (e *testEngine) mockClient(snmp string, clientErr error) {
+	if clientOptions, err := client.ParseConfig(e.ClientOptions(), snmp); err != nil {
+		panic(err)
+	} else {
+		e.On("client", clientOptions).Return(clientErr)
+	}
+}
+
 func (e *testEngine) client(config client.Config) (engineClient, error) {
+	var args = e.Called(config)
 	var client = testEngineClient{
 		config: config,
 	}
 
-	return &client, nil
+	return &client, args.Error(0)
 }
 
 func (e *testEngine) MIBs() MIBs {
@@ -71,40 +104,4 @@ func (e *testEngine) QueryTables(query TableQuery) <-chan TableResult {
 
 	// TODO
 	return c
-}
-
-func makeTestEngine(config testConfig) *testEngine {
-	var engine = testEngine{
-		hosts: makeEngineHosts(),
-	}
-
-	for id, config := range config.hosts {
-		if host, err := loadHost(&engine, id, config); err != nil {
-			panic(err)
-		} else if !engine.hosts.Add(host) {
-			panic("host already added")
-		}
-	}
-
-	return &engine
-}
-
-type testEngineClient struct {
-	config client.Config
-}
-
-func (c *testEngineClient) String() string {
-	return c.config.String()
-}
-
-func (c *testEngineClient) Probe(ids []mibs.ID) ([]bool, error) {
-	return nil, nil // TODO
-}
-
-func (c *testEngineClient) WalkObjects(objects []*mibs.Object, f func(*mibs.Object, mibs.IndexValues, mibs.Value, error) error) error {
-	return nil // TODO
-}
-
-func (c *testEngineClient) WalkTable(table *mibs.Table, f func(mibs.IndexValues, mibs.EntryValues, error) error) error {
-	return nil // TODO
 }
