@@ -52,6 +52,9 @@ type Host struct {
 func (host *Host) String() string {
 	return fmt.Sprintf("%v", host.id)
 }
+func (host *Host) Config() HostConfig {
+	return host.config
+}
 
 func (host *Host) init(engine Engine, config HostConfig) error {
 	var clientOptions = engine.ClientOptions()

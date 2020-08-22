@@ -14,7 +14,9 @@ type testEngine struct {
 }
 
 func (e *testEngine) ClientOptions() client.Options {
-	return client.Options{}
+	return client.Options{
+		Community: "public",
+	}
 }
 
 func (e *testEngine) client(config client.Config) (engineClient, error) {
