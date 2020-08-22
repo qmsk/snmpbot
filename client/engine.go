@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"github.com/qmsk/go-logging"
+	"io"
 	"math/rand"
 	"sync/atomic"
 )
@@ -39,6 +40,8 @@ func makeEngine(transport Transport) Engine {
 		requestChan:   make(chan *Request),
 		timeoutChan:   make(chan ioKey),
 		recvChan:      make(chan IO),
+		closeChan:     make(chan struct{}),
+		closedChan:    make(chan struct{}),
 	}
 }
 
@@ -53,6 +56,9 @@ type Engine struct {
 
 	recvChan chan IO
 	recvErr  error
+
+	closeChan  chan struct{}
+	closedChan chan struct{}
 }
 
 func (engine *Engine) String() string {
@@ -78,6 +84,18 @@ func (engine *Engine) teardown() {
 	for _, request := range engine.requests {
 		request.close()
 	}
+
+	// close transport
+	if err := engine.transport.Close(); err != nil {
+		engine.log.Warnf("SNMP<%v> close failed: %v", engine.transport, err)
+	} else {
+		// flush recv to let goroutine complete
+		for range engine.recvChan {
+
+		}
+	}
+
+	close(engine.closedChan)
 }
 
 func (engine *Engine) receiver() {
@@ -89,6 +107,12 @@ func (engine *Engine) receiver() {
 				engine.log.Warnf("Recv: %v", protocolErr)
 
 				continue
+			} else if err == io.EOF {
+				engine.log.Debugf("Recv: %v", err)
+
+				engine.recvErr = nil
+
+				return
 			} else {
 				engine.log.Errorf("Recv: %v", err)
 
@@ -196,6 +220,9 @@ func (engine *Engine) run() error {
 
 		case requestKey := <-engine.timeoutChan:
 			engine.timeoutRequest(requestKey)
+
+		case <-engine.closeChan:
+			return nil
 		}
 	}
 }
@@ -221,9 +248,20 @@ func (engine *Engine) Request(request *Request) error {
 	return request.wait()
 }
 
+func (engine *Engine) close() {
+	close(engine.closeChan)
+}
+func (engine *Engine) waitClosed() {
+	<-engine.closedChan
+}
+
 // Closing the engine will cancel any requests, and cause Run() to return
+// Waits for the engine goroutines to stop, and returns any same error as Run()
 func (engine *Engine) Close() error {
 	engine.log.Debugf("Close...")
 
-	return engine.transport.Close()
+	engine.close()
+	engine.waitClosed()
+
+	return engine.recvErr
 }
