@@ -19,10 +19,12 @@ func (err Error) MarshalJSON() ([]byte, error) {
 // error string back to Error
 func (err *Error) UnmarshalJSON(data []byte) error {
 	var errorMessage string
-	errors := json.Unmarshal(data, &errorMessage)
-	if errors != nil {
+
+	if errors := json.Unmarshal(data, &errorMessage); errors != nil {
 		return errors
 	}
+
 	err.Error = fmt.Errorf(errorMessage)
+
 	return nil
 }
