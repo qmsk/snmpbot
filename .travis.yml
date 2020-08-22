@@ -4,7 +4,7 @@ services:
 
 language: go
 go:
-  - '1.10'
+  - '1.15'
 env:
   global:
     # DOCKER_USERNAME
@@ -12,10 +12,7 @@ env:
     # DOCKER_PASSWORD
     - secure: HKvn5AWLEIyEEV+AubCpCZYW89vWyZ32UNxEYN31AMrs12iQ8S9oOHnlR7282R3BCqqTsqAGs7J+KWnKZlT7fWobzf58t/tPyGezZO2WnsvN5IWDZL++IUuKjWMbSfy3rHGJKtJgXDqFgFrdlnhN6ZgZBC7huhxZfLgq8/22ZN1pQ+il1syFAwmPpiYy2Ef8SRRjbRMqw4oxf+fPUAm9RvAhcPL5pbIbNs/N0DEeBhe6Is2PicUE5wKrxT6/Ido6shwv+LbgaS/SG/JB2eLMEnMRn+7o6tcMLisg8oYQD0IWgUrB5UFe0/6z62CDcfr6Wm7Kf9Tw8efWtWVUIS2nf2R0B4svtnQA6hknAGwDulYCWqa92w95V/311O5Fa9eCc5p5/eBBg5tAtLcSxIEgz+qeOtsAcDLT8Z2hxVGDJfKKiUjuIivBKihgPT5EVdb5GFBa967AlmchydHWdUoiI5Rzmr0beK+Dm5MTCsF6xTrnYVEvFSD24UdTZelKbj4E1+doOIda8SFdMigEB82Od4DvHpBWIH0JQykAkvDqzoHJkEIDU2ekBDNhRURvVzXgrPrXJjBfJxwXuuXvhDhz45xp6FBvhqqKl0jfiDn7FR+8vCE2c0RbPe38IXAi8kdjAaKsOpRpRW2X8VG9CZr0z0TaN9s/qNBsyxoll0jUmRI=
 
-before_install:
-  - curl -L -o /tmp/dep-linux-amd64 https://github.com/golang/dep/releases/download/v0.5.0/dep-linux-amd64 && install -m 0755 /tmp/dep-linux-amd64 $GOPATH/bin/dep
-
-install: dep ensure -vendor-only
+install: go mod download
 script:
   - "! gofmt -l . | grep ."
   - go vet -composites=false ./...
@@ -29,4 +26,4 @@ deploy:
     script: ./build/docker-push.sh
     on:
       tags: true
-      go: '1.10'
+      go: '1.15'

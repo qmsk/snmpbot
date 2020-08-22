@@ -1,13 +1,13 @@
 ## build go backend
-FROM golang:1.10.4-stretch as go-build
-
-RUN curl -L -o /tmp/dep-linux-amd64 https://github.com/golang/dep/releases/download/v0.5.0/dep-linux-amd64 && install -m 0755 /tmp/dep-linux-amd64 /usr/local/bin/dep
+FROM golang:1.15-buster as go-build
 
 WORKDIR /go/src/github.com/qmsk/snmpbot
 
-COPY Gopkg.* ./
-RUN dep ensure -vendor-only
+# dependencies
+COPY go.mod go.sum ./
+RUN go mod download
 
+# source code
 COPY . ./
 RUN go install -v ./cmd/...
 
