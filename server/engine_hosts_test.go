@@ -40,7 +40,19 @@ func TestEngineDelHost(t *testing.T) {
 
 	engine.SetHost(host1)
 	engine.SetHost(host2)
-	engine.DelHost(host1)
+
+	assert.Truef(t, engine.DelHost(host1), "engine.DelHost %v: existing host", host1)
 
 	assert.Equalf(t, MakeHosts(host2), engine.Hosts(), "engine.Hosts")
+}
+
+func TestEngineDelHostMissing(t *testing.T) {
+	var engine = makeTestEngine()
+	var host1 = newHost(HostID("test1"))
+	var host2 = newHost(HostID("test2"))
+
+	engine.SetHost(host1)
+	assert.Falsef(t, engine.DelHost(host2), "engine.DelHost %v: existing host", host2)
+
+	assert.Equalf(t, MakeHosts(host1), engine.Hosts(), "engine.Hosts")
 }
