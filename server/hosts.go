@@ -21,6 +21,16 @@ func MakeHosts(args ...*Host) Hosts {
 
 type Hosts map[HostID]*Host
 
+func (hosts Hosts) Keys() []HostID {
+	var keys = make([]HostID, 0, len(hosts))
+
+	for key, _ := range hosts {
+		keys = append(keys, key)
+	}
+
+	return keys
+}
+
 func (hosts Hosts) String() string {
 	var ss = make([]string, 0, len(hosts))
 

@@ -16,7 +16,7 @@ type HostConfig struct {
 	Location string
 
 	// optional, defaults to global config
-	ClientOptions *client.Options // TODO: rename to ClientOptions
+	ClientOptions *client.Options
 }
 
 func newHost(id HostID) *Host {
