@@ -18,6 +18,16 @@ func AllMIBs() MIBs {
 	return mibMap
 }
 
+func MakeMIBs(args ...*mibs.MIB) MIBs {
+	var mibs = make(MIBs, len(args))
+
+	for _, mib := range args {
+		mibs[mib.Name] = mib
+	}
+
+	return mibs
+}
+
 func (mibMap MIBs) ListIDs() []mibs.ID {
 	var list = make([]mibs.ID, 0, len(mibMap))
 
