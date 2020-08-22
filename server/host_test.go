@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/qmsk/snmpbot/mibs"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -79,4 +80,51 @@ func TestLoadHostClientError(t *testing.T) {
 	})
 
 	assert.EqualErrorf(t, err, "NewClient test: Test error", "loadHost client")
+}
+
+func TestLoadHostClientProbeError(t *testing.T) {
+	var engine = makeTestEngine(testConfig{clientMock: true})
+
+	engine.mockClient("localhost", nil)
+	engine.clientMock.On("Probe", []mibs.ID{testMIB.ID}).Return([]bool{false}, fmt.Errorf("Test error"))
+
+	var host, err = loadHost(engine, HostID("test"), HostConfig{
+		SNMP: "localhost",
+	})
+
+	assert.EqualError(t, err, "Probe test: Test error", "loadHost probe")
+	assert.Equalf(t, "test", host.String(), "Host.String()")
+	assert.False(t, host.IsUp(), "Host.IsUp")
+}
+
+func TestLoadHostClientProbeTrue(t *testing.T) {
+	var engine = makeTestEngine(testConfig{clientMock: true})
+
+	engine.mockClient("localhost", nil)
+	engine.clientMock.On("Probe", []mibs.ID{testMIB.ID}).Return([]bool{true}, nil)
+
+	var host, err = loadHost(engine, HostID("test"), HostConfig{
+		SNMP: "localhost",
+	})
+
+	assert.NoError(t, err, "loadHost")
+	assert.Equal(t, "test", host.String(), "Host.String()")
+	assert.True(t, host.IsUp(), "Host.IsUp")
+	assert.Equal(t, testMIBs, host.MIBs(), "Host.MIBs()")
+}
+
+func TestLoadHostClientProbeFalse(t *testing.T) {
+	var engine = makeTestEngine(testConfig{clientMock: true})
+
+	engine.mockClient("localhost", nil)
+	engine.clientMock.On("Probe", []mibs.ID{testMIB.ID}).Return([]bool{false}, nil)
+
+	var host, err = loadHost(engine, HostID("test"), HostConfig{
+		SNMP: "localhost",
+	})
+
+	assert.NoError(t, err, "loadHost")
+	assert.Equal(t, "test", host.String(), "Host.String()")
+	assert.True(t, host.IsUp(), "Host.IsUp")
+	assert.Empty(t, host.MIBs(), "Host.MIBs()")
 }

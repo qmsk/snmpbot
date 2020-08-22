@@ -7,14 +7,17 @@ import (
 
 type testConfig struct {
 	hosts map[HostID]HostConfig
+	mibs  MIBs
 
 	clientMock bool
 }
 
 type testEngine struct {
 	hosts engineHosts
+	mibs  MIBs
 
 	mock.Mock
+	clientMock *mock.Mock
 }
 
 func makeTestEngine(config testConfig) *testEngine {
@@ -22,8 +25,16 @@ func makeTestEngine(config testConfig) *testEngine {
 		hosts: makeEngineHosts(),
 	}
 
+	if config.mibs != nil {
+		engine.mibs = config.mibs
+	} else {
+		engine.mibs = testMIBs
+	}
+
 	if !config.clientMock {
 		engine.On("client", mock.AnythingOfType("client.Config")).Return(nil)
+	} else {
+		engine.clientMock = new(mock.Mock)
 	}
 
 	for id, config := range config.hosts {
@@ -55,13 +66,15 @@ func (e *testEngine) client(config client.Config) (engineClient, error) {
 	var args = e.Called(config)
 	var client = testEngineClient{
 		config: config,
+
+		mock: e.clientMock,
 	}
 
 	return &client, args.Error(0)
 }
 
 func (e *testEngine) MIBs() MIBs {
-	return AllMIBs()
+	return e.mibs
 }
 
 func (e *testEngine) Objects() Objects {

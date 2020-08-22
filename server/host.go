@@ -91,7 +91,7 @@ func (host *Host) probe(probeMIBs MIBs) error {
 	host.log.Infof("Probing MIBs: %v", probeMIBs)
 
 	if probed, err := host.client.Probe(ids); err != nil {
-		return err
+		return fmt.Errorf("Probe %v: %v", host, err)
 	} else {
 		for i, ok := range probed {
 			if ok {
