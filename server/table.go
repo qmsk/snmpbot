@@ -60,6 +60,26 @@ func (tables Tables) add(table *mibs.Table) {
 	tables[TableID(table.Key())] = table
 }
 
+func (tables Tables) Keys() []TableID {
+	var keys = make([]TableID, 0, len(tables))
+
+	for key, _ := range tables {
+		keys = append(keys, key)
+	}
+
+	return keys
+}
+
+func (tables Tables) Strings() []string {
+	var strings = make([]string, 0, len(tables))
+
+	for _, table := range tables {
+		strings = append(strings, table.String())
+	}
+
+	return strings
+}
+
 func (tables Tables) String() string {
 	var ss = make([]string, 0, len(tables))
 

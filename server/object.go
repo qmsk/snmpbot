@@ -47,6 +47,26 @@ func (objects Objects) exists(object *mibs.Object) bool {
 	}
 }
 
+func (objects Objects) Keys() []ObjectID {
+	var keys = make([]ObjectID, 0, len(objects))
+
+	for key, _ := range objects {
+		keys = append(keys, key)
+	}
+
+	return keys
+}
+
+func (objects Objects) Strings() []string {
+	var strings = make([]string, 0, len(objects))
+
+	for _, object := range objects {
+		strings = append(strings, object.String())
+	}
+
+	return strings
+}
+
 func (objects Objects) String() string {
 	var ss = make([]string, 0, len(objects))
 
