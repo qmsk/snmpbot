@@ -42,7 +42,7 @@ func TestEngineGetHosts(t *testing.T) {
 	assert.Equal(t, []api.HostIndex{testHostIndex}, apiHostIndexList, "response hosts")
 }
 
-func TestEngineGetHost(t *testing.T) {
+func TestEngineGetHostIndex(t *testing.T) {
 	var engine = makeTestEngine(testConfig{
 		hosts: map[HostID]HostConfig{
 			HostID("test"): HostConfig{
@@ -74,6 +74,42 @@ func TestEngineGetHost(t *testing.T) {
 	})
 
 	assert.Equal(t, testHostIndex, apiHostIndex, "response host")
+}
+
+func TestEngineGetHost(t *testing.T) {
+	var engine = makeTestEngine(testConfig{
+		hosts: map[HostID]HostConfig{
+			HostID("test"): HostConfig{
+				SNMP:     "public@localhost",
+				Location: "test",
+			},
+		},
+	})
+
+	//
+	var apiHost api.Host
+	var testHost = api.Host{
+		HostIndex: api.HostIndex{
+			ID:       "test",
+			SNMP:     "public@localhost",
+			Online:   true,
+			Location: "test",
+		},
+	}
+
+	webtest.TestAPI(t, webtest.APITest{
+		Handler: WebAPI(engine),
+		Request: webtest.APIRequest{
+			Method: "GET",
+			Target: "/hosts/test/",
+		},
+		Response: webtest.APIResponse{
+			StatusCode: 200,
+			Object:     &apiHost,
+		},
+	})
+
+	assert.Equal(t, testHost, apiHost, "response host")
 }
 
 func TestEngineGetHostDynamic(t *testing.T) {
@@ -130,6 +166,25 @@ func TestEngineGetHostDynamicCommunity(t *testing.T) {
 	})
 
 	assert.Equal(t, testHostIndex, apiHost.HostIndex, "response host")
+}
+
+func TestEngineGetHostDynamicError(t *testing.T) {
+	var engine = makeTestEngine(testConfig{
+		hosts: map[HostID]HostConfig{},
+	})
+
+	//
+	webtest.TestAPI(t, webtest.APITest{
+		Handler: WebAPI(engine),
+		Request: webtest.APIRequest{
+			Method: "GET",
+			Target: "/hosts/test/?snmp=public@localhost:asdf",
+		},
+		Response: webtest.APIResponse{
+			StatusCode: 500,
+			Text:       `parse "udp+snmp://public@localhost:asdf": invalid port ":asdf" after host` + "\n",
+		},
+	})
 }
 
 func TestEnginePostHost(t *testing.T) {
@@ -233,6 +288,30 @@ func TestEnginePostHostConflict(t *testing.T) {
 	assert.ElementsMatch(t, []HostID{HostID("test")}, engine.Hosts().Keys(), "engine.Hosts")
 }
 
+func TestEnginePostHostError(t *testing.T) {
+	var engine = makeTestEngine(testConfig{
+		hosts: map[HostID]HostConfig{},
+	})
+
+	//
+	webtest.TestAPI(t, webtest.APITest{
+		Handler: WebAPI(engine),
+		Request: webtest.APIRequest{
+			Method: "POST",
+			Target: "/hosts/",
+			Object: api.HostPOST{
+				ID:       "test",
+				SNMP:     "public@localhost:asdf",
+				Location: "test",
+			},
+		},
+		Response: webtest.APIResponse{
+			StatusCode: 500,
+			Text:       `parse "udp+snmp://public@localhost:asdf": invalid port ":asdf" after host` + "\n",
+		},
+	})
+}
+
 func TestEnginePutHost(t *testing.T) {
 	var engine = makeTestEngine(testConfig{
 		hosts: map[HostID]HostConfig{
@@ -272,6 +351,35 @@ func TestEnginePutHost(t *testing.T) {
 	assert.ElementsMatch(t, []HostID{HostID("test1"), HostID("test2")}, engine.Hosts().Keys(), "engine.Hosts")
 	assert.Equal(t, "public@localhost", engine.Hosts()["test1"].client.String(), "engine.Host test1 SNMP")
 	assert.Equal(t, "private@localhost", engine.Hosts()["test2"].client.String(), "engine.Host test2 SNMP")
+}
+
+func TestEnginePutHostError(t *testing.T) {
+	var engine = makeTestEngine(testConfig{
+		hosts: map[HostID]HostConfig{
+			HostID("test1"): HostConfig{
+				SNMP:     "public@localhost",
+				Location: "test",
+			},
+		},
+	})
+
+	//
+	webtest.TestAPI(t, webtest.APITest{
+		Handler: WebAPI(engine),
+		Request: webtest.APIRequest{
+			Method: "PUT",
+			Target: "/hosts/test2",
+			Object: api.HostPOST{
+				ID:       "test2",
+				SNMP:     "localhost:asdf",
+				Location: "test",
+			},
+		},
+		Response: webtest.APIResponse{
+			StatusCode: 500,
+			Text:       `parse "udp+snmp://localhost:asdf": invalid port ":asdf" after host` + "\n",
+		},
+	})
 }
 
 func TestEnginePutHostUpdate(t *testing.T) {

@@ -67,7 +67,7 @@ func TestLoadHostConfigError(t *testing.T) {
 		SNMP: "localhost:asdf",
 	})
 
-	assert.EqualErrorf(t, err, "parse \"udp+snmp://localhost:asdf\": invalid port \":asdf\" after host", "loadHost ParseConfig")
+	assert.EqualErrorf(t, err, `parse "udp+snmp://localhost:asdf": invalid port ":asdf" after host`, "loadHost ParseConfig")
 }
 
 func TestLoadHostClientError(t *testing.T) {
