@@ -236,7 +236,7 @@ type tablesView struct {
 }
 
 func (view tablesView) makeAPIIndex() []api.TableIndex {
-	var tables = make([]api.TableIndex, len(view.tables))
+	var tables = make([]api.TableIndex, 0, len(view.tables))
 
 	for _, table := range view.tables {
 		tables = append(tables, tableView{table}.makeAPIIndex())
