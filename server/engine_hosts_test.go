@@ -8,7 +8,7 @@ import (
 )
 
 func TestEngineAddHosts(t *testing.T) {
-	var engine = makeTestEngine()
+	var engine = makeTestEngine(testConfig{})
 	var host1 = newHost(HostID("test1"))
 	var host2 = newHost(HostID("test2"))
 
@@ -20,7 +20,7 @@ func TestEngineAddHosts(t *testing.T) {
 }
 
 func TestEngineSetHost(t *testing.T) {
-	var engine = makeTestEngine()
+	var engine = makeTestEngine(testConfig{})
 	var host1 = newHost(HostID("test"))
 	var host2 = newHost(HostID("test"))
 
@@ -34,7 +34,7 @@ func TestEngineSetHost(t *testing.T) {
 }
 
 func TestEngineDelHost(t *testing.T) {
-	var engine = makeTestEngine()
+	var engine = makeTestEngine(testConfig{})
 	var host1 = newHost(HostID("test1"))
 	var host2 = newHost(HostID("test2"))
 
@@ -47,7 +47,7 @@ func TestEngineDelHost(t *testing.T) {
 }
 
 func TestEngineDelHostMissing(t *testing.T) {
-	var engine = makeTestEngine()
+	var engine = makeTestEngine(testConfig{})
 	var host1 = newHost(HostID("test1"))
 	var host2 = newHost(HostID("test2"))
 

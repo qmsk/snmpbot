@@ -5,6 +5,10 @@ import (
 	"github.com/qmsk/snmpbot/mibs"
 )
 
+type testConfig struct {
+	hosts map[HostID]HostConfig
+}
+
 type testEngine struct {
 	hosts engineHosts
 }
@@ -14,7 +18,9 @@ func (e *testEngine) ClientOptions() client.Options {
 }
 
 func (e *testEngine) client(config client.Config) (engineClient, error) {
-	var client = testEngineClient{}
+	var client = testEngineClient{
+		config: config,
+	}
 
 	return &client, nil
 }
@@ -65,19 +71,28 @@ func (e *testEngine) QueryTables(query TableQuery) <-chan TableResult {
 	return c
 }
 
-func makeTestEngine() *testEngine {
+func makeTestEngine(config testConfig) *testEngine {
 	var engine = testEngine{
 		hosts: makeEngineHosts(),
+	}
+
+	for id, config := range config.hosts {
+		if host, err := loadHost(&engine, id, config); err != nil {
+			panic(err)
+		} else if !engine.hosts.Add(host) {
+			panic("host already added")
+		}
 	}
 
 	return &engine
 }
 
 type testEngineClient struct {
+	config client.Config
 }
 
 func (c *testEngineClient) String() string {
-	return "<test>"
+	return c.config.String()
 }
 
 func (c *testEngineClient) Probe(ids []mibs.ID) ([]bool, error) {
