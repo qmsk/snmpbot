@@ -48,10 +48,10 @@ func init() {
 	options.InitFlags()
 }
 
-func run(serverEngine *server.Engine) error {
+func run(serverEngine server.Engine) error {
 	// XXX: this is not a good API, it just returns immediately if there is no -http-listen?
 	options.Web.Server(
-		options.Web.RouteAPI("/api/", serverEngine.WebAPI()),
+		options.Web.RouteAPI("/api/", server.WebAPI(serverEngine)),
 		options.Web.RouteStatic("/"),
 	)
 

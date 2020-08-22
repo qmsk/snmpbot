@@ -254,6 +254,9 @@ func walkPathMulti(path string, handlers ...configWalkFunc) error {
 	return nil
 }
 
+// Load and register multiple MIBs recursively from the given filesystem path.
+//
+// References to other MIBs are resolved via multiple passes, MIB ordering does not matter.
 func Load(path string) error {
 	var loadContext = loadContext{
 		entryMap:    make(map[string]*Table),
@@ -293,4 +296,31 @@ func Load(path string) error {
 			}
 		},
 	)
+}
+
+// Load a single MIB, and return it.
+//
+// Any other MIBs referred to by this MIB must already have been loaded.
+func LoadMIB(r io.Reader) (*MIB, error) {
+	var mibConfig MIBConfig
+	var loadContext = loadContext{
+		entryMap:    make(map[string]*Table),
+		augmentsMap: make(map[string]string),
+	}
+
+	if err := json.NewDecoder(r).Decode(&mibConfig); err != nil {
+		return nil, err
+	}
+
+	if mib, err := mibConfig.loadMIB(); err != nil {
+		return mib, fmt.Errorf("Failed to load MIB: %v", err)
+	} else if err := mibConfig.loadObjects(mib); err != nil {
+		return mib, fmt.Errorf("Failed to load MIB %v objects: %v", mib, err)
+	} else if err := mibConfig.loadTables(mib, loadContext); err != nil {
+		return mib, fmt.Errorf("Failed to load MIB %v tables: %v", mib, err)
+	} else if err := mibConfig.loadTablesIndex(mib, loadContext); err != nil {
+		return mib, fmt.Errorf("Failed to load MIB %v tables: %v", mib, err)
+	} else {
+		return mib, nil
+	}
 }

@@ -16,7 +16,7 @@ type HostConfig struct {
 	Location string
 
 	// optional, defaults to global config
-	ClientOptions *client.Options // TODO: rename to ClientOptions
+	ClientOptions *client.Options
 }
 
 func newHost(id HostID) *Host {
@@ -26,7 +26,7 @@ func newHost(id HostID) *Host {
 	return &host
 }
 
-func loadHost(engine *Engine, id HostID, config HostConfig) (*Host, error) {
+func loadHost(engine Engine, id HostID, config HostConfig) (*Host, error) {
 	var host = newHost(id)
 
 	if err := host.init(engine, config); err != nil {
@@ -42,7 +42,7 @@ type Host struct {
 	id     HostID
 	log    logging.PrefixLogging
 	config HostConfig
-	client *client.Client
+	client engineClient
 
 	mibs   MIBs
 	err    error
@@ -52,9 +52,12 @@ type Host struct {
 func (host *Host) String() string {
 	return fmt.Sprintf("%v", host.id)
 }
+func (host *Host) Config() HostConfig {
+	return host.config
+}
 
-func (host *Host) init(engine *Engine, config HostConfig) error {
-	var clientOptions = engine.clientOptions
+func (host *Host) init(engine Engine, config HostConfig) error {
+	var clientOptions = engine.ClientOptions()
 
 	if config.ClientOptions != nil {
 		clientOptions = *config.ClientOptions
@@ -70,7 +73,7 @@ func (host *Host) init(engine *Engine, config HostConfig) error {
 
 	if clientConfig, err := client.ParseConfig(clientOptions, config.SNMP); err != nil {
 		return err
-	} else if client, err := client.NewClient(engine.clientEngine, clientConfig); err != nil {
+	} else if client, err := engine.client(clientConfig); err != nil {
 		return fmt.Errorf("NewClient %v: %v", host, err)
 	} else {
 		host.log.Infof("Connected client: %v", client)
@@ -82,14 +85,13 @@ func (host *Host) init(engine *Engine, config HostConfig) error {
 }
 
 func (host *Host) probe(probeMIBs MIBs) error {
-	var client = mibs.MakeClient(host.client)
 	var ids = probeMIBs.ListIDs()
 	var mibs = make(MIBs)
 
 	host.log.Infof("Probing MIBs: %v", probeMIBs)
 
-	if probed, err := client.Probe(ids); err != nil {
-		return err
+	if probed, err := host.client.Probe(ids); err != nil {
+		return fmt.Errorf("Probe %v: %v", host, err)
 	} else {
 		for i, ok := range probed {
 			if ok {
@@ -129,12 +131,8 @@ func (host *Host) resolveTable(name string) (*mibs.Table, error) {
 	return mibs.ResolveTable(name)
 }
 
-func (host *Host) getClient() (mibs.Client, error) {
-	return mibs.MakeClient(host.client), nil
-}
-
 type hostRoute struct {
-	engine     *Engine
+	engine     Engine
 	host       *Host
 	loadConfig *HostConfig
 	put        api.HostPUT
@@ -170,7 +168,7 @@ func (route *hostRoute) IntoREST() interface{} {
 }
 
 func (route *hostRoute) makeHostConfig() HostConfig {
-	var options = route.engine.clientOptions
+	var options = route.engine.ClientOptions()
 
 	if route.put.Community != "" {
 		options.Community = route.put.Community
@@ -204,7 +202,7 @@ func (route *hostRoute) DeleteREST() (web.Resource, error) {
 }
 
 type hostView struct {
-	engine *Engine
+	engine Engine
 	host   *Host
 }
 

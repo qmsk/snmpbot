@@ -60,6 +60,26 @@ func (tables Tables) add(table *mibs.Table) {
 	tables[TableID(table.Key())] = table
 }
 
+func (tables Tables) Keys() []TableID {
+	var keys = make([]TableID, 0, len(tables))
+
+	for key, _ := range tables {
+		keys = append(keys, key)
+	}
+
+	return keys
+}
+
+func (tables Tables) Strings() []string {
+	var strings = make([]string, 0, len(tables))
+
+	for _, table := range tables {
+		strings = append(strings, table.String())
+	}
+
+	return strings
+}
+
 func (tables Tables) String() string {
 	var ss = make([]string, 0, len(tables))
 
@@ -121,7 +141,7 @@ func (tables Tables) FilterObjects(filters ...string) Tables {
 }
 
 type tablesRoute struct {
-	engine *Engine
+	engine Engine
 }
 
 func (route tablesRoute) Index(name string) (web.Resource, error) {
@@ -216,7 +236,7 @@ type tablesView struct {
 }
 
 func (view tablesView) makeAPIIndex() []api.TableIndex {
-	var tables = make([]api.TableIndex, len(view.tables))
+	var tables = make([]api.TableIndex, 0, len(view.tables))
 
 	for _, table := range view.tables {
 		tables = append(tables, tableView{table}.makeAPIIndex())
@@ -242,7 +262,7 @@ func (view mibTablesView) makeAPIIndex() []api.TableIndex {
 }
 
 type tableHandler struct {
-	engine *Engine
+	engine Engine
 	hosts  Hosts
 	table  *mibs.Table
 	params api.TableQuery
@@ -283,7 +303,7 @@ func (handler *tableHandler) GetREST() (web.Resource, error) {
 }
 
 type tablesHandler struct {
-	engine *Engine
+	engine Engine
 	hosts  Hosts
 	tables Tables
 	params api.TablesQuery
